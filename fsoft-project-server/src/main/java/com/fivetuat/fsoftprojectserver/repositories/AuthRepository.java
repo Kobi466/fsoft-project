@@ -10,7 +10,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface AuthRepository extends JpaRepository<Auth, Long> {
+public interface AuthRepository extends JpaRepository<Auth, UUID> {
     boolean existsByEmailOrPhone(String email, String phone);
 
     Optional<Auth> findByEmail(String email);

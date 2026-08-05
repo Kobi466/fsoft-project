@@ -39,3 +39,5 @@ Dockerfile
 ### Spring ###
 src/main/resources/application-dev.properties
 src/main/resources/application-prod.yml
+
+.env

@@ -37,18 +37,6 @@ public class Profile {
     String facebook;
     String youtube;
 
-//    @OneToMany(mappedBy = "profile", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-//    Set<Post> posts;
-//
-//    @OneToMany(mappedBy = "creator", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-//    Set<Course> courses;
-//
-//    @OneToMany(mappedBy = "profile", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-//    Set<Enrollment> enrollments;
-//
-//    @OneToMany(mappedBy = "profile", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-//    Set<Order> orders;
-
     LocalDateTime createTime;
     LocalDateTime updateTime;
 
