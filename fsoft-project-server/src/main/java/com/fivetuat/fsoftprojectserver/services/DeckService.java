@@ -1,8 +1,11 @@
 package com.fivetuat.fsoftprojectserver.services;
 
+import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckUpdateRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.ShareDeckRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.DeckResponse;
+import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -11,7 +14,10 @@ public interface DeckService {
     DeckResponse createDeck(DeckCreateRequest request, MultipartFile coverImage);
     DeckResponse getDeck(Long id);
     DeckResponse updateDeck(Long id, DeckUpdateRequest request, MultipartFile coverImage);
+    void convertDeckVisibility(Long id, DeckVisibility deckVisibility);
     void deleteDeck(Long id);
-    List<DeckResponse> getMyDecks();
+    PageResponse<DeckResponse> getMyDecks(int page, int size);
     List<DeckResponse> getAllDecks();
+    DeckResponse fork(Long id);
+    void share(Long deckId, ShareDeckRequest request);
 }

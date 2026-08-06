@@ -5,6 +5,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -28,4 +29,5 @@ public class DeckResponse {
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
     java.util.Set<TagResponse> tags;
+    List<CardResponse> cards;
 }

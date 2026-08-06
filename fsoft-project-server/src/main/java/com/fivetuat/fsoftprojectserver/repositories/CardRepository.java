@@ -15,7 +15,7 @@ import java.util.Optional;
 public interface CardRepository extends JpaRepository<Card, Long> {
 
     List<Card> findByDeckIdOrderByPositionAsc(Long deckId);
-
+    List<Card> findByDeckId(Long deckId);
     Page<Card> findByDeckIdOrderByPositionAsc(Long deckId, Pageable pageable);
 
     @Query("SELECT c FROM Card c WHERE c.deckId = :deckId AND " +

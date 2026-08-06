@@ -30,6 +30,9 @@ public enum ErrorCode {
     USER_NOT_FOUND(417, "User not found", HttpStatus.NOT_FOUND),
     INVALID_OTP(418, "Invalid OTP", HttpStatus.BAD_REQUEST),
     DECK_NOT_FOUND(419, "Deck not found", HttpStatus.NOT_FOUND),
+    DECK_NOT_PUBLIC(420, "Only public decks can be forked", HttpStatus.BAD_REQUEST),
+    ACCESS_DENIED(403, "You do not have permission to perform this action", HttpStatus.FORBIDDEN),
+    DECK_NOT_SHARED(420, "Only SHARED decks can be SHARE", HttpStatus.BAD_REQUEST),
 
     //tanvy Mã lỗi bổ sung cho Module Card:
     CARD_NOT_FOUND(420, "Card not found", HttpStatus.NOT_FOUND),

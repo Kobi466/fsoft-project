@@ -1,9 +1,13 @@
 package com.fivetuat.fsoftprojectserver.controllers;
 
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
+import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckUpdateRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.DeckVisibilityRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.ShareDeckRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.DeckResponse;
+import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
 import com.fivetuat.fsoftprojectserver.enums.SuccessCode;
 import com.fivetuat.fsoftprojectserver.services.DeckService;
 import jakarta.validation.Valid;
@@ -50,12 +54,30 @@ public class DeckController {
     }
 
     @GetMapping("/my")
-    public ApiResponse<List<DeckResponse>> getMyDecks() {
-        return ApiResponse.ok(deckService.getMyDecks(), SuccessCode.GET_DECKS_SUCCESS);
+    public ApiResponse<PageResponse<DeckResponse>> getMyDecks(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.ok(deckService.getMyDecks(page, size), SuccessCode.GET_DECKS_SUCCESS);
+    }
+    @PutMapping("/{id}/visibility")
+    public ApiResponse<Void> convertDeckVisibility(
+            @PathVariable Long id,
+            @RequestBody DeckVisibilityRequest request) {
+        deckService.convertDeckVisibility(id, request.getVisibility());
+        return ApiResponse.ok(null, SuccessCode.DECK_VISIBILITY_UPDATED);
     }
 
-    @GetMapping
-    public ApiResponse<List<DeckResponse>> getAllDecks() {
-        return ApiResponse.ok(deckService.getAllDecks(), SuccessCode.GET_DECKS_SUCCESS);
+    @PostMapping("/{id}/fork")
+    public ApiResponse<DeckResponse> forkDeck(@PathVariable Long id) {
+        DeckResponse response = deckService.fork(id);
+        return ApiResponse.ok(response, SuccessCode.DECK_FORKED);
+    }
+    @PostMapping("/{id}/share")
+    public ApiResponse<Void> shareDeck(
+            @PathVariable Long id,
+            @RequestBody ShareDeckRequest request) {
+        deckService.share(id, request);
+        return ApiResponse.ok(null, SuccessCode.DECK_SHARED);
     }
 }
