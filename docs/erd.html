@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERD Diagram - Flashcard Learning & SRS System (Full Monochrome)</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --card-bg: #ffffff;
+            --border-color: #000000;
+            --text-primary: #000000;
+            --text-secondary: #475569;
+            --accent-color: #000000;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f8fafc;
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: #ffffff;
+            border-bottom: 2px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .title-container h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #000000;
+        }
+
+        .title-container p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            background-color: #ffffff;
+            color: #000000;
+            border: 1.5px solid #000000;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background-color: #000000;
+            color: #ffffff;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem;
+            gap: 1.5rem;
+        }
+
+        .diagram-wrapper {
+            background-color: #ffffff;
+            border: 2px solid #000000;
+            border-radius: 0.375rem;
+            overflow: hidden;
+            position: relative;
+            height: 78vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #mermaid-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #mermaid-container svg {
+            width: 100% !important;
+            height: 100% !important;
+            max-width: none !important;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+            background: #ffffff;
+            padding: 0.375rem;
+            border-radius: 0.25rem;
+            border: 2px solid #000000;
+            z-index: 10;
+        }
+
+        .zoom-btn {
+            width: 2.25rem;
+            height: 2.25rem;
+            border-radius: 0.25rem;
+            border: 1px solid #000000;
+            background: #ffffff;
+            color: #000000;
+            font-size: 1.125rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .zoom-btn:hover {
+            background: #000000;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="title-container">
+            <h1>📊 Complete ERD Diagram (1vs1 PvP, Leaderboards, Badges & Notifications)</h1>
+            <p>Sơ đồ Thực thể Liên kết Toàn diện cho Hệ thống Học Từ Vựng Flashcard & SRS</p>
+        </div>
+        <div class="toolbar">
+            <button class="btn" onclick="resetZoom()">🎯 Reset View</button>
+            <button class="btn" onclick="downloadSVG()">📥 Export SVG</button>
+        </div>
+    </header>
+
+    <main>
+        <div class="diagram-wrapper">
+            <div id="mermaid-container">
+                <pre class="mermaid" id="mermaid-src">
+erDiagram
+    USERS ||--o{ REFRESH_TOKENS : "has many"
+    USERS ||--o1 USER_SETTINGS : "has one"
+    USERS ||--o{ DECKS : "owns"
+    USERS ||--o{ USER_CARD_SRS : "tracks progression"
+    USERS ||--o{ QUIZ_RESULTS : "completes"
+    USERS ||--o{ USER_ACTIVITIES : "logs"
+    USERS ||--o1 USER_STREAKS : "maintains"
+
+    USERS ||--o{ BATTLES : "player1 (host)"
+    USERS ||--o{ BATTLES : "player2 (opponent)"
+    DECKS ||--o{ BATTLES : "used in battle"
+    BATTLES ||--o{ BATTLE_DETAILS : "contains"
+    CARDS ||--o{ BATTLE_DETAILS : "tested in"
+
+    USERS ||--o{ USER_BADGES : "earns"
+    BADGES ||--o{ USER_BADGES : "awarded to"
+    USERS ||--o{ LEADERBOARD_SNAPSHOTS : "ranked in"
+    USERS ||--o{ NOTIFICATIONS : "receives"
+
+    DECKS ||--o{ CARDS : "contains"
+    DECKS ||--o{ DECK_TAGS : "categorized by"
+    TAGS ||--o{ DECK_TAGS : "applied to"
+    DECKS ||--o{ DECKS : "forked/cloned from (parent_deck_id)"
+
+    CARDS ||--o{ USER_CARD_SRS : "has SRS state"
+    CARDS ||--o{ QUIZ_DETAILS : "referenced in"
+    QUIZ_RESULTS ||--o{ QUIZ_DETAILS : "contains"
+
+    USERS {
+        bigint id PK
+        string email UK
+        string password_hash
+        string full_name
+        string avatar_url
+        enum role "ROLE_USER, ROLE_ADMIN"
+        enum status "ACTIVE, INACTIVE, BLOCKED"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    REFRESH_TOKENS {
+        bigint id PK
+        bigint user_id FK
+        string token UK
+        string device_info
+        timestamp expires_at
+        timestamp created_at
+    }
+
+    USER_SETTINGS {
+        bigint id PK
+        bigint user_id FK,UK
+        int daily_new_cards_goal
+        int daily_review_cards_goal
+        time reminder_time
+        boolean sound_enabled
+        timestamp updated_at
+    }
+
+    DECKS {
+        bigint id PK
+        bigint user_id FK "Owner"
+        bigint parent_deck_id FK "Nullable - for cloned decks"
+        string title
+        text description
+        string cover_image_url
+        string source_language "en"
+        string target_language "vi"
+        enum visibility "PRIVATE, PUBLIC"
+        boolean is_official
+        int total_cards
+        int fork_count
+        boolean is_deleted
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    TAGS {
+        bigint id PK
+        string name UK "TOEIC, IELTS, IT English"
+        string slug UK
+    }
+
+    DECK_TAGS {
+        bigint deck_id PK,FK
+        bigint tag_id PK,FK
+    }
+
+    CARDS {
+        bigint id PK
+        bigint deck_id FK
+        string word
+        string phonetic
+        string part_of_speech "Noun, Verb, Adj..."
+        text meaning
+        text definition_en
+        text example_sentence
+        text example_meaning
+        string image_url
+        string audio_url
+        text note
+        int position
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    USER_CARD_SRS {
+        bigint id PK
+        bigint user_id FK
+        bigint card_id FK
+        enum status "NEW, LEARNING, MASTERED"
+        float easiness_factor "Default 2.5"
+        int repetitions "Default 0"
+        int interval "Default 0 (days)"
+        timestamp last_reviewed_at
+        date next_review_date "Indexed for Study Queue"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    QUIZ_RESULTS {
+        bigint id PK
+        bigint user_id FK
+        enum scope "DECK, ALL, TAG"
+        int total_questions
+        int correct_answers
+        float score
+        float accuracy_rate
+        int time_spent_seconds
+        timestamp created_at
+    }
+
+    QUIZ_DETAILS {
+        bigint id PK
+        bigint quiz_result_id FK
+        bigint card_id FK
+        enum question_type "MULTIPLE_CHOICE, FILL_IN_BLANK, MATCHING, LISTENING"
+        text user_answer
+        text correct_answer
+        boolean is_correct
+        float score_earned
+    }
+
+    USER_ACTIVITIES {
+        bigint id PK
+        bigint user_id FK
+        date activity_date
+        int cards_reviewed_count
+        int quizzes_completed_count
+        timestamp created_at
+    }
+
+    USER_STREAKS {
+        bigint id PK
+        bigint user_id FK,UK
+        int current_streak
+        int longest_streak
+        date last_active_date
+        timestamp updated_at
+    }
+
+    BATTLES {
+        bigint id PK
+        bigint player1_id FK "Host"
+        bigint player2_id FK "Opponent"
+        bigint deck_id FK "Battle Deck"
+        enum status "WAITING, IN_PROGRESS, COMPLETED, CANCELLED"
+        bigint winner_id FK "Nullable"
+        float player1_score
+        float player2_score
+        int player1_time_seconds
+        int player2_time_seconds
+        timestamp created_at
+        timestamp completed_at
+    }
+
+    BATTLE_DETAILS {
+        bigint id PK
+        bigint battle_id FK
+        bigint card_id FK
+        text player1_answer
+        text player2_answer
+        boolean player1_is_correct
+        boolean player2_is_correct
+        int player1_time_ms
+        int player2_time_ms
+    }
+
+    BADGES {
+        bigint id PK
+        string code UK "STREAK_7_DAYS, BATTLE_WINNER_10"
+        string name "Thánh Chăm Chỉ, Vua Đấu Trí"
+        text description
+        string icon_url
+        int points "Bonus Points"
+    }
+
+    USER_BADGES {
+        bigint id PK
+        bigint user_id FK
+        bigint badge_id FK
+        timestamp unlocked_at
+    }
+
+    LEADERBOARD_SNAPSHOTS {
+        bigint id PK
+        bigint user_id FK
+        enum period_type "WEEKLY, MONTHLY, ALL_TIME"
+        string period_key "2026-W32, 2026-08, GLOBAL"
+        int total_points
+        int rank_position
+        timestamp updated_at
+    }
+
+    NOTIFICATIONS {
+        bigint id PK
+        bigint user_id FK
+        enum type "BATTLE_INVITE, STREAK_REMINDER, BADGE_UNLOCKED, SYSTEM"
+        string title
+        text message
+        string target_url
+        boolean is_read "Default false"
+        timestamp created_at
+    }
+                </pre>
+            </div>
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="zoomIn()" title="Zoom In">+</button>
+                <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">-</button>
+                <button class="zoom-btn" onclick="resetZoom()" title="Reset Zoom">⟲</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'neutral',
+            er: {
+                useMaxWidth: false,
+                layoutDirection: 'TB'
+            }
+        });
+
+        let panZoomInstance = null;
+
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                const svgElement = document.querySelector('#mermaid-container svg');
+                if (svgElement) {
+                    panZoomInstance = svgPanZoom(svgElement, {
+                        zoomEnabled: true,
+                        controlIconsEnabled: false,
+                        fit: true,
+                        center: true,
+                        minZoom: 0.2,
+                        maxZoom: 5
+                    });
+                }
+            }, 500);
+        });
+
+        function zoomIn() {
+            if (panZoomInstance) panZoomInstance.zoomIn();
+        }
+
+        function zoomOut() {
+            if (panZoomInstance) panZoomInstance.zoomOut();
+        }
+
+        function resetZoom() {
+            if (panZoomInstance) {
+                panZoomInstance.resetZoom();
+                panZoomInstance.center();
+            }
+        }
+
+        function downloadSVG() {
+            const svgElement = document.querySelector('#mermaid-container svg');
+            if (!svgElement) return;
+            const svgData = new XMLSerializer().serializeToString(svgElement);
+            const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+            const svgUrl = URL.createObjectURL(svgBlob);
+            const downloadLink = document.createElement('a');
+            downloadLink.href = svgUrl;
+            downloadLink.download = 'flashcard_system_erd_full.svg';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+    </script>
+</body>
+</html>

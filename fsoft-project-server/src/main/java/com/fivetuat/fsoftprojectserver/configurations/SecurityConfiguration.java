@@ -3,8 +3,6 @@ package com.fivetuat.fsoftprojectserver.configurations;
 import java.io.IOException;
 import java.util.Arrays;
 
-import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
-import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -24,7 +22,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
+import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -107,12 +106,9 @@ public class SecurityConfiguration {
     @Bean
     public UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-//        configuration.setAllowedOrigins(List.of("http://127.0.0.1:5500"));
         configuration.setAllowedOrigins(
                 Arrays.asList(
-                        "http://localhost:3000",
-                        "http://10.0.2.2",
-                        "http://localhost"
+                        "*"
                 )
         );
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));

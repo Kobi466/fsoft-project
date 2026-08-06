@@ -1,7 +1,5 @@
 package com.fivetuat.fsoftprojectserver.services.implement;
 
-
-
 import com.fivetuat.fsoftprojectserver.dtos.request.*;
 import com.fivetuat.fsoftprojectserver.dtos.response.AuthenticatedResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.IntrospectTokenResponse;
@@ -16,6 +14,7 @@ import com.fivetuat.fsoftprojectserver.enums.Roles;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.mappers.AuthMapper;
 import com.fivetuat.fsoftprojectserver.repositories.AuthRepository;
+import com.fivetuat.fsoftprojectserver.repositories.ProfileRepository;
 import com.fivetuat.fsoftprojectserver.repositories.RefreshTokenRepository;
 import com.fivetuat.fsoftprojectserver.services.AuthService;
 import com.fivetuat.fsoftprojectserver.services.JwtService;
@@ -41,6 +40,7 @@ public class AuthServiceImpl implements AuthService {
     AuthMapper authMapper;
     RoleService roleService;
     AuthRepository authRepository;
+    ProfileRepository profileRepository;
     RefreshTokenRepository refreshTokenRepository;
     BCryptPasswordEncoder bCryptPasswordEncoder;
     JwtService jwtService;
@@ -61,6 +61,18 @@ public class AuthServiceImpl implements AuthService {
 //    @NonFinal
 //    @Value("${google.redirect-uri}")
 //    String redirectUrl;
+
+    @Override
+    public Profile getCurrentProfile() {
+        String name = SecurityContextHolder.getContext().getAuthentication().getName();
+        try {
+            UUID userId = UUID.fromString(name);
+            return profileRepository.findById(userId)
+                    .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
+        } catch (IllegalArgumentException e) {
+            throw new AppException(ErrorCode.AUTHENTICATION_FAILED);
+        }
+    }
 
     @Transactional
     @Override
