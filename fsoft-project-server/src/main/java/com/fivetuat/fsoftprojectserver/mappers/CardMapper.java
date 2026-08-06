@@ -1,0 +1,19 @@
+package com.fivetuat.fsoftprojectserver.mappers;
+
+import com.fivetuat.fsoftprojectserver.dtos.request.CardCreationRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.CardUpdateRequest;
+import com.fivetuat.fsoftprojectserver.dtos.response.CardResponse;
+import com.fivetuat.fsoftprojectserver.entities.Card;
+import org.mapstruct.Mapper;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.NullValuePropertyMappingStrategy;
+
+@Mapper(componentModel = "spring", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+public interface CardMapper {
+
+    Card toCard(CardCreationRequest request);
+
+    CardResponse toCardResponse(Card card);
+
+    void updateCard(@MappingTarget Card card, CardUpdateRequest request);
+}

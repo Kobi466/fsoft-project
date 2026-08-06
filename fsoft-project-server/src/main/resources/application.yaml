@@ -1,0 +1,37 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /fsoft
+spring:
+  profiles:
+    active: dev
+  application:
+    name: fsoft-project
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
+jwt:
+  secret-key: ${SECRET_KEY}
+  access-token-expiration: ${ACCESS_TOKEN_EX}
+  refresh-token-expiration: ${REFRESH_TOKEN_EX}
+
+logging:
+  level:
+    root: INFO
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha
