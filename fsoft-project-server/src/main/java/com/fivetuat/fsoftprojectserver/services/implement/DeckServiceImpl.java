@@ -5,19 +5,19 @@ import com.fivetuat.fsoftprojectserver.dtos.request.DeckUpdateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.DeckResponse;
 import com.fivetuat.fsoftprojectserver.entities.Deck;
 import com.fivetuat.fsoftprojectserver.entities.Profile;
+import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.mappers.DeckMapper;
 import com.fivetuat.fsoftprojectserver.repositories.DeckRepository;
-import com.fivetuat.fsoftprojectserver.repositories.ProfileRepository;
+import com.fivetuat.fsoftprojectserver.repositories.TagRepository;
+import com.fivetuat.fsoftprojectserver.services.AuthService;
 import com.fivetuat.fsoftprojectserver.services.DeckService;
 import com.fivetuat.fsoftprojectserver.services.UploadService;
 import com.fivetuat.fsoftprojectserver.entities.Tag;
-import com.fivetuat.fsoftprojectserver.repositories.TagRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class DeckServiceImpl implements DeckService {
     DeckRepository deckRepository;
-    ProfileRepository profileRepository;
+    AuthService authService;
     TagRepository tagRepository;
     DeckMapper deckMapper;
     UploadService uploadService;
@@ -41,7 +41,7 @@ public class DeckServiceImpl implements DeckService {
     @Transactional
     @Override
     public DeckResponse createDeck(DeckCreateRequest request, MultipartFile coverImage) {
-        Profile profile = getCurrentProfile();
+        Profile profile = authService.getCurrentProfile();
 
         Deck deck = deckMapper.toDeck(request);
         deck.setProfile(profile);
@@ -68,13 +68,12 @@ public class DeckServiceImpl implements DeckService {
         Deck deck = deckRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
 
-        if (deck.getVisibility() == com.fivetuat.fsoftprojectserver.enums.DeckVisibility.PRIVATE) {
-            Profile currentProfile = getCurrentProfile();
+        if (deck.getVisibility() == DeckVisibility.PRIVATE) {
+            Profile currentProfile = authService.getCurrentProfile();
             if (!deck.getProfile().getId().equals(currentProfile.getId())) {
                 throw new AppException(ErrorCode.UNAUTHORIZED);
             }
         }
-
         return deckMapper.toDeckResponse(deck);
     }
 
@@ -84,7 +83,7 @@ public class DeckServiceImpl implements DeckService {
         Deck deck = deckRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
 
-        Profile currentProfile = getCurrentProfile();
+        Profile currentProfile = authService.getCurrentProfile();
         if (!deck.getProfile().getId().equals(currentProfile.getId())) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
@@ -116,7 +115,7 @@ public class DeckServiceImpl implements DeckService {
         Deck deck = deckRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
 
-        Profile currentProfile = getCurrentProfile();
+        Profile currentProfile = authService.getCurrentProfile();
         if (!deck.getProfile().getId().equals(currentProfile.getId())) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
@@ -127,7 +126,7 @@ public class DeckServiceImpl implements DeckService {
 
     @Override
     public List<DeckResponse> getMyDecks() {
-        Profile profile = getCurrentProfile();
+        Profile profile = authService.getCurrentProfile();
         List<Deck> decks = deckRepository.findByProfileIdAndIsDeletedFalse(profile.getId());
         return decks.stream()
                 .map(deckMapper::toDeckResponse)
@@ -140,17 +139,6 @@ public class DeckServiceImpl implements DeckService {
         return decks.stream()
                 .map(deckMapper::toDeckResponse)
                 .collect(Collectors.toList());
-    }
-
-    private Profile getCurrentProfile() {
-        String name = SecurityContextHolder.getContext().getAuthentication().getName();
-        try {
-            UUID userId = UUID.fromString(name);
-            return profileRepository.findById(userId)
-                    .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
-        } catch (IllegalArgumentException e) {
-            throw new AppException(ErrorCode.AUTHENTICATION_FAILED);
-        }
     }
 
     private Set<Tag> processTags(Set<Long> tagIds) {
