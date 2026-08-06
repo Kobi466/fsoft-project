@@ -29,7 +29,13 @@ public enum ErrorCode {
     ORDER_NOT_FOUND(416, "Order not found", HttpStatus.NOT_FOUND),
     USER_NOT_FOUND(417, "User not found", HttpStatus.NOT_FOUND),
     INVALID_OTP(418, "Invalid OTP", HttpStatus.BAD_REQUEST),
-    DECK_NOT_FOUND(419, "Deck not found", HttpStatus.NOT_FOUND);
+    DECK_NOT_FOUND(419, "Deck not found", HttpStatus.NOT_FOUND),
+
+    //tanvy Mã lỗi bổ sung cho Module Card:
+    CARD_NOT_FOUND(420, "Card not found", HttpStatus.NOT_FOUND),
+    WORD_REQUIRED(421, "Word is required", HttpStatus.BAD_REQUEST),
+    MEANING_REQUIRED(422, "Meaning is required", HttpStatus.BAD_REQUEST),
+    DECK_ID_REQUIRED(423, "Deck ID is required", HttpStatus.BAD_REQUEST);
 
     int status;
     String message;
