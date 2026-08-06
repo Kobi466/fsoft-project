@@ -1,12 +1,29 @@
 package com.fivetuat.fsoftprojectserver.entities;
 
-import com.fivetuat.fsoftprojectserver.entities.authentication.Auth;
-import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
-
 import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.UUID;
+
+import com.fivetuat.fsoftprojectserver.entities.authentication.Auth;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapsId;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.FieldDefaults;
 
 @Entity
 @Table(name = "profiles")
@@ -19,6 +36,7 @@ import java.util.UUID;
 public class Profile {
     @Id
     UUID id;
+
     @OneToOne(
             fetch = FetchType.LAZY,
             cascade = CascadeType.ALL
@@ -26,28 +44,24 @@ public class Profile {
     @MapsId
     @JoinColumn(name = "id")
     Auth auth;
+
     String fullName;
     String avatar;
 
-    @Lob
-    String about;
-    String personalWebsite;
-    String github;
-    String linkedin;
-    String facebook;
-    String youtube;
+    @OneToMany(mappedBy = "profile", fetch = FetchType.LAZY, orphanRemoval = true)
+    Set<Deck> decks;
 
-//    @OneToMany(mappedBy = "profile", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-//    Set<Post> posts;
-//
-//    @OneToMany(mappedBy = "creator", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-//    Set<Course> courses;
-//
-//    @OneToMany(mappedBy = "profile", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-//    Set<Enrollment> enrollments;
-//
-//    @OneToMany(mappedBy = "profile", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-//    Set<Order> orders;
+    @OneToOne(mappedBy = "profile", fetch = FetchType.LAZY, orphanRemoval = true)
+    UserStreak streak;
+
+    @OneToMany(mappedBy = "profile", fetch = FetchType.LAZY, orphanRemoval = true)
+    Set<UserActivity> activities;
+
+    @OneToMany(mappedBy = "profile", fetch = FetchType.LAZY, orphanRemoval = true)
+    Set<UserCardSrs> srsRecords;
+
+    @OneToMany(mappedBy = "profile", fetch = FetchType.LAZY, orphanRemoval = true)
+    Set<QuizResult> quizResults;
 
     LocalDateTime createTime;
     LocalDateTime updateTime;
@@ -57,4 +71,10 @@ public class Profile {
         createTime = LocalDateTime.now();
         updateTime = LocalDateTime.now();
     }
+
+    @PreUpdate
+    public void preUpdate() {
+        updateTime = LocalDateTime.now();
+    }
 }
+
