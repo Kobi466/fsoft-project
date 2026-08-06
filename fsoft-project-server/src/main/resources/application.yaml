@@ -8,9 +8,9 @@ spring:
   application:
     name: fsoft-project
   datasource:
-    url: ${DB_URL:jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:fsoft_db}}
-    username: ${DB_USER:${POSTGRES_USER:admin}}
-    password: ${DB_PASSWORD:${POSTGRES_PASSWORD:12345678}}
+    url: ${DB_URL:jdbc:postgresql://${POSTGRES_HOST:postgres.railway.internal}:${POSTGRES_PORT:5432}/${POSTGRES_DB:railway}}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:MJnNgSbBNFiOeqhHgqDBhkqdAcEpXsre}
     driver-class-name: org.postgresql.Driver
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
