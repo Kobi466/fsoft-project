@@ -1,5 +1,5 @@
 # Tài Liệu Thiết Kế Cơ Sở Dữ Liệu (ERD Document)
-## Hệ Thống Học Từ Vựng Flashcard & SRS (Spaced Repetition System) - Tích Hợp 1vs1, Bảng Xếp Hạng & Huy Hiệu
+## Hệ Thống Học Từ Vựng Flashcard & SRS (Spaced Repetition System) - Tích Hợp Spring AI, 1vs1, Bảng Xếp Hạng & Huy Hiệu
 
 ---
 
@@ -14,6 +14,7 @@ erDiagram
     USERS ||--o{ QUIZ_RESULTS : "completes"
     USERS ||--o{ USER_ACTIVITIES : "logs"
     USERS ||--o1 USER_STREAKS : "maintains"
+    USERS ||--o{ SPRING_AI_CHAT_MEMORY : "stores chat history"
 
     USERS ||--o{ BATTLES : "player1 (host)"
     USERS ||--o{ BATTLES : "player2 (opponent)"
@@ -231,6 +232,14 @@ erDiagram
         boolean is_read "Default false"
         timestamp created_at
     }
+
+    SPRING_AI_CHAT_MEMORY {
+        string conversation_id PK "UUID (varchar 36)"
+        bigint sequence_id PK "Message Order Index"
+        text content "Message Body"
+        enum type "USER, ASSISTANT, SYSTEM, TOOL"
+        timestamp timestamp "Creation Time"
+    }
 ```
 
 ---
@@ -404,3 +413,14 @@ erDiagram
 - **target_url** (string): Đường dẫn chuyển hướng khi nhấp vào thông báo (vd: `/battles/room/102`).
 - **is_read** (boolean - Mặc định `false`): Trạng thái đã đọc hay chưa.
 - **created_at** (timestamp): Thời điểm phát thông báo.
+
+---
+
+### 8. Phân Hệ Lịch Sử Hội Thoại AI (Spring AI Chat Memory Module)
+
+#### 🤖 Bảng SPRING_AI_CHAT_MEMORY (Lịch sử chat với Trợ lý AI)
+- **conversation_id** (varchar(36) - PK): Chuỗi UUID định danh phiên hội thoại giữa học viên và AI Agent.
+- **sequence_id** (bigint - PK): Thứ tự vị trí câu thoại trong phiên hội thoại (tăng dần 1, 2, 3...).
+- **content** (text): Nội dung câu thoại chi tiết (câu hỏi của người dùng hoặc câu trả lời của AI).
+- **type** (enum): Loại vai trò đối thoại (`USER`: Học viên, `ASSISTANT`: AI Tutor, `SYSTEM`: Prompt hệ thống, `TOOL`: Kết quả gọi Tool/Function).
+- **timestamp** (timestamp): Thời điểm phát sinh tin nhắn hội thoại.
