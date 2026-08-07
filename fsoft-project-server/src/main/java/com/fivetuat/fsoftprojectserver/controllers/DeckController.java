@@ -55,7 +55,9 @@ public class DeckController {
     }
 
     @GetMapping
-    public ApiResponse<List<DeckResponse>> getAllDecks() {
-        return ApiResponse.ok(deckService.getAllDecks(), SuccessCode.GET_DECKS_SUCCESS);
+    public ApiResponse<List<DeckResponse>> getAllDecks(
+            @RequestParam(required = false) String tag
+    ) {
+        return ApiResponse.ok(deckService.getAllDecks(tag), SuccessCode.GET_DECKS_SUCCESS);
     }
 }

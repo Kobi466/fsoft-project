@@ -13,5 +13,5 @@ public interface DeckService {
     DeckResponse updateDeck(Long id, DeckUpdateRequest request, MultipartFile coverImage);
     void deleteDeck(Long id);
     List<DeckResponse> getMyDecks();
-    List<DeckResponse> getAllDecks();
+    List<DeckResponse> getAllDecks(String tag);
 }

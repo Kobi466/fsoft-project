@@ -50,7 +50,11 @@ public enum SuccessCode {
     GET_DECK_SUCCESS(200, "Lấy bộ thẻ thành công", HttpStatus.OK),
     UPDATE_DECK_SUCCESS(200, "Cập nhật bộ thẻ thành công", HttpStatus.OK),
     DELETE_DECK_SUCCESS(200, "Xóa bộ thẻ thành công", HttpStatus.OK),
-    GET_DECKS_SUCCESS(200, "Lấy danh sách bộ thẻ thành công", HttpStatus.OK);
+    GET_DECKS_SUCCESS(200, "Lấy danh sách bộ thẻ thành công", HttpStatus.OK),
+    CREATE_TAG_SUCCESS(201, "Tạo nhãn thành công", HttpStatus.CREATED),
+    GET_TAGS_SUCCESS(200, "Lấy danh sách nhãn thành công", HttpStatus.OK),
+    UPDATE_TAG_SUCCESS(200, "Cập nhật nhãn thành công", HttpStatus.OK),
+    DELETE_TAG_SUCCESS(200, "Xóa nhãn thành công", HttpStatus.OK);
 
     final int status;
     final String message;

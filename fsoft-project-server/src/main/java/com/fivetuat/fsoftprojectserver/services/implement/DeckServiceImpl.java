@@ -134,8 +134,13 @@ public class DeckServiceImpl implements DeckService {
     }
 
     @Override
-    public List<DeckResponse> getAllDecks() {
-        List<Deck> decks = deckRepository.findByIsDeletedFalse();
+    public List<DeckResponse> getAllDecks(String tag) {
+        List<Deck> decks;
+        if (tag != null && !tag.trim().isEmpty()) {
+            decks = deckRepository.findByTagsSlugAndIsDeletedFalseAndVisibility(tag.trim(), DeckVisibility.PUBLIC);
+        } else {
+            decks = deckRepository.findByIsDeletedFalse();
+        }
         return decks.stream()
                 .map(deckMapper::toDeckResponse)
                 .collect(Collectors.toList());
