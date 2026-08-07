@@ -53,7 +53,9 @@ public enum SuccessCode {
     GET_DECKS_SUCCESS(200, "Lấy danh sách bộ thẻ thành công", HttpStatus.OK),
     DECK_VISIBILITY_UPDATED(200, "Cập nhật trạng thái thẻ thành công", HttpStatus.OK),
     DECK_FORKED(200, "Sao chép thẻ thành công", HttpStatus.OK),
-    DECK_SHARED(200, "Deck shared successfully",HttpStatus.OK);
+    DECK_SHARED(200, "Deck shared successfully",HttpStatus.OK),
+    CREATE_TAG_SUCCESS(201, "Tạo nhãn thành công", HttpStatus.CREATED),
+    GET_TAGS_SUCCESS(200, "Lấy danh sách nhãn thành công", HttpStatus.OK);
 
     final int status;
     final String message;

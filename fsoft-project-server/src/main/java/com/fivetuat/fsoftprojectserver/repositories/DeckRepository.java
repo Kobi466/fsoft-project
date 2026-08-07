@@ -19,4 +19,5 @@ public interface DeckRepository extends JpaRepository<Deck, Long> {
 
     List<Deck> findByIsDeletedFalse();
 
+    boolean existsByParentDeckIdAndProfileIdAndIsDeletedFalse(Long parentDeckId, UUID profileId);
 }

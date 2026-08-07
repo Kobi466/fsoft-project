@@ -20,7 +20,6 @@ public interface DeckMapper {
     @Mapping(target = "profileId", source = "profile.id")
     @Mapping(target = "parentDeckId", source = "parentDeck.id")
     @Mapping(target = "tags", source = "tags")
-    @Mapping(target = "cards", source = "cards")
     DeckResponse toDeckResponse(Deck deck);
 
     @Mapping(target = "profile", ignore = true)

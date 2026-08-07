@@ -24,7 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -179,6 +181,10 @@ public class DeckServiceImpl implements DeckService {
             throw new AppException(ErrorCode.DECK_NOT_PUBLIC);
         }
 
+        if (deckRepository.existsByParentDeckIdAndProfileIdAndIsDeletedFalse(id, currentProfile.getId())) {
+            throw new AppException(ErrorCode.DECK_ALREADY_FORKED);
+        }
+
         deck.setForkCount(deck.getForkCount() + 1);
         deckRepository.save(deck);
 
@@ -202,7 +208,7 @@ public class DeckServiceImpl implements DeckService {
                         Card newCard = new Card(card);
                         newCard.setDeckId(savedDeck.getId());
                         return newCard;
-                    }).toList();
+                    }).collect(Collectors.toList());
             cardRepository.saveAll(copiedCards);
         }
 
@@ -221,33 +227,32 @@ public class DeckServiceImpl implements DeckService {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
-        deck.setVisibility(DeckVisibility.SHARED);
-        deckRepository.save(deck);
-
-        if (request.getProfileIds() == null || request.getProfileIds().isEmpty()) {
+        if (request.getProfileId() == null || request.getProfileId().equals(owner.getId())) {
             return;
         }
 
-        List<DeckShare> shares = request.getProfileIds().stream()
-                .filter(profileId -> !profileId.equals(owner.getId()))
-                .map(profileId -> {
-                    Profile profile = profileRepository.findById(profileId)
-                            .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
+        if (deckShareRepository.existsByDeckIdAndProfileId(deck.getId(), request.getProfileId())) {
+            throw new AppException(ErrorCode.DECK_ALREADY_SHARED);
+        }
 
-                    return DeckShare.builder()
-                            .deck(deck)
-                            .profile(profile)
-                            .permission(request.getPermission())
-                            .build();
-                })
-                .toList();
+        deck.setVisibility(DeckVisibility.SHARED);
+        deckRepository.save(deck);
 
-        deckShareRepository.saveAll(shares);
+        Profile targetProfile = profileRepository.findById(request.getProfileId())
+                .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
+
+        DeckShare shareToSave = DeckShare.builder()
+                .deck(deck)
+                .profile(targetProfile)
+                .permission(request.getPermission())
+                .build();
+
+        deckShareRepository.save(shareToSave);
     }
 
     private Set<Tag> processTags(Set<Long> tagIds) {
         if (tagIds == null || tagIds.isEmpty()) {
-            return new java.util.HashSet<>();
+            return new HashSet<>();
         }
         return tagIds.stream()
                 .map(id -> tagRepository.findById(id)

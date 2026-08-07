@@ -29,5 +29,4 @@ public class DeckResponse {
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
     java.util.Set<TagResponse> tags;
-    List<CardResponse> cards;
 }

@@ -16,7 +16,7 @@ public class DeckShare {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private UUID id;
+    private Long id;
 
     @ManyToOne
     @JoinColumn(name = "deck_id")

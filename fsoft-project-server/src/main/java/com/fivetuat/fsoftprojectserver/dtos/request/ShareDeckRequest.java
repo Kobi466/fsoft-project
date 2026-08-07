@@ -11,7 +11,7 @@ import java.util.UUID;
 @Setter
 public class ShareDeckRequest {
 
-    private List<UUID> profileIds;
+    private UUID profileId;
 
     private SharePermission permission;
 }
