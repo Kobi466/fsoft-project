@@ -1,10 +1,19 @@
 package com.fivetuat.fsoftprojectserver.services.implement;
 
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckUpdateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.DeckResponse;
 import com.fivetuat.fsoftprojectserver.entities.Deck;
 import com.fivetuat.fsoftprojectserver.entities.Profile;
+import com.fivetuat.fsoftprojectserver.entities.Tag;
 import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
@@ -14,19 +23,10 @@ import com.fivetuat.fsoftprojectserver.repositories.TagRepository;
 import com.fivetuat.fsoftprojectserver.services.AuthService;
 import com.fivetuat.fsoftprojectserver.services.DeckService;
 import com.fivetuat.fsoftprojectserver.services.UploadService;
-import com.fivetuat.fsoftprojectserver.entities.Tag;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -134,8 +134,13 @@ public class DeckServiceImpl implements DeckService {
     }
 
     @Override
-    public List<DeckResponse> getAllDecks() {
-        List<Deck> decks = deckRepository.findByIsDeletedFalse();
+    public List<DeckResponse> getAllDecks(String tag) {
+        List<Deck> decks;
+        if (tag != null && !tag.trim().isEmpty()) {
+            decks = deckRepository.findByTagsSlugAndIsDeletedFalseAndVisibility(tag.trim(), DeckVisibility.PUBLIC);
+        } else {
+            decks = deckRepository.findByIsDeletedFalse();
+        }
         return decks.stream()
                 .map(deckMapper::toDeckResponse)
                 .collect(Collectors.toList());

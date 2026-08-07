@@ -35,7 +35,9 @@ public enum ErrorCode {
     CARD_NOT_FOUND(420, "Card not found", HttpStatus.NOT_FOUND),
     WORD_REQUIRED(421, "Word is required", HttpStatus.BAD_REQUEST),
     MEANING_REQUIRED(422, "Meaning is required", HttpStatus.BAD_REQUEST),
-    DECK_ID_REQUIRED(423, "Deck ID is required", HttpStatus.BAD_REQUEST);
+    DECK_ID_REQUIRED(423, "Deck ID is required", HttpStatus.BAD_REQUEST),
+    TAG_NOT_FOUND(424, "Tag not found", HttpStatus.NOT_FOUND),
+    TAG_NAME_EXISTS(425, "Tag name already exists", HttpStatus.BAD_REQUEST);
 
     int status;
     String message;
