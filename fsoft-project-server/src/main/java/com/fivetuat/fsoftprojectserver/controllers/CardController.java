@@ -3,8 +3,10 @@ package com.fivetuat.fsoftprojectserver.controllers;
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
 import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.CardCreationRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.CardPositionRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.CardUpdateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.CardResponse;
+import com.fivetuat.fsoftprojectserver.enums.SuccessCode;
 import com.fivetuat.fsoftprojectserver.services.CardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,8 +14,10 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -26,85 +30,57 @@ public class CardController {
 
     CardService cardService;
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Tạo mới Thẻ ghi nhớ thuộc một Bộ thẻ (Deck)")
-    public ApiResponse<CardResponse> createCard(@Valid @RequestBody CardCreationRequest request) {
-        return ApiResponse.<CardResponse>builder()
-                .status(200)
-                .message("Tạo thẻ ghi nhớ thành công")
-                .data(cardService.createCard(request))
-                .build();
+    @PostMapping(value = "/deck/{deckId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Tạo mới thẻ ghi nhớ trong bộ bài")
+    public ApiResponse<CardResponse> createCard(
+            @PathVariable Long deckId,
+            @RequestPart("request") @Valid CardCreationRequest request,
+            @RequestPart(value = "imageFile", required = false) MultipartFile imageFile,
+            @RequestPart(value = "audioFile", required = false) MultipartFile audioFile
+    ) {
+        return ApiResponse.ok(cardService.createCard(deckId, request, imageFile, audioFile), SuccessCode.CREATE_CARD_SUCCESS);
+    }
+
+    @GetMapping("/deck/{deckId}")
+    @Operation(summary = "Lấy danh sách Thẻ ghi nhớ thuộc Bộ thẻ (Phân trang)")
+    public ApiResponse<PageResponse<CardResponse>> getCardsByDeckId(
+            @PathVariable Long deckId,
+            Pageable pageable
+    ) {
+        return ApiResponse.ok(cardService.getCardsByDeckId(deckId, pageable), SuccessCode.GET_CARDS_SUCCESS);
     }
 
     @GetMapping("/{cardId}")
     @Operation(summary = "Lấy thông tin chi tiết Thẻ ghi nhớ theo ID")
     public ApiResponse<CardResponse> getCardById(@PathVariable Long cardId) {
-        return ApiResponse.<CardResponse>builder()
-                .status(200)
-                .data(cardService.getCardById(cardId))
-                .build();
+        return ApiResponse.ok(cardService.getCardById(cardId), SuccessCode.GET_CARD_SUCCESS);
     }
 
-    @GetMapping("/deck/{deckId}")
-    @Operation(summary = "Lấy danh sách Thẻ ghi nhớ thuộc Bộ thẻ (Phân trang & Tìm kiếm)")
-    public ApiResponse<PageResponse<CardResponse>> getCardsByDeckId(
-            @PathVariable Long deckId,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "position") String sortBy,
-            @RequestParam(defaultValue = "ASC") String sortDirection
-    ) {
-        return ApiResponse.<PageResponse<CardResponse>>builder()
-                .status(200)
-                .data(cardService.getCardsByDeckId(deckId, page, size, keyword, sortBy, sortDirection))
-                .build();
-    }
-
-    @GetMapping("/deck/{deckId}/all")
-    @Operation(summary = "Lấy tất cả Thẻ ghi nhớ trong Bộ thẻ sắp xếp theo vị trí position")
-    public ApiResponse<List<CardResponse>> getAllCardsInDeck(@PathVariable Long deckId) {
-        return ApiResponse.<List<CardResponse>>builder()
-                .status(200)
-                .data(cardService.getAllCardsInDeck(deckId))
-                .build();
-    }
-
-    @PutMapping("/{cardId}")
+    @PutMapping(value = "/{cardId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Cập nhật Thẻ ghi nhớ")
     public ApiResponse<CardResponse> updateCard(
             @PathVariable Long cardId,
-            @Valid @RequestBody CardUpdateRequest request
+            @RequestPart("request") @Valid CardUpdateRequest request,
+            @RequestPart(value = "imageFile", required = false) MultipartFile imageFile,
+            @RequestPart(value = "audioFile", required = false) MultipartFile audioFile
     ) {
-        return ApiResponse.<CardResponse>builder()
-                .status(200)
-                .message("Cập nhật thẻ ghi nhớ thành công")
-                .data(cardService.updateCard(cardId, request))
-                .build();
+        return ApiResponse.ok(cardService.updateCard(cardId, request, imageFile, audioFile), SuccessCode.UPDATE_CARD_SUCCESS);
     }
 
     @DeleteMapping("/{cardId}")
     @Operation(summary = "Xóa Thẻ ghi nhớ theo ID")
-    public ApiResponse<String> deleteCard(@PathVariable Long cardId) {
+    public ApiResponse<Void> deleteCard(@PathVariable Long cardId) {
         cardService.deleteCard(cardId);
-        return ApiResponse.<String>builder()
-                .status(200)
-                .message("Xóa thẻ ghi nhớ thành công")
-                .data("Card deleted successfully")
-                .build();
+        return ApiResponse.ok(null, SuccessCode.DELETE_CARD_SUCCESS);
     }
 
-    @PatchMapping("/{cardId}/position")
-    @Operation(summary = "Cập nhật vị trí hiển thị (position) của Thẻ ghi nhớ")
-    public ApiResponse<CardResponse> updateCardPosition(
-            @PathVariable Long cardId,
-            @RequestParam Integer newPosition
+    @PutMapping("/deck/{deckId}/positions")
+    @Operation(summary = "Thay đổi thứ tự danh sách thẻ bài trong bộ")
+    public ApiResponse<Void> updateCardPositions(
+            @PathVariable Long deckId,
+            @Valid @RequestBody List<CardPositionRequest> requests
     ) {
-        return ApiResponse.<CardResponse>builder()
-                .status(200)
-                .message("Cập nhật vị trí hiển thị thành công")
-                .data(cardService.updateCardPosition(cardId, newPosition))
-                .build();
+        cardService.updateCardPositions(deckId, requests);
+        return ApiResponse.ok(null, SuccessCode.UPDATE_CARD_SUCCESS);
     }
 }

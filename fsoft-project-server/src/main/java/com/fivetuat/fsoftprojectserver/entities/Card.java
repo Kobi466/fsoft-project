@@ -23,13 +23,8 @@ public class Card {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    @Column(name = "deck_id", nullable = false)
-    Long deckId;
-
-    // Bổ sung liên kết ManyToOne tới Deck theo đúng khai báo mappedBy="deck" trong Deck.java
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "deck_id", insertable = false, updatable = false)
-    @JsonIgnore
+    @JoinColumn(name = "deck_id", nullable = false)
     Deck deck;
 
     @Column(name = "word", nullable = false)

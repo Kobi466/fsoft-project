@@ -1,9 +1,13 @@
 package com.fivetuat.fsoftprojectserver.services.implement;
 
-import java.util.List;
+import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,6 +27,7 @@ import com.fivetuat.fsoftprojectserver.repositories.TagRepository;
 import com.fivetuat.fsoftprojectserver.services.AuthService;
 import com.fivetuat.fsoftprojectserver.services.DeckService;
 import com.fivetuat.fsoftprojectserver.services.UploadService;
+import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +37,7 @@ import lombok.experimental.FieldDefaults;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class DeckServiceImpl implements DeckService {
+
     DeckRepository deckRepository;
     AuthService authService;
     TagRepository tagRepository;
@@ -47,8 +53,7 @@ public class DeckServiceImpl implements DeckService {
         deck.setProfile(profile);
 
         if (request.getParentDeckId() != null) {
-            Deck parent = deckRepository.findByIdAndIsDeletedFalse(request.getParentDeckId())
-                    .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
+            Deck parent = this.getExistingDeck(request.getParentDeckId());
             deck.setParentDeck(parent);
         }
 
@@ -63,10 +68,10 @@ public class DeckServiceImpl implements DeckService {
         return deckMapper.toDeckResponse(deck);
     }
 
+    // View public deck or my deck
     @Override
     public DeckResponse getDeck(Long id) {
-        Deck deck = deckRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
+        Deck deck = this.getExistingDeck(id);
 
         if (deck.getVisibility() == DeckVisibility.PRIVATE) {
             Profile currentProfile = authService.getCurrentProfile();
@@ -74,25 +79,19 @@ public class DeckServiceImpl implements DeckService {
                 throw new AppException(ErrorCode.UNAUTHORIZED);
             }
         }
+
         return deckMapper.toDeckResponse(deck);
     }
 
     @Transactional
     @Override
     public DeckResponse updateDeck(Long id, DeckUpdateRequest request, MultipartFile coverImage) {
-        Deck deck = deckRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
-
-        Profile currentProfile = authService.getCurrentProfile();
-        if (!deck.getProfile().getId().equals(currentProfile.getId())) {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
-        }
+        var deck = this.getMyDeck(id);
 
         deckMapper.updateDeck(deck, request);
 
         if (request.getParentDeckId() != null) {
-            Deck parent = deckRepository.findByIdAndIsDeletedFalse(request.getParentDeckId())
-                    .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
+            Deck parent = this.getExistingDeck(request.getParentDeckId());
             deck.setParentDeck(parent);
         } else {
             deck.setParentDeck(null);
@@ -112,8 +111,7 @@ public class DeckServiceImpl implements DeckService {
     @Transactional
     @Override
     public void deleteDeck(Long id) {
-        Deck deck = deckRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
+        Deck deck = this.getExistingDeck(id);
 
         Profile currentProfile = authService.getCurrentProfile();
         if (!deck.getProfile().getId().equals(currentProfile.getId())) {
@@ -125,34 +123,66 @@ public class DeckServiceImpl implements DeckService {
     }
 
     @Override
-    public List<DeckResponse> getMyDecks() {
-        Profile profile = authService.getCurrentProfile();
-        List<Deck> decks = deckRepository.findByProfileIdAndIsDeletedFalse(profile.getId());
-        return decks.stream()
-                .map(deckMapper::toDeckResponse)
-                .collect(Collectors.toList());
+    public PageResponse<DeckResponse> getMyDecks(Pageable pageable) {
+        UUID profileId = SecurityUtils.getCurrentUserLogin()
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED));
+        Page<Deck> decks = deckRepository.findByProfileIdAndIsDeletedFalse(profileId, pageable);
+        return PageResponse.<DeckResponse>builder()
+                .content(
+                        decks.getContent().stream()
+                                .map(deckMapper::toDeckResponse)
+                                .collect(Collectors.toList())
+                )
+                .totalElements(decks.getTotalElements())
+                .totalPages(decks.getTotalPages())
+                .pageNo(decks.getNumber())
+                .pageSize(decks.getSize())
+                .build();
     }
 
     @Override
-    public List<DeckResponse> getAllDecks(String tag) {
-        List<Deck> decks;
+    public PageResponse<DeckResponse> getAllDecks(String tag, Pageable pageable) {
+        Page<Deck> decks;
         if (tag != null && !tag.trim().isEmpty()) {
-            decks = deckRepository.findByTagsSlugAndIsDeletedFalseAndVisibility(tag.trim(), DeckVisibility.PUBLIC);
+            decks = deckRepository.findByTagsSlugAndIsDeletedFalseAndVisibility(tag.trim(), DeckVisibility.PUBLIC, pageable);
         } else {
-            decks = deckRepository.findByIsDeletedFalse();
+            decks = deckRepository.findByIsDeletedFalse(pageable);
         }
-        return decks.stream()
-                .map(deckMapper::toDeckResponse)
-                .collect(Collectors.toList());
+        return PageResponse.<DeckResponse>builder()
+                .content(decks.getContent().stream().map(deckMapper::toDeckResponse).collect(Collectors.toList()))
+                .totalElements(decks.getTotalElements())
+                .totalPages(decks.getTotalPages())
+                .pageNo(decks.getNumber())
+                .pageSize(decks.getSize())
+                .build();
     }
 
     private Set<Tag> processTags(Set<Long> tagIds) {
         if (tagIds == null || tagIds.isEmpty()) {
-            return new java.util.HashSet<>();
+            return new HashSet<>();
         }
         return tagIds.stream()
                 .map(id -> tagRepository.findById(id)
                         .orElseThrow(() -> new AppException(ErrorCode.INVALID_KEY)))
                 .collect(Collectors.toSet());
+    }
+
+    private Deck getExistingDeck(Long id) {
+        return deckRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
+    }
+
+
+    @Override
+    public Deck getMyDeck(Long id) {
+        UUID profileId = SecurityUtils.getCurrentUserLogin()
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED));
+        return deckRepository.findByIdAndProfileIdAndIsDeletedFalse(id, profileId)
+                .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
+    }
+
+    @Override
+    public void save(Deck deck){
+        deckRepository.save(deck);
     }
 }

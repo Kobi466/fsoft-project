@@ -12,9 +12,6 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CardCreationRequest {
 
-    @NotNull(message = "DECK_ID_REQUIRED")
-    Long deckId;
-
     @NotBlank(message = "WORD_REQUIRED")
     String word;
 

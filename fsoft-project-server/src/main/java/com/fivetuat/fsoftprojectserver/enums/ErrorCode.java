@@ -1,9 +1,10 @@
 package com.fivetuat.fsoftprojectserver.enums;
 
+import org.springframework.http.HttpStatus;
+
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.experimental.FieldDefaults;
-import org.springframework.http.HttpStatus;
 
 @Getter
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -18,7 +19,7 @@ public enum ErrorCode {
     REFRESH_TOKEN_EXPIRED(405, "Refresh token expired", HttpStatus.UNAUTHORIZED),
     REFRESH_TOKEN_FAILED(406, "Refresh token was used or expired", HttpStatus.UNAUTHORIZED),
     INVALID_ACCESS_TOKEN(407, "Invalid access token", HttpStatus.UNAUTHORIZED),
-    UNAUTHORIZED(408, "Unauthorized", HttpStatus.UNAUTHORIZED),
+    UNAUTHORIZED(408, "You do not have permission to access this resource", HttpStatus.UNAUTHORIZED),
     PROFILE_NOT_FOUND(409, "Profile not found", HttpStatus.NOT_FOUND),
     CATEGORY_NOT_FOUND(410, "Category not found", HttpStatus.NOT_FOUND),
     UPLOAD_FILE_FAILED(411, "Upload file failed", HttpStatus.INTERNAL_SERVER_ERROR),

@@ -5,6 +5,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.UUID;
 
 @Data
@@ -27,5 +28,5 @@ public class DeckResponse {
     int forkCount;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
-    java.util.Set<TagResponse> tags;
+    Set<TagResponse> tags;
 }

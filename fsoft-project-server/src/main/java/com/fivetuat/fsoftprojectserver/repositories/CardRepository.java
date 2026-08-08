@@ -13,16 +13,10 @@ import java.util.Optional;
 
 @Repository
 public interface CardRepository extends JpaRepository<Card, Long> {
-
-    List<Card> findByDeckIdOrderByPositionAsc(Long deckId);
-
     Page<Card> findByDeckIdOrderByPositionAsc(Long deckId, Pageable pageable);
 
-    @Query("SELECT c FROM Card c WHERE c.deckId = :deckId AND " +
-            "(:keyword IS NULL OR LOWER(c.word) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-            "OR LOWER(c.meaning) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-            "OR LOWER(c.note) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<Card> searchCardsByDeckId(@Param("deckId") Long deckId, @Param("keyword") String keyword, Pageable pageable);
-
-    Optional<Card> findFirstByDeckIdOrderByPositionDesc(Long deckId);
+    @Query(
+            value = "select coalesce(max(position), 0) from cards where deck_id = :deckId",
+            nativeQuery = true)
+    Integer findMaxPositionByDeckId(@Param("deckId") Long deckId);
 }

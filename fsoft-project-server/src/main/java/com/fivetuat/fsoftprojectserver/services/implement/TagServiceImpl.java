@@ -5,6 +5,7 @@ import com.fivetuat.fsoftprojectserver.dtos.response.TagResponse;
 import com.fivetuat.fsoftprojectserver.entities.Tag;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
+import com.fivetuat.fsoftprojectserver.mappers.TagMapper;
 import com.fivetuat.fsoftprojectserver.repositories.TagRepository;
 import com.fivetuat.fsoftprojectserver.services.TagService;
 import lombok.AccessLevel;
@@ -26,6 +27,7 @@ import java.util.regex.Pattern;
 public class TagServiceImpl implements TagService {
 
     TagRepository tagRepository;
+    TagMapper tagMapper;
 
     @Override
     @Transactional
@@ -45,14 +47,14 @@ public class TagServiceImpl implements TagService {
                 .build();
 
         Tag savedTag = tagRepository.save(tag);
-        return mapToResponse(savedTag);
+        return tagMapper.toTagResponse(savedTag);
     }
 
     @Override
     public List<TagResponse> getAllTags() {
         log.info("Retrieving all tags");
         return tagRepository.findAll().stream()
-                .map(this::mapToResponse)
+                .map(this.tagMapper::toTagResponse)
                 .toList();
     }
 
@@ -76,7 +78,7 @@ public class TagServiceImpl implements TagService {
         tag.setSlug(slug);
         Tag updatedTag = tagRepository.save(tag);
 
-        return mapToResponse(updatedTag);
+        return tagMapper.toTagResponse(updatedTag);
     }
 
     @Override
@@ -87,13 +89,6 @@ public class TagServiceImpl implements TagService {
             throw new AppException(ErrorCode.TAG_NOT_FOUND);
         }
         tagRepository.deleteById(id);
-    }
-
-    private TagResponse mapToResponse(Tag tag) {
-        return TagResponse.builder()
-                .id(tag.getId())
-                .name(tag.getName())
-                .build();
     }
 
     private String toSlug(String input) {

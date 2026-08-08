@@ -2,24 +2,26 @@ package com.fivetuat.fsoftprojectserver.services;
 
 import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.CardCreationRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.CardPositionRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.CardUpdateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.CardResponse;
+import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 public interface CardService {
 
-    CardResponse createCard(CardCreationRequest request);
-
+    CardResponse createCard(
+            Long deckId,
+            CardCreationRequest request,
+            MultipartFile imageFile,
+            MultipartFile audioFile
+    );
     CardResponse getCardById(Long cardId);
-
-    PageResponse<CardResponse> getCardsByDeckId(Long deckId, int page, int size, String keyword, String sortBy, String sortDirection);
-
-    List<CardResponse> getAllCardsInDeck(Long deckId);
-
-    CardResponse updateCard(Long cardId, CardUpdateRequest request);
-
+    PageResponse<CardResponse> getCardsByDeckId(Long deckId, Pageable pageable);
+    CardResponse updateCard(Long cardId, CardUpdateRequest request, MultipartFile imageFile, MultipartFile audioFile);
     void deleteCard(Long cardId);
 
-    CardResponse updateCardPosition(Long cardId, Integer newPosition);
+    void updateCardPositions(Long deckId, List<CardPositionRequest> cardPositionRequests);
 }

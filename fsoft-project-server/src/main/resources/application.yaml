@@ -3,6 +3,9 @@ server:
   servlet:
     context-path: /fsoft
 spring:
+  devtools:
+    restart:
+      enabled: false
   profiles:
     active: dev
   application:

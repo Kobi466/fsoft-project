@@ -1,9 +1,16 @@
 package com.fivetuat.fsoftprojectserver.dtos.request;
 
+import java.util.Set;
+
 import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
 @Data
@@ -30,7 +37,9 @@ public class DeckCreateRequest {
     @NotNull(message = "Visibility cannot be null")
     DeckVisibility visibility;
 
+    String coverImageUrl;
+
     boolean isOfficial;
 
-    java.util.Set<Long> tagIds;
+    Set<Long> tagIds;
 }
