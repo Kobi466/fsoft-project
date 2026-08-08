@@ -1,21 +1,24 @@
 package com.fivetuat.fsoftprojectserver.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDateTime;
-import java.util.List;
+import java.time.Instant;
 
-@Entity
-@Table(name = "cards")
 @Getter
 @Setter
-@AllArgsConstructor
-@NoArgsConstructor
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@Entity
+@Table(name = "cards")
 public class Card {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
@@ -24,27 +27,24 @@ public class Card {
     @JoinColumn(name = "deck_id", nullable = false)
     Deck deck;
 
-    @Column(nullable = false)
+    @Column(name = "word", nullable = false)
     String word;
 
+    @Column(name = "phonetic")
     String phonetic;
 
     @Column(name = "part_of_speech")
     String partOfSpeech;
 
-    @Lob
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "meaning", nullable = false, columnDefinition = "TEXT")
     String meaning;
 
-    @Lob
     @Column(name = "definition_en", columnDefinition = "TEXT")
     String definitionEn;
 
-    @Lob
     @Column(name = "example_sentence", columnDefinition = "TEXT")
     String exampleSentence;
 
-    @Lob
     @Column(name = "example_meaning", columnDefinition = "TEXT")
     String exampleMeaning;
 
@@ -54,33 +54,17 @@ public class Card {
     @Column(name = "audio_url")
     String audioUrl;
 
-    @Lob
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "note", columnDefinition = "TEXT")
     String note;
 
-    @Column(nullable = false)
-    int position;
+    @Column(name = "position")
+    Integer position;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    LocalDateTime createdAt;
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    Instant createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    LocalDateTime updatedAt;
-
-    @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
-    List<UserCardSrs> srsRecords;
-
-    @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
-    List<QuizDetail> quizDetails;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    Instant updatedAt;
 }

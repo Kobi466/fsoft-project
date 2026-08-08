@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ERD Diagram - Flashcard Learning & SRS System (Full Monochrome)</title>
+    <title>ERD Diagram - Flashcard Learning & SRS System (Full Monochrome with Spring AI)</title>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
     <style>
@@ -150,7 +150,7 @@
 
     <header>
         <div class="title-container">
-            <h1>📊 Complete ERD Diagram (1vs1 PvP, Leaderboards, Badges & Notifications)</h1>
+            <h1>📊 Complete ERD Diagram (Spring AI, 1vs1 PvP, Leaderboards & Badges)</h1>
             <p>Sơ đồ Thực thể Liên kết Toàn diện cho Hệ thống Học Từ Vựng Flashcard & SRS</p>
         </div>
         <div class="toolbar">
@@ -171,6 +171,7 @@ erDiagram
     USERS ||--o{ QUIZ_RESULTS : "completes"
     USERS ||--o{ USER_ACTIVITIES : "logs"
     USERS ||--o1 USER_STREAKS : "maintains"
+    USERS ||--o{ SPRING_AI_CHAT_MEMORY : "stores chat history"
 
     USERS ||--o{ BATTLES : "player1 (host)"
     USERS ||--o{ BATTLES : "player2 (opponent)"
@@ -387,6 +388,14 @@ erDiagram
         string target_url
         boolean is_read "Default false"
         timestamp created_at
+    }
+
+    SPRING_AI_CHAT_MEMORY {
+        string conversation_id PK "UUID (varchar 36)"
+        bigint sequence_id PK "Message Order Index"
+        text content "Message Body"
+        enum type "USER, ASSISTANT, SYSTEM, TOOL"
+        timestamp timestamp "Creation Time"
     }
                 </pre>
             </div>

@@ -6,8 +6,11 @@ import com.fivetuat.fsoftprojectserver.dtos.response.IntrospectTokenResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.TokenResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.UserResponse;
 import com.fivetuat.fsoftprojectserver.entities.authentication.Auth;
+import com.fivetuat.fsoftprojectserver.entities.Profile;
 
 public interface AuthService {
+
+    Profile getCurrentProfile();
 
     UserResponse createUser(UserCreateRequest userCreateRequest);
 

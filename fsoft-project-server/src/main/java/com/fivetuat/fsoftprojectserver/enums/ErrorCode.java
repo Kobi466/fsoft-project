@@ -1,9 +1,10 @@
 package com.fivetuat.fsoftprojectserver.enums;
 
+import org.springframework.http.HttpStatus;
+
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.experimental.FieldDefaults;
-import org.springframework.http.HttpStatus;
 
 @Getter
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -18,7 +19,7 @@ public enum ErrorCode {
     REFRESH_TOKEN_EXPIRED(405, "Refresh token expired", HttpStatus.UNAUTHORIZED),
     REFRESH_TOKEN_FAILED(406, "Refresh token was used or expired", HttpStatus.UNAUTHORIZED),
     INVALID_ACCESS_TOKEN(407, "Invalid access token", HttpStatus.UNAUTHORIZED),
-    UNAUTHORIZED(408, "Unauthorized", HttpStatus.UNAUTHORIZED),
+    UNAUTHORIZED(408, "You do not have permission to access this resource", HttpStatus.UNAUTHORIZED),
     PROFILE_NOT_FOUND(409, "Profile not found", HttpStatus.NOT_FOUND),
     CATEGORY_NOT_FOUND(410, "Category not found", HttpStatus.NOT_FOUND),
     UPLOAD_FILE_FAILED(411, "Upload file failed", HttpStatus.INTERNAL_SERVER_ERROR),
@@ -28,7 +29,16 @@ public enum ErrorCode {
     COURSE_IS_NOT_FREE(415, "Course is not free", HttpStatus.BAD_REQUEST),
     ORDER_NOT_FOUND(416, "Order not found", HttpStatus.NOT_FOUND),
     USER_NOT_FOUND(417, "User not found", HttpStatus.NOT_FOUND),
-    INVALID_OTP(418, "Invalid OTP", HttpStatus.BAD_REQUEST);
+    INVALID_OTP(418, "Invalid OTP", HttpStatus.BAD_REQUEST),
+    DECK_NOT_FOUND(419, "Deck not found", HttpStatus.NOT_FOUND),
+
+    //tanvy Mã lỗi bổ sung cho Module Card:
+    CARD_NOT_FOUND(420, "Card not found", HttpStatus.NOT_FOUND),
+    WORD_REQUIRED(421, "Word is required", HttpStatus.BAD_REQUEST),
+    MEANING_REQUIRED(422, "Meaning is required", HttpStatus.BAD_REQUEST),
+    DECK_ID_REQUIRED(423, "Deck ID is required", HttpStatus.BAD_REQUEST),
+    TAG_NOT_FOUND(424, "Tag not found", HttpStatus.NOT_FOUND),
+    TAG_NAME_EXISTS(425, "Tag name already exists", HttpStatus.BAD_REQUEST);
 
     int status;
     String message;
