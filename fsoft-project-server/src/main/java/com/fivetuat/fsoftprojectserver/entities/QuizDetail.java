@@ -7,8 +7,7 @@ import lombok.experimental.FieldDefaults;
 
 @Entity
 @Table(name = "quiz_details")
-@Getter
-@Setter
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder

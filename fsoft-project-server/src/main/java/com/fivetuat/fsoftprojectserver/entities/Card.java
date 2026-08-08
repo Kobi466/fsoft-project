@@ -67,4 +67,17 @@ public class Card {
     @UpdateTimestamp
     @Column(name = "updated_at")
     Instant updatedAt;
+    public Card(Card source) {
+        this.word = source.word;
+        this.phonetic = source.phonetic;
+        this.partOfSpeech = source.partOfSpeech;
+        this.meaning = source.meaning;
+        this.definitionEn = source.definitionEn;
+        this.exampleSentence = source.exampleSentence;
+        this.exampleMeaning = source.exampleMeaning;
+        this.imageUrl = source.imageUrl;
+        this.audioUrl = source.audioUrl;
+        this.note = source.note;
+        this.position = source.position;
+    }
 }
