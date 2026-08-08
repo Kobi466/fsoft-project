@@ -13,6 +13,7 @@ import java.util.Optional;
 
 @Repository
 public interface CardRepository extends JpaRepository<Card, Long> {
+    List<Card> findByDeckId(Long deckId);
     Page<Card> findByDeckIdOrderByPositionAsc(Long deckId, Pageable pageable);
 
     @Query(

@@ -14,6 +14,7 @@ import com.fivetuat.fsoftprojectserver.repositories.*;
 import com.fivetuat.fsoftprojectserver.services.AuthService;
 import com.fivetuat.fsoftprojectserver.services.DeckService;
 import com.fivetuat.fsoftprojectserver.services.UploadService;
+import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -24,10 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -155,23 +153,6 @@ public class DeckServiceImpl implements DeckService {
                 .build();
     }
 
-    @Override
-    public PageResponse<DeckResponse> getAllDecks(String tag, Pageable pageable) {
-        Page<Deck> decks;
-        if (tag != null && !tag.trim().isEmpty()) {
-            decks = deckRepository.findByTagsSlugAndIsDeletedFalseAndVisibility(tag.trim(), DeckVisibility.PUBLIC, pageable);
-        } else {
-            decks = deckRepository.findByIsDeletedFalse(pageable);
-        }
-        return PageResponse.<DeckResponse>builder()
-                .content(decks.getContent().stream().map(deckMapper::toDeckResponse).collect(Collectors.toList()))
-                .totalElements(decks.getTotalElements())
-                .totalPages(decks.getTotalPages())
-                .pageNo(decks.getNumber())
-                .pageSize(decks.getSize())
-                .build();
-    }
-
     @Transactional
     @Override
     public DeckResponse fork(Long id) {
@@ -208,7 +189,7 @@ public class DeckServiceImpl implements DeckService {
             List<Card> copiedCards = cards.stream()
                     .map(card -> {
                         Card newCard = new Card(card);
-                        newCard.setDeckId(savedDeck.getId());
+                        newCard.setDeck(savedDeck);
                         return newCard;
                     }).collect(Collectors.toList());
             cardRepository.saveAll(copiedCards);
