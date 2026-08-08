@@ -250,6 +250,69 @@ public class DeckServiceImpl implements DeckService {
         deckShareRepository.save(shareToSave);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<DeckResponse> getPublicDecks(int page, int size, String keyword, Long tagId, String sourceLang, String targetLang) {
+        int pageNo = Math.max(1, page);
+        Pageable pageable = PageRequest.of(pageNo - 1, size);
+
+        String sanitizedKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
+        String sanitizedSourceLang = (sourceLang != null && !sourceLang.trim().isEmpty()) ? sourceLang.trim() : null;
+        String sanitizedTargetLang = (targetLang != null && !targetLang.trim().isEmpty()) ? targetLang.trim() : null;
+
+        Page<Deck> deckPage = deckRepository.searchPublicDecks(sanitizedKeyword, tagId, sanitizedSourceLang, sanitizedTargetLang, pageable);
+
+        List<DeckResponse> content = deckPage.getContent().stream()
+                .map(deckMapper::toDeckResponse)
+                .toList();
+
+        return PageResponse.<DeckResponse>builder()
+                .pageNo(pageNo)
+                .pageSize(size)
+                .totalPages(deckPage.getTotalPages())
+                .totalElements(deckPage.getTotalElements())
+                .content(content)
+                .last(deckPage.isLast())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<DeckResponse> getDecksByStatus(DeckVisibility status, int page, int size) {
+        int pageNo = Math.max(1, page);
+        Pageable pageable = PageRequest.of(pageNo - 1, size);
+
+        DeckVisibility targetStatus = (status != null) ? status : DeckVisibility.PUBLIC;
+        Page<Deck> deckPage;
+
+        switch (targetStatus) {
+            case PRIVATE -> {
+                Profile profile = authService.getCurrentProfile();
+                deckPage = deckRepository.findByProfileAndVisibilityAndIsDeletedFalse(profile, DeckVisibility.PRIVATE, pageable);
+            }
+            case SHARED -> {
+                Profile profile = authService.getCurrentProfile();
+                deckPage = deckRepository.findSharedDecksByProfile(profile, pageable);
+            }
+            default -> {
+                deckPage = deckRepository.findByVisibilityAndIsDeletedFalse(DeckVisibility.PUBLIC, pageable);
+            }
+        }
+
+        List<DeckResponse> content = deckPage.getContent().stream()
+                .map(deckMapper::toDeckResponse)
+                .toList();
+
+        return PageResponse.<DeckResponse>builder()
+                .pageNo(pageNo)
+                .pageSize(size)
+                .totalPages(deckPage.getTotalPages())
+                .totalElements(deckPage.getTotalElements())
+                .content(content)
+                .last(deckPage.isLast())
+                .build();
+    }
+
     private Set<Tag> processTags(Set<Long> tagIds) {
         if (tagIds == null || tagIds.isEmpty()) {
             return new HashSet<>();

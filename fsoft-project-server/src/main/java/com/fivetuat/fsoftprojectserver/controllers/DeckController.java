@@ -60,6 +60,33 @@ public class DeckController {
     ) {
         return ApiResponse.ok(deckService.getMyDecks(page, size), SuccessCode.GET_DECKS_SUCCESS);
     }
+
+    @GetMapping("/public")
+    public ApiResponse<PageResponse<DeckResponse>> getPublicDecks(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long tagId,
+            @RequestParam(required = false) String sourceLang,
+            @RequestParam(required = false) String targetLang
+    ) {
+        return ApiResponse.ok(
+                deckService.getPublicDecks(page, size, keyword, tagId, sourceLang, targetLang),
+                SuccessCode.GET_DECKS_SUCCESS
+        );
+    }
+
+    @GetMapping("/status")
+    public ApiResponse<PageResponse<DeckResponse>> getDecksByStatus(
+            @RequestParam(defaultValue = "PUBLIC") DeckVisibility status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.ok(
+                deckService.getDecksByStatus(status, page, size),
+                SuccessCode.GET_DECKS_SUCCESS
+        );
+    }
     @PutMapping("/{id}/visibility")
     public ApiResponse<Void> convertDeckVisibility(
             @PathVariable Long id,

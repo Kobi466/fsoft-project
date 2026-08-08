@@ -20,4 +20,6 @@ public interface DeckService {
     List<DeckResponse> getAllDecks();
     DeckResponse fork(Long id);
     void share(Long deckId, ShareDeckRequest request);
+    PageResponse<DeckResponse> getPublicDecks(int page, int size, String keyword, Long tagId, String sourceLang, String targetLang);
+    PageResponse<DeckResponse> getDecksByStatus(DeckVisibility status, int page, int size);
 }
