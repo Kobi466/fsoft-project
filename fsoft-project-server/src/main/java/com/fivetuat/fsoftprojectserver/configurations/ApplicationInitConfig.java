@@ -6,6 +6,7 @@ import java.util.Set;
 import com.fivetuat.fsoftprojectserver.entities.authentication.Auth;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import com.fivetuat.fsoftprojectserver.services.AuthService;
@@ -21,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 @RequiredArgsConstructor
 @Slf4j
+@Order(1)
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class ApplicationInitConfig implements ApplicationRunner {
     PermissionService permissionService;
@@ -44,6 +46,6 @@ public class ApplicationInitConfig implements ApplicationRunner {
                 .phone("0123456789")
                 .passwordHash("13456789")
                 .build());
-        
+
     }
 }
