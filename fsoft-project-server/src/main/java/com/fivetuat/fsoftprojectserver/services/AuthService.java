@@ -28,7 +28,7 @@ public interface AuthService {
 
 //    void deleteAccount();
 
-//    void forgotPassword(ForgotPasswordRequest forgotPasswordRequest);
+    void forgotPassword(ForgotPasswordRequest forgotPasswordRequest);
 
     void resetPassword(ResetPasswordRequest request);
 }
