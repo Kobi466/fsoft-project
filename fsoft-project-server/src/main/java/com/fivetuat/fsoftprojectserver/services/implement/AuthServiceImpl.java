@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fivetuat.fsoftprojectserver.dtos.request.AuthenticatedRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.ForgotPasswordRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.IntrospectTokenRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.LogoutRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.RefreshTokenRequest;
@@ -204,15 +205,15 @@ public class AuthServiceImpl implements AuthService {
 //        authRepository.deleteById(currentUserId);
 //    }
 
-//    @Override
-//    public void forgotPassword(ForgotPasswordRequest request) {
-//        this.authRepository.findByEmail(request.getEmail()).ifPresent(auth -> {
-//            String otpValue = generateOtp();
-//            String redisKey = "password-reset-otp::" + auth.getEmail();
-//            redisService.saveOtp(redisKey, otpValue, 10);
-//            notificationService.sendForgotPasswordEmail(auth.getEmail(), auth.getProfile().getFullName(), otpValue);
-//        });
-//    }
+    @Override
+    public void forgotPassword(ForgotPasswordRequest request) {
+        this.authRepository.findByEmail(request.getEmail()).ifPresent(auth -> {
+            String otpValue = generateOtp();
+            String redisKey = "password-reset-otp::" + auth.getEmail();
+            redisService.saveOtp(redisKey, otpValue, 10);
+            notificationService.sendForgotPasswordEmail(auth.getEmail(), auth.getProfile().getFullName(), otpValue);
+        });
+    }
 
     @Override
     public void resetPassword(ResetPasswordRequest request) {

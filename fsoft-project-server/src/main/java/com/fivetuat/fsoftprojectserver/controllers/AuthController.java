@@ -49,11 +49,11 @@ public class AuthController {
 //        return ApiResponse.ok(null, SuccessCode.DELETE_ACCOUNT_SUCCESS);
 //    }
 
-//    @PostMapping("/forgot-password")
-//    ApiResponse<String> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
-//        this.authService.forgotPassword(request);
-//        return ApiResponse.ok(null, SuccessCode.FORGOT_PASSWORD_SUCCESS);
-//    }
+    @PostMapping("/forgot-password")
+    ApiResponse<String> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        this.authService.forgotPassword(request);
+        return ApiResponse.ok(null, SuccessCode.FORGOT_PASSWORD_SUCCESS);
+    }
 
     @PostMapping("/reset-password")
     ApiResponse<String> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {

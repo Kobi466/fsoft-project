@@ -81,4 +81,46 @@ public class NotificationServiceImpl implements NotificationService {
     public void recoverWelcomeEmail(Exception e, String toEmail, String name) {
         log.error("CRITICAL: Failed to send welcome email to {} after 3 attempts. Error: {}", toEmail, e.getMessage());
     }
+
+    @Async
+    @Retryable(
+            retryFor = Exception.class,
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 5000)
+    )
+    @Override
+    public void sendForgotPasswordEmail(String toEmail, String name, String otp) {
+        log.info("Sending forgot password OTP email to {} (Running asynchronously)", toEmail);
+
+        Sender sender = Sender.builder()
+                .name(senderName)
+                .email(senderEmail)
+                .build();
+
+        Recipient recipient = Recipient.builder()
+                .name(name)
+                .email(toEmail)
+                .build();
+
+        // Render HTML content using Thymeleaf
+        Context context = new Context();
+        context.setVariable("name", name);
+        context.setVariable("otp", otp);
+        String htmlContent = templateEngine.process("forgot-password-email", context);
+
+        EmailRequest emailRequest = EmailRequest.builder()
+                .sender(sender)
+                .to(List.of(recipient))
+                .subject("[FSoft Flashcards] Mã xác thực OTP đặt lại mật khẩu")
+                .htmlContent(htmlContent)
+                .build();
+
+        EmailResponse response = brevoEmailClient.sendEmail(apiKey, emailRequest);
+        log.info("OTP email sent successfully to {}. Brevo Message ID: {}", toEmail, response.getMessageId());
+    }
+
+    @Recover
+    public void recoverForgotPasswordEmail(Exception e, String toEmail, String name, String otp) {
+        log.error("CRITICAL: Failed to send forgot password OTP to {} after 3 attempts. Error: {}", toEmail, e.getMessage());
+    }
 }
