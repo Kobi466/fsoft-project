@@ -1,6 +1,24 @@
 package com.fivetuat.fsoftprojectserver.services.implement;
 
-import com.fivetuat.fsoftprojectserver.dtos.request.*;
+import java.text.DecimalFormat;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
+
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.fivetuat.fsoftprojectserver.dtos.request.AuthenticatedRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.IntrospectTokenRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.LogoutRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.RefreshTokenRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.ResetPasswordRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.UserCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.AuthenticatedResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.IntrospectTokenResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.TokenResponse;
@@ -18,19 +36,14 @@ import com.fivetuat.fsoftprojectserver.repositories.ProfileRepository;
 import com.fivetuat.fsoftprojectserver.repositories.RefreshTokenRepository;
 import com.fivetuat.fsoftprojectserver.services.AuthService;
 import com.fivetuat.fsoftprojectserver.services.JwtService;
+import com.fivetuat.fsoftprojectserver.services.NotificationService;
 import com.fivetuat.fsoftprojectserver.services.RedisService;
 import com.fivetuat.fsoftprojectserver.services.RoleService;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.text.DecimalFormat;
-import java.util.*;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -48,7 +61,7 @@ public class AuthServiceImpl implements AuthService {
     RedisService redisService;
 //    GoogleOauth2Client googleOauth2Client;
 //    GoogleUserInfoClient googleUserInfoClient;
-//    NotificationService notificationService;
+    NotificationService notificationService;
 //    @NonFinal
 //    @Value("${google.client-id}")
 //    String clientId;
@@ -87,7 +100,7 @@ public class AuthServiceImpl implements AuthService {
         var response = authRepository.save(auth);
 
         String userName = auth.getProfile().getFullName();
-//        this.notificationService.sendWelcomeEmail(auth.getEmail(), userName);
+        this.notificationService.sendWelcomeEmail(auth.getEmail(), userName);
         return authMapper.toUserResponse(response);
     }
 
