@@ -1,5 +1,7 @@
 package com.fivetuat.fsoftprojectserver.dtos.response;
 
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,10 +13,11 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE)
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class GoogleInfoUserResponse {
     String id;
     String email;
-    boolean verifiedEmail;
+    Boolean verifiedEmail;
     String name;
     String givenName;
     String familyName;

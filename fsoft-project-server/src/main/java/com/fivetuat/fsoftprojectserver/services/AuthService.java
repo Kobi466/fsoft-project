@@ -16,7 +16,7 @@ public interface AuthService {
 
     AuthenticatedResponse authenticated(AuthenticatedRequest authenticatedRequest);
 
-//    AuthenticatedResponse authenticatedUserGoogle(String code);
+    AuthenticatedResponse authenticatedUserGoogle(String code);
 
     TokenResponse refreshToken(RefreshTokenRequest refreshTokenRequest);
 
@@ -28,7 +28,7 @@ public interface AuthService {
 
 //    void deleteAccount();
 
-//    void forgotPassword(ForgotPasswordRequest forgotPasswordRequest);
+    void forgotPassword(ForgotPasswordRequest forgotPasswordRequest);
 
     void resetPassword(ResetPasswordRequest request);
 }

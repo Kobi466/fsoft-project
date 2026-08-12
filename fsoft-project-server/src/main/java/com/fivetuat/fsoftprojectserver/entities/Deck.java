@@ -21,7 +21,15 @@ public class Deck {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
-
+    public Deck(Deck source) {
+        this.title = source.title;
+        this.description = source.description;
+        this.coverImageUrl = source.coverImageUrl;
+        this.sourceLanguage = source.sourceLanguage;
+        this.targetLanguage = source.targetLanguage;
+        this.totalCards=source.totalCards;
+        this.isOfficial = source.isOfficial;
+    }
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "profile_id", nullable = false)
     Profile profile;

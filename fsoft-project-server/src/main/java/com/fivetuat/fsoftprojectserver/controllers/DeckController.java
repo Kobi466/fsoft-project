@@ -10,9 +10,13 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
+import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckUpdateRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.DeckVisibilityRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.ShareDeckRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.DeckResponse;
+import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
 import com.fivetuat.fsoftprojectserver.enums.SuccessCode;
 import com.fivetuat.fsoftprojectserver.services.DeckService;
 
@@ -77,16 +81,57 @@ public class DeckController {
 
     @Operation(summary = "Lấy danh sách bộ thẻ của tôi", description = "Lấy danh sách các bộ thẻ do tôi tạo")
     @GetMapping("/my")
-    public ApiResponse<PageResponse<DeckResponse>> getMyDecks(Pageable pageable) {
-        return ApiResponse.ok(deckService.getMyDecks(pageable), SuccessCode.GET_DECKS_SUCCESS);
+    public ApiResponse<PageResponse<DeckResponse>> getMyDecks(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.ok(deckService.getMyDecks(page, size), SuccessCode.GET_DECKS_SUCCESS);
     }
 
-    @Operation(summary = "Lấy danh sách tất cả bộ thẻ", description = "Lấy danh sách tất cả các bộ thẻ")
-    @GetMapping
-    public ApiResponse<PageResponse<DeckResponse>> getAllDecks(
-            @RequestParam(required = false) String tag,
-            Pageable pageable
+    @GetMapping("/public")
+    public ApiResponse<PageResponse<DeckResponse>> getPublicDecks(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long tagId,
+            @RequestParam(required = false) String sourceLang,
+            @RequestParam(required = false) String targetLang
     ) {
-        return ApiResponse.ok(deckService.getAllDecks(tag, pageable), SuccessCode.GET_DECKS_SUCCESS);
+        return ApiResponse.ok(
+                deckService.getPublicDecks(page, size, keyword, tagId, sourceLang, targetLang),
+                SuccessCode.GET_DECKS_SUCCESS
+        );
+    }
+
+    @GetMapping("/status")
+    public ApiResponse<PageResponse<DeckResponse>> getDecksByStatus(
+            @RequestParam(defaultValue = "PUBLIC") DeckVisibility status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.ok(
+                deckService.getDecksByStatus(status, page, size),
+                SuccessCode.GET_DECKS_SUCCESS
+        );
+    }
+    @PutMapping("/{id}/visibility")
+    public ApiResponse<Void> convertDeckVisibility(
+            @PathVariable Long id,
+            @RequestBody DeckVisibilityRequest request) {
+        deckService.convertDeckVisibility(id, request.getVisibility());
+        return ApiResponse.ok(null, SuccessCode.DECK_VISIBILITY_UPDATED);
+    }
+
+    @PostMapping("/{id}/fork")
+    public ApiResponse<DeckResponse> forkDeck(@PathVariable Long id) {
+        DeckResponse response = deckService.fork(id);
+        return ApiResponse.ok(response, SuccessCode.DECK_FORKED);
+    }
+    @PostMapping("/{id}/share")
+    public ApiResponse<Void> shareDeck(
+            @PathVariable Long id,
+            @RequestBody ShareDeckRequest request) {
+        deckService.share(id, request);
+        return ApiResponse.ok(null, SuccessCode.DECK_SHARED);
     }
 }
