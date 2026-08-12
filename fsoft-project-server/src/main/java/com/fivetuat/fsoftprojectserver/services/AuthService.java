@@ -16,7 +16,7 @@ public interface AuthService {
 
     AuthenticatedResponse authenticated(AuthenticatedRequest authenticatedRequest);
 
-//    AuthenticatedResponse authenticatedUserGoogle(String code);
+    AuthenticatedResponse authenticatedUserGoogle(String code);
 
     TokenResponse refreshToken(RefreshTokenRequest refreshTokenRequest);
 

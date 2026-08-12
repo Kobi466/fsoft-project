@@ -35,6 +35,12 @@ jwt:
   access-token-expiration: ${ACCESS_TOKEN_EX}
   refresh-token-expiration: ${REFRESH_TOKEN_EX}
 
+google:
+  client-id: ${GOOGLE_CLIENT_ID}
+  client-secret: ${GOOGLE_CLIENT_SECRET}
+  redirect-uri: ${GOOGLE_REDIRECT_URI}
+  grant-type: "authorization_code"
+
 logging:
   level:
     root: INFO

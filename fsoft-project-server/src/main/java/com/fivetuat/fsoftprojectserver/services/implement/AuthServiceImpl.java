@@ -7,12 +7,10 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
-
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import com.fivetuat.fsoftprojectserver.dtos.request.AuthenticatedRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.ForgotPasswordRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.IntrospectTokenRequest;
@@ -31,6 +29,8 @@ import com.fivetuat.fsoftprojectserver.entities.authentication.Role;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.enums.Roles;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
+import com.fivetuat.fsoftprojectserver.httpClients.GoogleOauth2Client;
+import com.fivetuat.fsoftprojectserver.httpClients.GoogleUserInfoClient;
 import com.fivetuat.fsoftprojectserver.mappers.AuthMapper;
 import com.fivetuat.fsoftprojectserver.repositories.AuthRepository;
 import com.fivetuat.fsoftprojectserver.repositories.ProfileRepository;
@@ -44,7 +44,13 @@ import com.fivetuat.fsoftprojectserver.services.RoleService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+
+import java.util.*;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -58,23 +64,22 @@ public class AuthServiceImpl implements AuthService {
     RefreshTokenRepository refreshTokenRepository;
     BCryptPasswordEncoder bCryptPasswordEncoder;
     JwtService jwtService;
-//    ProfileServiceImpl profileServiceImpl;
     RedisService redisService;
-//    GoogleOauth2Client googleOauth2Client;
-//    GoogleUserInfoClient googleUserInfoClient;
     NotificationService notificationService;
-//    @NonFinal
-//    @Value("${google.client-id}")
-//    String clientId;
-//    @NonFinal
-//    @Value("${google.client-secret}")
-//    String clientSecret;
-//    @NonFinal
-//    @Value("${google.grant-type}")
-//    String grantType;
-//    @NonFinal
-//    @Value("${google.redirect-uri}")
-//    String redirectUrl;
+    GoogleOauth2Client googleOauth2Client;
+    GoogleUserInfoClient googleUserInfoClient;
+    @NonFinal
+    @Value("${google.client-id}")
+    String clientId;
+    @NonFinal
+    @Value("${google.client-secret}")
+    String clientSecret;
+    @NonFinal
+    @Value("${google.grant-type}")
+    String grantType;
+    @NonFinal
+    @Value("${google.redirect-uri}")
+    String redirectUrl;
 
     @Override
     public Profile getCurrentProfile() {
@@ -140,61 +145,62 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
-//    @Override
-//    public AuthenticatedResponse authenticatedUserGoogle(String code) {
-//        var tokenResponse = this.googleOauth2Client.exchangeToken(
-//                ExchangeTokenRequest.builder()
-//                        .clientId(clientId)
-//                        .clientSecret(clientSecret)
-//                        .code(code)
-//                        .grantType(grantType)
-//                        .redirectUri(redirectUrl)
-//                        .build()
-//        );
-//        log.info("tokenResponse={}", tokenResponse);
-//        var userGG = this.googleUserInfoClient.getUserInfo("json", Objects.requireNonNull(tokenResponse).getAccessToken());
-//        log.info("userGG={}", userGG);
-//
-//        Set<Role> roles = new HashSet<>();
-//        roles.add(roleService.getRoleByName(Roles.USER.name()));
-//
-//        var auth = this.authRepository.findByEmail(userGG.getEmail()).orElseGet(
-//                () -> {
-//                    var auths = Auth.builder()
-//                            .email(userGG.getEmail())
-//                            .build();
-//                    auths.setRoles(roles);
-//                    auths.setProfile(Profile.builder().auth(auths)
-//                            .fullName(userGG.getName())
-//                            .avatar(userGG.getPicture())
-//                            .build());
-//                    return this.authRepository.save(auths);
-//                }
-//        );
-//        String accessToken = jwtService.generateAccessToken(auth);
-//        String refreshToken = jwtService.generateRefreshToken(auth);
-//        var refreshTokenEntity = this.refreshTokenRepository.save(RefreshToken.builder()
-//                .auth(auth)
-//                .token(refreshToken)
-//                .issueTime(this.jwtService.getIssuedAtDateFromToken(refreshToken))
-//                .expiryTime(this.jwtService.getExpirationDateFromToken(refreshToken))
-//                .build()
-//        );
-//        return AuthenticatedResponse.builder()
-//                .user(this.authMapper.toUserResponse(auth))
-//                .token(TokenResponse.builder()
-//                        .accessToken(accessToken)
-//                        .refreshToken(refreshToken)
-//                        .accessExpiresAt(jwtService.getExpirationDateFromToken(accessToken))
-//                        .refreshExpiresAt(refreshTokenEntity.getExpiryTime())
-//                        .accessIssuedAt(jwtService.getIssuedAtDateFromToken(accessToken))
-//                        .refreshIssuedAt(refreshTokenEntity.getIssueTime())
-//                        .accessExpirationTime(jwtService.getExpirationTimeFromToken(accessToken))
-//                        .refreshExpirationTime(jwtService.getExpirationTimeFromToken(refreshToken))
-//                        .build()
-//                )
-//                .build();
-//    }
+    @Override
+    public AuthenticatedResponse authenticatedUserGoogle(String code) {
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("client_id", clientId);
+        formData.add("client_secret", clientSecret);
+        formData.add("grant_type", grantType);
+        formData.add("redirect_uri", redirectUrl);
+        formData.add("code", code);
+        var tokenResponse = this.googleOauth2Client.exchangeToken(formData);
+        log.info("tokenResponse={}", tokenResponse);
+        var userGG = this.googleUserInfoClient.getUserInfo("json",
+                Objects.requireNonNull(tokenResponse)
+                        .getAccessToken()
+        );
+        log.info("userGG={}", userGG);
+
+        Set<Role> roles = new HashSet<>();
+        roles.add(roleService.getRoleByName(Roles.USER.name()));
+
+        var auth = this.authRepository.findByEmail(userGG.getEmail()).orElseGet(
+                () -> {
+                    var auths = Auth.builder()
+                            .email(userGG.getEmail())
+                            .build();
+                    auths.setRoles(roles);
+                    auths.setProfile(Profile.builder().auth(auths)
+                            .fullName(userGG.getName())
+                            .avatar(userGG.getPicture())
+                            .build());
+                    return this.authRepository.save(auths);
+                }
+        );
+        String accessToken = jwtService.generateAccessToken(auth);
+        String refreshToken = jwtService.generateRefreshToken(auth);
+        var refreshTokenEntity = this.refreshTokenRepository.save(RefreshToken.builder()
+                .auth(auth)
+                .token(refreshToken)
+                .issueTime(this.jwtService.getIssuedAtDateFromToken(refreshToken))
+                .expiryTime(this.jwtService.getExpirationDateFromToken(refreshToken))
+                .build()
+        );
+        return AuthenticatedResponse.builder()
+                .user(this.authMapper.toUserResponse(auth))
+                .token(TokenResponse.builder()
+                        .accessToken(accessToken)
+                        .refreshToken(refreshToken)
+                        .accessExpiresAt(jwtService.getExpirationDateFromToken(accessToken))
+                        .refreshExpiresAt(refreshTokenEntity.getExpiryTime())
+                        .accessIssuedAt(jwtService.getIssuedAtDateFromToken(accessToken))
+                        .refreshIssuedAt(refreshTokenEntity.getIssueTime())
+                        .accessExpirationTime(jwtService.getExpirationTimeFromToken(accessToken))
+                        .refreshExpirationTime(jwtService.getExpirationTimeFromToken(refreshToken))
+                        .build()
+                )
+                .build();
+    }
 
 //    @PreAuthorize("hasRole('USER')")
 //    @Transactional
