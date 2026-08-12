@@ -8,6 +8,7 @@ import com.fivetuat.fsoftprojectserver.dtos.response.DeckResponse;
 import com.fivetuat.fsoftprojectserver.entities.*;
 import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
+import com.fivetuat.fsoftprojectserver.enums.FolderName;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.mappers.DeckMapper;
 import com.fivetuat.fsoftprojectserver.repositories.*;
@@ -18,6 +19,7 @@ import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +32,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class DeckServiceImpl implements DeckService {
 
@@ -56,7 +59,8 @@ public class DeckServiceImpl implements DeckService {
         }
 
         if (coverImage != null && !coverImage.isEmpty()) {
-            String imageUrl = uploadService.uploadFile(coverImage);
+            String imageUrl = uploadService.uploadFile(coverImage, FolderName.DECKS);
+            log.info("image {}", imageUrl);
             deck.setCoverImageUrl(imageUrl);
         }
 
@@ -97,7 +101,7 @@ public class DeckServiceImpl implements DeckService {
         }
 
         if (coverImage != null && !coverImage.isEmpty()) {
-            String imageUrl = uploadService.uploadFile(coverImage);
+            String imageUrl = uploadService.uploadFile(coverImage, FolderName.DECKS);
             deck.setCoverImageUrl(imageUrl);
         }
 
