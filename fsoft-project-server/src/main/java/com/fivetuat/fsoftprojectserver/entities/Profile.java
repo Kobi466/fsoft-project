@@ -47,6 +47,12 @@ public class Profile {
 
     String fullName;
     String avatar;
+    String about;
+    String personalWebsite;
+    String github;
+    String linkedin;
+    String facebook;
+    String youtube;
 
     @OneToMany(mappedBy = "profile", fetch = FetchType.LAZY, orphanRemoval = true)
     Set<Deck> decks;
