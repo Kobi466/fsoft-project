@@ -4,6 +4,7 @@ import com.fivetuat.fsoftprojectserver.dtos.request.ProfileUpdateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.ProfileUpdateResponse;
 import com.fivetuat.fsoftprojectserver.entities.Profile;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
+import com.fivetuat.fsoftprojectserver.enums.FolderName;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.mappers.ProfileMapper;
 import com.fivetuat.fsoftprojectserver.repositories.ProfileRepository;
@@ -52,8 +53,8 @@ public class ProfileServiceImpl implements ProfileService {
             throw new AppException(ErrorCode.VALIDATION_ERROR);
         }
         Profile profile = authService.getCurrentProfile();
-        // TODO: hàm uploadFile() hiện đang return null (chờ Lam triển khai AWS S3 thật).
-        String avatarUrl = uploadService.uploadFile(avatarFile);
+        // Lam đã triển khai AWS S3 xong, upload avatar vào thư mục "avatars"
+        String avatarUrl = uploadService.uploadFile(avatarFile, FolderName.AVATARS);
         profile.setAvatar(avatarUrl);
 
         Profile savedProfile = profileRepository.save(profile);
