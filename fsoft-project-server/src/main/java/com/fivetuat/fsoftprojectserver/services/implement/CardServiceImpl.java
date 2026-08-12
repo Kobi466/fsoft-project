@@ -9,6 +9,7 @@ import com.fivetuat.fsoftprojectserver.entities.Card;
 import com.fivetuat.fsoftprojectserver.entities.Deck;
 import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
+import com.fivetuat.fsoftprojectserver.enums.FolderName;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.mappers.CardMapper;
 import com.fivetuat.fsoftprojectserver.repositories.CardRepository;
@@ -104,11 +105,11 @@ public class CardServiceImpl implements CardService {
 
     private void checkExistingFile(MultipartFile imageFile, MultipartFile audioFile, Card card) {
         if (imageFile != null && !imageFile.isEmpty()){
-            String imageUrl = uploadService.uploadFile(imageFile);
+            String imageUrl = uploadService.uploadFile(imageFile, FolderName.Card);
             card.setImageUrl(imageUrl);
         }
         if (audioFile != null && !audioFile.isEmpty()){
-            String audioUrl = uploadService.uploadFile(audioFile);
+            String audioUrl = uploadService.uploadFile(audioFile, FolderName.Card);
             card.setAudioUrl(audioUrl);
         }
     }
