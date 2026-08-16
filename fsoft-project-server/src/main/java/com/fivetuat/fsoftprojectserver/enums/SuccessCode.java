@@ -1,9 +1,10 @@
 package com.fivetuat.fsoftprojectserver.enums;
 
+import org.springframework.http.HttpStatus;
+
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.experimental.FieldDefaults;
-import org.springframework.http.HttpStatus;
 
 @Getter
 @FieldDefaults(level = AccessLevel.PRIVATE)
@@ -64,7 +65,9 @@ public enum SuccessCode {
     GET_CARD_SUCCESS(200, "Lấy thông tin thẻ ghi nhớ thành công", HttpStatus.OK),
     DELETE_CARD_SUCCESS(200, "Xóa thẻ ghi nhớ thành công", HttpStatus.OK),
     CARD_CHANGED_SINCE_SUCCESS(200, "Lấy danh sách thẻ đã thay đổi thành công", HttpStatus.OK),
-    CARD_IDS_SUCCESS(200, "Lấy danh sách ID thẻ thành công", HttpStatus.OK);
+    CARD_IDS_SUCCESS(200, "Lấy danh sách ID thẻ thành công", HttpStatus.OK),
+    GET_STREAK_SUCCESS(200, "Lấy thông tin chuỗi ngày học thành công", HttpStatus.OK),
+    GET_ACTIVITIES_SUCCESS(200, "Lấy danh sách nhật ký hoạt động thành công", HttpStatus.OK);
 
     final int status;
     final String message;
