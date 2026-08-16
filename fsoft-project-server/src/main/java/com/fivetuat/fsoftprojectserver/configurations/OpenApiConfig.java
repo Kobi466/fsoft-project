@@ -36,6 +36,13 @@ public class OpenApiConfig {
 												.in(SecurityScheme.In.HEADER)
 												.description("Nhập Bearer token")
 								)
+								.addSecuritySchemes("internalToken",
+										new SecurityScheme()
+												.name("X-Internal-Token")
+												.type(SecurityScheme.Type.APIKEY)
+												.in(SecurityScheme.In.HEADER)
+												.description("Nhập mã bí mật X-Internal-Token dành riêng cho các API của fsoft-ai")
+								)
 				);
 	}
 }
