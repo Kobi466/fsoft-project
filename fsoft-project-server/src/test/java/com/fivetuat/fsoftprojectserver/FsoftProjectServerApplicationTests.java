@@ -8,6 +8,11 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles("dev")
 class FsoftProjectServerApplicationTests {
 
+	static {
+		java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
+		System.setProperty("user.timezone", "Asia/Ho_Chi_Minh");
+	}
+
 	@Test
 	void contextLoads() {
 	}

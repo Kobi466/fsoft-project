@@ -12,8 +12,12 @@ import java.util.TimeZone;
 @EnableRetry
 public class FsoftProjectServerApplication {
 
-	public static void main(String[] args) {
+	static {
 		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
+		System.setProperty("user.timezone", "Asia/Ho_Chi_Minh");
+	}
+
+	public static void main(String[] args) {
 		SpringApplication.run(FsoftProjectServerApplication.class, args);
 	}
 
