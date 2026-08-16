@@ -3,14 +3,20 @@ package com.fivetuat.fsoftprojectserver.services.implement;
 import java.text.DecimalFormat;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+
 import com.fivetuat.fsoftprojectserver.dtos.request.AuthenticatedRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.ForgotPasswordRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.IntrospectTokenRequest;
@@ -46,11 +52,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-
-import java.util.*;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -174,7 +175,9 @@ public class AuthServiceImpl implements AuthService {
                             .fullName(userGG.getName())
                             .avatar(userGG.getPicture())
                             .build());
-                    return this.authRepository.save(auths);
+                    var savedAuth = this.authRepository.save(auths);
+                    this.notificationService.sendWelcomeEmail(savedAuth.getEmail(),userGG.getName());
+                    return savedAuth;
                 }
         );
         String accessToken = jwtService.generateAccessToken(auth);
