@@ -41,6 +41,14 @@ google:
   redirect-uri: ${GOOGLE_REDIRECT_URI}
   grant-type: "authorization_code"
 
+notification:
+  email:
+    url: ${NOTIFICATION_EMAIL_URL}
+    apikey: ${NOTIFICATION_EMAIL_APIKEY}
+    sender:
+      name: ${NOTIFICATION_EMAIL_SENDER_NAME:FSoft Flashcards}
+      email: ${NOTIFICATION_EMAIL_SENDER_EMAIL}
+
 logging:
   level:
     root: INFO
