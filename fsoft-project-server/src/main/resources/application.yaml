@@ -50,6 +50,8 @@ notification:
     sender:
       name: ${NOTIFICATION_EMAIL_SENDER_NAME:FSoft Flashcards}
       email: ${NOTIFICATION_EMAIL_SENDER_EMAIL}
+fsoft-ai:
+  backend-token: ${FSOFT_AI_BACKEND_TOKEN}
 
 logging:
   level:
