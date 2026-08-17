@@ -18,11 +18,6 @@ import lombok.experimental.FieldDefaults;
 public class Oauth2Controller {
 	AuthService authService;
 
-	@GetMapping("/callback")
-	ApiResponse<AuthenticatedResponse> authenticatedUserGoogleGet(@RequestParam("code") String code) {
-		return ApiResponse.ok(this.authService.authenticatedUserGoogle(code), SuccessCode.AUTHENTICATED_GOOGLE_SUCCESS);
-	}
-
 	@PostMapping("/callback")
 	ApiResponse<AuthenticatedResponse> authenticatedUserGooglePost(@RequestParam("code") String code) {
 		return ApiResponse.ok(this.authService.authenticatedUserGoogle(code), SuccessCode.AUTHENTICATED_GOOGLE_SUCCESS);
