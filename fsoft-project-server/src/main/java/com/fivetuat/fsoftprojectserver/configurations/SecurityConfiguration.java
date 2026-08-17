@@ -48,7 +48,8 @@ public class SecurityConfiguration {
             "/swagger-ui.html",
             "/v3/api-docs/**",
             "/api-docs/**",
-            "/decks/public"
+            "/decks/public",
+            "/actuator/health"
     };
 
     CustomJwtDecoder customJwtDecoder;
