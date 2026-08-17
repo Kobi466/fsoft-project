@@ -25,7 +25,6 @@ public class AudioReflexGameResponse {
         Long cardId;
         String word;              // Từ tiếng Anh (dùng card.getWord())
         String phonetic;          // Phiên âm (dùng card.getPhonetic())
-        String audioUrl;          // Link phát âm (dùng card.getAudioUrl())
         String imageUrl;          // Ảnh minh họa (dùng card.getImageUrl())
         String exampleSentence;   // Câu ví dụ tiếng Anh (dùng card.getExampleSentence())
         String exampleMeaning;    // Dịch câu ví dụ (dùng card.getExampleMeaning())

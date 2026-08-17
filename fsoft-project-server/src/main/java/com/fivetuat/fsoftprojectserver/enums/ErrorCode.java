@@ -44,7 +44,8 @@ public enum ErrorCode {
     WORD_REQUIRED(421, "Word is required", HttpStatus.BAD_REQUEST),
     MEANING_REQUIRED(422, "Meaning is required", HttpStatus.BAD_REQUEST),
     DECK_ID_REQUIRED(423, "Deck ID is required", HttpStatus.BAD_REQUEST),
-    TAG_NAME_EXISTS(425, "Tag name already exists", HttpStatus.BAD_REQUEST);
+    TAG_NAME_EXISTS(425, "Tag name already exists", HttpStatus.BAD_REQUEST),
+    INSUFFICIENT_CARDS(428, "Deck must contain at least 4 cards to play game", HttpStatus.BAD_REQUEST);
 
     int status;
     String message;

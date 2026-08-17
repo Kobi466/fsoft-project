@@ -42,13 +42,13 @@ public class AudioReflexGameServiceImpl implements AudioReflexGameService {
     @Transactional(readOnly = true)
     public AudioReflexGameResponse generateGame(Long deckId, int questionCount) {
         Deck deck = deckRepository.findById(deckId)
-                .orElseThrow(() -> new AppException(ErrorCode.AUTHENTICATION_FAILED));
+                .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
 
         // Dùng đúng method findByDeckId trong CardRepository của bạn
         List<Card> allCards = cardRepository.findByDeckId(deckId);
         if (allCards.size() < 4) {
             // Bộ thẻ cần ít nhất 4 từ để tạo 4 lựa chọn trắc nghiệm
-            throw new AppException(ErrorCode.AUTHENTICATION_FAILED);
+            throw new AppException(ErrorCode.INSUFFICIENT_CARDS);
         }
 
         Collections.shuffle(allCards);
@@ -78,7 +78,6 @@ public class AudioReflexGameServiceImpl implements AudioReflexGameService {
                     .cardId(targetCard.getId())
                     .word(targetCard.getWord())
                     .phonetic(targetCard.getPhonetic())
-                    .audioUrl(targetCard.getAudioUrl())
                     .imageUrl(targetCard.getImageUrl())
                     .exampleSentence(targetCard.getExampleSentence())
                     .exampleMeaning(targetCard.getExampleMeaning())
@@ -106,10 +105,10 @@ public class AudioReflexGameServiceImpl implements AudioReflexGameService {
         }
 
         Auth user = authRepository.findById(userUuid)
-                .orElseThrow(() -> new AppException(ErrorCode.AUTHENTICATION_FAILED));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         Deck deck = deckRepository.findById(request.getDeckId())
-                .orElseThrow(() -> new AppException(ErrorCode.AUTHENTICATION_FAILED));
+                .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
 
         GameRecord record = GameRecord.builder()
                 .user(user)
