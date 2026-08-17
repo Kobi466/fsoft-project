@@ -74,6 +74,13 @@ public class Deck {
     @Column(name = "is_deleted", nullable = false)
     boolean isDeleted;
 
+    @Column(name = "is_share_link_enabled", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    boolean isShareLinkEnabled = false;
+
+    @Column(name = "share_token", unique = true)
+    String shareToken;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;
 

@@ -162,4 +162,18 @@ public class DeckController {
         deckService.revokeShare(id, profileId);
         return ApiResponse.ok(null, SuccessCode.UPDATE_ROLE_DECK_SUCCESS);
     }
+
+    @Operation(summary = "Bật/Tắt chia sẻ qua link", description = "Chỉ chủ sở hữu Deck mới có quyền")
+    @PostMapping("/{id}/share-link/toggle")
+    public ApiResponse<DeckResponse> toggleShareLink(@PathVariable Long id) {
+        DeckResponse response = deckService.toggleShareLink(id);
+        return ApiResponse.ok(response, SuccessCode.UPDATE_DECK_SUCCESS);
+    }
+
+    @Operation(summary = "Truy cập Deck qua Link Share", description = "Dành cho người lạ truy cập qua link bí mật")
+    @GetMapping("/shared/{shareToken}")
+    public ApiResponse<DeckResponse> getDeckByShareToken(@PathVariable String shareToken) {
+        DeckResponse response = deckService.getDeckByShareToken(shareToken);
+        return ApiResponse.ok(response, SuccessCode.GET_DECK_SUCCESS);
+    }
 }

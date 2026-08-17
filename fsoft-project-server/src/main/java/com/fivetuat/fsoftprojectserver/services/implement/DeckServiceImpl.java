@@ -402,4 +402,34 @@ public class DeckServiceImpl implements DeckService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         deckShareRepository.delete(deckShare);
     }
+
+    @Transactional
+    @Override
+    public DeckResponse toggleShareLink(Long deckId) {
+        Profile owner = authService.getCurrentProfile();
+        Deck deck = getExistingDeck(deckId);
+
+        if (!deck.getProfile().getId().equals(owner.getId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        boolean newState = !deck.isShareLinkEnabled();
+        deck.setShareLinkEnabled(newState);
+
+        if (newState && deck.getShareToken() == null) {
+            deck.setShareToken(UUID.randomUUID().toString().replace("-", ""));
+        }
+
+        deck = deckRepository.save(deck);
+        return deckMapper.toDeckResponse(deck);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DeckResponse getDeckByShareToken(String shareToken) {
+        Deck deck = deckRepository.findByShareTokenAndIsShareLinkEnabledTrueAndIsDeletedFalse(shareToken)
+                .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
+
+        return deckMapper.toDeckResponse(deck);
+    }
 }

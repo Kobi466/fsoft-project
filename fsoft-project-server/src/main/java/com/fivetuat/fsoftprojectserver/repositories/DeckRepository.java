@@ -43,4 +43,6 @@ public interface DeckRepository extends JpaRepository<Deck, Long> {
             @Param("targetLang") String targetLang,
             Pageable pageable
     );
+
+    Optional<Deck> findByShareTokenAndIsShareLinkEnabledTrueAndIsDeletedFalse(String shareToken);
 }

@@ -30,4 +30,6 @@ public class DeckResponse {
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
     Set<TagResponse> tags;
+    boolean isShareLinkEnabled;
+    String shareToken;
 }

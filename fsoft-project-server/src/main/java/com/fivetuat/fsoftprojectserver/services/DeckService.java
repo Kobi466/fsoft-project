@@ -34,4 +34,7 @@ public interface DeckService {
     PageResponse<DeckShareResponse> getSharedUsers(Long deckId, Pageable pageable);
     void updateSharePermission(Long deckId, UUID profileId, SharePermission permission);
     void revokeShare(Long deckId, UUID profileId);
+
+    DeckResponse toggleShareLink(Long deckId);
+    DeckResponse getDeckByShareToken(String shareToken);
 }
