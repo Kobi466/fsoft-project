@@ -46,8 +46,7 @@ public class SecurityConfiguration {
             "/swagger-ui.html",
             "/v3/api-docs/**",
             "/api-docs/**",
-            "/decks/public",
-            "/ws-chat/**" // Endpoint WebSocket Handshake cho Chat cộng đồng
+            "/decks/public"
     };
 
     CustomJwtDecoder customJwtDecoder;
