@@ -1,16 +1,16 @@
 package com.fivetuat.fsoftprojectserver.controllers;
 
 import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
+import com.fivetuat.fsoftprojectserver.dtos.response.DeckShareResponse;
+import com.fivetuat.fsoftprojectserver.enums.SharePermission;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Encoding;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
-import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckUpdateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckVisibilityRequest;
@@ -19,13 +19,14 @@ import com.fivetuat.fsoftprojectserver.dtos.response.DeckResponse;
 import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
 import com.fivetuat.fsoftprojectserver.enums.SuccessCode;
 import com.fivetuat.fsoftprojectserver.services.DeckService;
-
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/decks")
@@ -36,7 +37,7 @@ public class DeckController {
     DeckService deckService;
 
     @Operation(summary = "Tạo mới bộ thẻ", description = "Tạo mới một bộ thẻ")
-    @RequestBody(content = @Content(
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(
             encoding = @Encoding(
                 name = "request",
                 contentType = MediaType.APPLICATION_JSON_VALUE
@@ -57,7 +58,7 @@ public class DeckController {
     }
 
     @Operation(summary = "Cập nhật bộ thẻ theo ID", description = "Cập nhật một bộ thẻ theo ID")
-    @RequestBody(content = @Content(encoding = @Encoding(
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(encoding = @Encoding(
                 name = "request",
                 contentType = MediaType.APPLICATION_JSON_VALUE
             )
@@ -130,8 +131,35 @@ public class DeckController {
     @PostMapping("/{id}/share")
     public ApiResponse<Void> shareDeck(
             @PathVariable Long id,
-            @RequestBody ShareDeckRequest request) {
+            @RequestBody @Valid ShareDeckRequest request) {
         deckService.share(id, request);
         return ApiResponse.ok(null, SuccessCode.DECK_SHARED);
+    }
+
+    @Operation(summary = "Lấy danh sách người được share", description = "Chỉ chủ sở hữu Deck mới có quyền xem")
+    @GetMapping("/{id}/shares")
+    public ApiResponse<PageResponse<DeckShareResponse>> getSharedUsers(@PathVariable Long id, Pageable pageable) {
+        return ApiResponse.ok(deckService.getSharedUsers(id, pageable), SuccessCode.GET_SHARED_USERS_SUCCESS);
+    }
+
+    @Operation(summary = "Cập nhật quyền truy cập", description = "Đổi quyền (VIEWER/EDITOR) cho một user cụ thể")
+    @PutMapping("/{id}/shares/{profileId}")
+    public ApiResponse<Void> updateSharePermission(
+            @PathVariable Long id,
+            @PathVariable UUID profileId,
+            @RequestParam SharePermission permission
+    ) {
+        deckService.updateSharePermission(id, profileId, permission);
+        return ApiResponse.ok(null, SuccessCode.UPDATE_ROLE_DECK_SUCCESS);
+    }
+
+    @Operation(summary = "Thu hồi quyền truy cập", description = "Xóa user khỏi danh sách chia sẻ")
+    @DeleteMapping("/{id}/shares/{profileId}")
+    public ApiResponse<Void> revokeShare(
+            @PathVariable Long id,
+            @PathVariable UUID profileId
+    ) {
+        deckService.revokeShare(id, profileId);
+        return ApiResponse.ok(null, SuccessCode.UPDATE_ROLE_DECK_SUCCESS);
     }
 }

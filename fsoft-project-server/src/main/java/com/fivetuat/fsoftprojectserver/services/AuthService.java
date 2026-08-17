@@ -31,4 +31,6 @@ public interface AuthService {
     void forgotPassword(ForgotPasswordRequest forgotPasswordRequest);
 
     void resetPassword(ResetPasswordRequest request);
+
+    Auth findByEmail(String email);
 }
