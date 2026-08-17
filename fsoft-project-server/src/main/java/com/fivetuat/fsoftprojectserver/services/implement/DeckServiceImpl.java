@@ -5,15 +5,18 @@ import com.fivetuat.fsoftprojectserver.dtos.request.DeckCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckUpdateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.ShareDeckRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.DeckResponse;
+import com.fivetuat.fsoftprojectserver.dtos.response.DeckShareResponse;
 import com.fivetuat.fsoftprojectserver.entities.*;
 import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.enums.FolderName;
+import com.fivetuat.fsoftprojectserver.enums.SharePermission;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.mappers.DeckMapper;
 import com.fivetuat.fsoftprojectserver.repositories.*;
 import com.fivetuat.fsoftprojectserver.services.AuthService;
 import com.fivetuat.fsoftprojectserver.services.DeckService;
+import com.fivetuat.fsoftprojectserver.services.ProfileService;
 import com.fivetuat.fsoftprojectserver.services.UploadService;
 import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
 import lombok.AccessLevel;
@@ -42,7 +45,7 @@ public class DeckServiceImpl implements DeckService {
     DeckMapper deckMapper;
     UploadService uploadService;
     CardRepository cardRepository;
-    ProfileRepository profileRepository;
+    ProfileService profileService;
     DeckShareRepository deckShareRepository;
 
     @Transactional
@@ -205,36 +208,49 @@ public class DeckServiceImpl implements DeckService {
     @Transactional
     @Override
     public void share(Long deckId, ShareDeckRequest request) {
-        Profile owner = authService.getCurrentProfile();
-
-        Deck deck = deckRepository.findByIdAndIsDeletedFalse(deckId)
-                .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
-
-        if (!deck.getProfile().getId().equals(owner.getId())) {
+        var owner = this.authService.getCurrentProfile();
+        var deck = this.getExistingDeck(deckId);
+        if (!deck.getProfile().getId().equals(owner.getId())){
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
-
-        if (request.getProfileId() == null || request.getProfileId().equals(owner.getId())) {
+        Profile recipient;
+        try {
+            recipient = this.profileService.getProfileByEmail(request.getEmail());
+        }catch (AppException appException) {
+            inviteNewUser(request.getEmail());
             return;
         }
-
-        if (deckShareRepository.existsByDeckIdAndProfileId(deck.getId(), request.getProfileId())) {
-            throw new AppException(ErrorCode.DECK_ALREADY_SHARED);
+        if (recipient.getId().equals(owner.getId())){
+            throw new AppException(ErrorCode.CANNOT_SHARE_WITH_YOURSELF);
         }
-
-        deck.setVisibility(DeckVisibility.SHARED);
-        deckRepository.save(deck);
-
-        Profile targetProfile = profileRepository.findById(request.getProfileId())
-                .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
-
-        DeckShare shareToSave = DeckShare.builder()
+//        if (this.deckShareRepository.existsByDeckIdAndProfileId(deckId, recipient.getId())){
+//            throw new AppException(ErrorCode.DECK_ALREADY_SHARED);
+//            // update la cap nhap lai quyen thay vi nem loi
+//        }
+        Optional<DeckShare> deckShareOtp = this.deckShareRepository.findByDeckIdAndProfileId(deckId, recipient.getId());
+        if (deckShareOtp.isPresent()){
+            var deckShare = deckShareOtp.get();
+            if (!deckShare.getPermission().equals(request.getPermission())){
+                deckShare.setPermission(request.getPermission());
+                this.deckShareRepository.save(deckShare);
+            }
+            return;
+        }
+        var deckShare = DeckShare.builder()
                 .deck(deck)
-                .profile(targetProfile)
+                .profile(recipient)
                 .permission(request.getPermission())
                 .build();
+        this.deckShareRepository.save(deckShare);
+        notificationUserShared(request.getEmail());
+    }
 
-        deckShareRepository.save(shareToSave);
+    private void inviteNewUser(String email){
+        // notification user register
+    }
+
+    private void notificationUserShared(String email){
+        // notification user shared
     }
 
     @Override
@@ -277,10 +293,10 @@ public class DeckServiceImpl implements DeckService {
                 Profile profile = authService.getCurrentProfile();
                 deckPage = deckRepository.findByProfileAndVisibilityAndIsDeletedFalse(profile, DeckVisibility.PRIVATE, pageable);
             }
-            case SHARED -> {
-                Profile profile = authService.getCurrentProfile();
-                deckPage = deckRepository.findSharedDecksByProfile(profile, pageable);
-            }
+//            case SHARED -> {
+//                Profile profile = authService.getCurrentProfile();
+//                deckPage = deckRepository.findSharedDecksByProfile(profile, pageable);
+//            }
             default -> {
                 deckPage = deckRepository.findByVisibilityAndIsDeletedFalse(DeckVisibility.PUBLIC, pageable);
             }
@@ -327,5 +343,63 @@ public class DeckServiceImpl implements DeckService {
     @Override
     public void save(Deck deck){
         deckRepository.save(deck);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<DeckShareResponse> getSharedUsers(Long deckId, Pageable pageable) {
+        Profile owner = authService.getCurrentProfile();
+        Deck deck = getExistingDeck(deckId);
+        if (!deck.getProfile().getId().equals(owner.getId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        Page<DeckShare> shares = deckShareRepository.findByDeckId(
+                deckId, pageable
+        );
+
+        return PageResponse.<DeckShareResponse>builder()
+                .pageNo(pageable.getPageNumber())
+                .pageSize(pageable.getPageSize())
+                .totalPages(shares.getTotalPages())
+                .totalElements(shares.getTotalElements())
+                .content(
+                        shares.stream().map(
+                                share -> DeckShareResponse.builder()
+                                        .profileId(share.getProfile().getId())
+                                        .email(share.getProfile().getAuth().getEmail())
+                                        .fullName(share.getProfile().getFullName())
+                                        .avatar(share.getProfile().getAvatar())
+                                        .permission(share.getPermission())
+                                        .build()
+                        ).collect(Collectors.toList())
+                )
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public void updateSharePermission(Long deckId, UUID profileId, SharePermission permission) {
+        Profile owner = authService.getCurrentProfile();
+        Deck deck = getExistingDeck(deckId);
+        if (!deck.getProfile().getId().equals(owner.getId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        DeckShare deckShare = deckShareRepository.findByDeckIdAndProfileId(deckId, profileId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        deckShare.setPermission(permission);
+        deckShareRepository.save(deckShare);
+    }
+
+    @Override
+    @Transactional
+    public void revokeShare(Long deckId, UUID profileId) {
+        Profile owner = authService.getCurrentProfile();
+        Deck deck = getExistingDeck(deckId);
+        if (!deck.getProfile().getId().equals(owner.getId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        DeckShare deckShare = deckShareRepository.findByDeckIdAndProfileId(deckId, profileId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        deckShareRepository.delete(deckShare);
     }
 }

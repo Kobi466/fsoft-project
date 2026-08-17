@@ -60,4 +60,11 @@ public class ProfileServiceImpl implements ProfileService {
         Profile savedProfile = profileRepository.save(profile);
         return profileMapper.toProfileUpdateResponse(savedProfile);
     }
+
+    @Override
+    public Profile getProfileByEmail(String email) {
+        return this.profileRepository.findByAuthEmail(email).orElseThrow(
+                () -> new AppException(ErrorCode.USER_NOT_FOUND)
+        );
+    }
 }

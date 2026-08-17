@@ -67,7 +67,9 @@ public enum SuccessCode {
     CARD_CHANGED_SINCE_SUCCESS(200, "Lấy danh sách thẻ đã thay đổi thành công", HttpStatus.OK),
     CARD_IDS_SUCCESS(200, "Lấy danh sách ID thẻ thành công", HttpStatus.OK),
     GET_STREAK_SUCCESS(200, "Lấy thông tin chuỗi ngày học thành công", HttpStatus.OK),
-    GET_ACTIVITIES_SUCCESS(200, "Lấy danh sách nhật ký hoạt động thành công", HttpStatus.OK);
+    GET_ACTIVITIES_SUCCESS(200, "Lấy danh sách nhật ký hoạt động thành công", HttpStatus.OK),
+    GET_SHARED_USERS_SUCCESS(200, "Lấy danh sách người được chia sẻ thành công", HttpStatus.OK),
+    UPDATE_ROLE_DECK_SUCCESS(200, "Cập nhật quyền truy cập thành công", HttpStatus.OK);
 
     final int status;
     final String message;

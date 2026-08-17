@@ -239,6 +239,12 @@ public class AuthServiceImpl implements AuthService {
         });
     }
 
+    @Override
+    public Auth findByEmail(String email) {
+        return authRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+
     private String generateOtp() {
         return new DecimalFormat("000000").format(new Random().nextInt(999999));
     }
