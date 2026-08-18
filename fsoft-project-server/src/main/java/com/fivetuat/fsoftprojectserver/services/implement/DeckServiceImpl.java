@@ -293,10 +293,6 @@ public class DeckServiceImpl implements DeckService {
                 Profile profile = authService.getCurrentProfile();
                 deckPage = deckRepository.findByProfileAndVisibilityAndIsDeletedFalse(profile, DeckVisibility.PRIVATE, pageable);
             }
-//            case SHARED -> {
-//                Profile profile = authService.getCurrentProfile();
-//                deckPage = deckRepository.findSharedDecksByProfile(profile, pageable);
-//            }
             default -> {
                 deckPage = deckRepository.findByVisibilityAndIsDeletedFalse(DeckVisibility.PUBLIC, pageable);
             }
@@ -431,5 +427,28 @@ public class DeckServiceImpl implements DeckService {
                 .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
 
         return deckMapper.toDeckResponse(deck);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<DeckResponse> getSharedWithMeDecks(int page, int size) {
+        Profile profile = authService.getCurrentProfile();
+        int pageNo = Math.max(1, page);
+        Pageable pageable = PageRequest.of(pageNo - 1, size);
+
+        Page<Deck> deckPage = deckRepository.findSharedDecksByProfile(profile, pageable);
+
+        List<DeckResponse> content = deckPage.getContent().stream()
+                .map(deckMapper::toDeckResponse)
+                .toList();
+
+        return PageResponse.<DeckResponse>builder()
+                .pageNo(pageNo)
+                .pageSize(size)
+                .totalPages(deckPage.getTotalPages())
+                .totalElements(deckPage.getTotalElements())
+                .content(content)
+                .last(deckPage.isLast())
+                .build();
     }
 }

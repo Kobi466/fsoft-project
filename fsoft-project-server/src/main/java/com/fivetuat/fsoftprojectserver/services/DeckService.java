@@ -37,4 +37,5 @@ public interface DeckService {
 
     DeckResponse toggleShareLink(Long deckId);
     DeckResponse getDeckByShareToken(String shareToken);
+    PageResponse<DeckResponse> getSharedWithMeDecks(int page, int size);
 }

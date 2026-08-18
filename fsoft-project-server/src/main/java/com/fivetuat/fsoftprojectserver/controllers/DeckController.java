@@ -176,4 +176,13 @@ public class DeckController {
         DeckResponse response = deckService.getDeckByShareToken(shareToken);
         return ApiResponse.ok(response, SuccessCode.GET_DECK_SUCCESS);
     }
+
+    @Operation(summary = "Lấy danh sách bộ thẻ được chia sẻ với tôi", description = "Lấy danh sách các bộ thẻ do người khác chia sẻ cho tôi")
+    @GetMapping("/shared-with-me")
+    public ApiResponse<PageResponse<DeckResponse>> getSharedWithMeDecks(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.ok(deckService.getSharedWithMeDecks(page, size), SuccessCode.GET_DECKS_SUCCESS);
+    }
 }
