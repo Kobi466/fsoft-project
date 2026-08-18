@@ -1,28 +1,12 @@
 package com.fivetuat.fsoftprojectserver.services.implement;
 
-import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
-import com.fivetuat.fsoftprojectserver.dtos.request.DeckCreateRequest;
-import com.fivetuat.fsoftprojectserver.dtos.request.DeckUpdateRequest;
-import com.fivetuat.fsoftprojectserver.dtos.request.ShareDeckRequest;
-import com.fivetuat.fsoftprojectserver.dtos.response.DeckResponse;
-import com.fivetuat.fsoftprojectserver.dtos.response.DeckShareResponse;
-import com.fivetuat.fsoftprojectserver.entities.*;
-import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
-import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
-import com.fivetuat.fsoftprojectserver.enums.FolderName;
-import com.fivetuat.fsoftprojectserver.enums.SharePermission;
-import com.fivetuat.fsoftprojectserver.exceptions.AppException;
-import com.fivetuat.fsoftprojectserver.mappers.DeckMapper;
-import com.fivetuat.fsoftprojectserver.repositories.*;
-import com.fivetuat.fsoftprojectserver.services.AuthService;
-import com.fivetuat.fsoftprojectserver.services.DeckService;
-import com.fivetuat.fsoftprojectserver.services.ProfileService;
-import com.fivetuat.fsoftprojectserver.services.UploadService;
-import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
-import lombok.extern.slf4j.Slf4j;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -30,8 +14,38 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
+import com.fivetuat.fsoftprojectserver.dtos.request.DeckCreateRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.DeckUpdateRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.ShareDeckRequest;
+import com.fivetuat.fsoftprojectserver.dtos.response.DeckResponse;
+import com.fivetuat.fsoftprojectserver.dtos.response.DeckShareResponse;
+import com.fivetuat.fsoftprojectserver.entities.Card;
+import com.fivetuat.fsoftprojectserver.entities.Deck;
+import com.fivetuat.fsoftprojectserver.entities.DeckShare;
+import com.fivetuat.fsoftprojectserver.entities.Profile;
+import com.fivetuat.fsoftprojectserver.entities.Tag;
+import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
+import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
+import com.fivetuat.fsoftprojectserver.enums.FolderName;
+import com.fivetuat.fsoftprojectserver.enums.SharePermission;
+import com.fivetuat.fsoftprojectserver.exceptions.AppException;
+import com.fivetuat.fsoftprojectserver.mappers.DeckMapper;
+import com.fivetuat.fsoftprojectserver.repositories.CardRepository;
+import com.fivetuat.fsoftprojectserver.repositories.DeckRepository;
+import com.fivetuat.fsoftprojectserver.repositories.DeckShareRepository;
+import com.fivetuat.fsoftprojectserver.repositories.TagRepository;
+import com.fivetuat.fsoftprojectserver.services.AuthService;
+import com.fivetuat.fsoftprojectserver.services.DeckService;
+import com.fivetuat.fsoftprojectserver.services.NotificationService;
+import com.fivetuat.fsoftprojectserver.services.ProfileService;
+import com.fivetuat.fsoftprojectserver.services.UploadService;
+import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
+
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
@@ -47,6 +61,7 @@ public class DeckServiceImpl implements DeckService {
     CardRepository cardRepository;
     ProfileService profileService;
     DeckShareRepository deckShareRepository;
+    NotificationService notificationService;
 
     @Transactional
     @Override
@@ -213,44 +228,59 @@ public class DeckServiceImpl implements DeckService {
         if (!deck.getProfile().getId().equals(owner.getId())){
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
+
+        String ownerName = (owner.getFullName() != null && !owner.getFullName().isBlank())
+                ? owner.getFullName()
+                : owner.getAuth().getEmail();
+
         Profile recipient;
         try {
             recipient = this.profileService.getProfileByEmail(request.getEmail());
-        }catch (AppException appException) {
-            inviteNewUser(request.getEmail());
+        } catch (AppException appException) {
+            inviteNewUser(request.getEmail(), ownerName, deck.getTitle());
             return;
         }
+
         if (recipient.getId().equals(owner.getId())){
             throw new AppException(ErrorCode.CANNOT_SHARE_WITH_YOURSELF);
         }
-//        if (this.deckShareRepository.existsByDeckIdAndProfileId(deckId, recipient.getId())){
-//            throw new AppException(ErrorCode.DECK_ALREADY_SHARED);
-//            // update la cap nhap lai quyen thay vi nem loi
-//        }
+
+        String recipientName = (recipient.getFullName() != null && !recipient.getFullName().isBlank())
+                ? recipient.getFullName()
+                : recipient.getAuth().getEmail();
+
+        String permissionStr = request.getPermission() == SharePermission.EDIT
+                ? "Xem và Chỉnh sửa"
+                : "Xem bài học";
+
         Optional<DeckShare> deckShareOtp = this.deckShareRepository.findByDeckIdAndProfileId(deckId, recipient.getId());
         if (deckShareOtp.isPresent()){
             var deckShare = deckShareOtp.get();
             if (!deckShare.getPermission().equals(request.getPermission())){
                 deckShare.setPermission(request.getPermission());
                 this.deckShareRepository.save(deckShare);
+                notificationUserShared(request.getEmail(), recipientName, ownerName, deck.getTitle(), permissionStr);
             }
             return;
         }
+
         var deckShare = DeckShare.builder()
                 .deck(deck)
                 .profile(recipient)
                 .permission(request.getPermission())
                 .build();
         this.deckShareRepository.save(deckShare);
-        notificationUserShared(request.getEmail());
+        notificationUserShared(request.getEmail(), recipientName, ownerName, deck.getTitle(), permissionStr);
     }
 
-    private void inviteNewUser(String email){
-        // notification user register
+    private void inviteNewUser(String email, String ownerName, String deckTitle){
+        log.info("Inviting unregistered user {} to deck '{}' owned by {}", email, deckTitle, ownerName);
+        notificationService.sendDeckInviteEmail(email, ownerName, deckTitle);
     }
 
-    private void notificationUserShared(String email){
-        // notification user shared
+    private void notificationUserShared(String email, String recipientName, String ownerName, String deckTitle, String permission){
+        log.info("Notifying registered user {} ({}) about deck '{}' shared by {}", recipientName, email, deckTitle, ownerName);
+        notificationService.sendDeckSharedEmail(email, recipientName, ownerName, deckTitle, permission);
     }
 
     @Override

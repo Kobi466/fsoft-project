@@ -239,12 +239,6 @@ public class AuthServiceImpl implements AuthService {
         });
     }
 
-    @Override
-    public Auth findByEmail(String email) {
-        return authRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-    }
-
     private String generateOtp() {
         return new DecimalFormat("000000").format(new Random().nextInt(999999));
     }
@@ -332,5 +326,11 @@ public class AuthServiceImpl implements AuthService {
         roles.add(roleService.getRoleByName(Roles.ADMIN.name()));
         auth.setRoles(roles);
         authRepository.save(auth);
+    }
+
+    @Override
+    public Auth findByEmail(String email) {
+        return this.authRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
     }
 }
