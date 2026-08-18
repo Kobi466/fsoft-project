@@ -370,6 +370,23 @@ public class DeckServiceImpl implements DeckService {
     }
 
     @Override
+    public Deck getDeckWithEditPermission(Long id) {
+        Deck deck = this.getExistingDeck(id);
+        Profile currentProfile = authService.getCurrentProfile();
+
+        boolean isOwner = deck.getProfile().getId().equals(currentProfile.getId());
+        boolean hasEditPermission = deckShareRepository.findByDeckIdAndProfileId(id, currentProfile.getId())
+                .map(share -> share.getPermission() == SharePermission.EDIT)
+                .orElse(false);
+
+        if (!isOwner && !hasEditPermission) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
+        return deck;
+    }
+
+    @Override
     public void save(Deck deck){
         deckRepository.save(deck);
     }

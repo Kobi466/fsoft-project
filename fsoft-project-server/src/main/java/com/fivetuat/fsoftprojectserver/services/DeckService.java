@@ -29,6 +29,7 @@ public interface DeckService {
     PageResponse<DeckResponse> getPublicDecks(int page, int size, String keyword, Long tagId, String sourceLang, String targetLang);
     PageResponse<DeckResponse> getDecksByStatus(DeckVisibility status, int page, int size);
     Deck getMyDeck(Long id);
+    Deck getDeckWithEditPermission(Long id);
     void save(Deck deck);
 
     PageResponse<DeckShareResponse> getSharedUsers(Long deckId, Pageable pageable);

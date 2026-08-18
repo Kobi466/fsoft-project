@@ -54,7 +54,7 @@ public class CardServiceImpl implements CardService {
             MultipartFile audioFile
     ) {
         log.info("Creating card for deckId {} with word: {}", deckId, request.getWord());
-        var deck = this.deckService.getMyDeck(deckId);
+        var deck = this.deckService.getDeckWithEditPermission(deckId);
         Card card = cardMapper.toCard(request);
         card.setDeck(deck);
 
@@ -120,7 +120,7 @@ public class CardServiceImpl implements CardService {
         log.info("Deleting card ID: {}", cardId);
 
         Card card = getCardWithOwnerCheck(cardId);
-        Deck deck = this.deckService.getMyDeck(card.getDeck().getId());
+        Deck deck = this.deckService.getDeckWithEditPermission(card.getDeck().getId());
 
         cardRepository.delete(card);
 
@@ -134,7 +134,7 @@ public class CardServiceImpl implements CardService {
     @Transactional
     public void updateCardPositions(Long deckId, List<CardPositionRequest> requests) {
         log.info("Updating card position for deck ID: {}", deckId);
-        this.deckService.getMyDeck(deckId);
+        this.deckService.getDeckWithEditPermission(deckId);
         Map<Long, Integer> positionMap = requests.stream()
                 .collect(Collectors.toMap(CardPositionRequest::getCardId, CardPositionRequest::getNewPosition));
         List<Card> listCard = this.cardRepository.findAllById(positionMap.keySet());
@@ -149,7 +149,7 @@ public class CardServiceImpl implements CardService {
     private Card getCardWithOwnerCheck(Long cardId){
         Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new AppException(ErrorCode.CARD_NOT_FOUND));
-        this.deckService.getMyDeck(card.getDeck().getId());
+        this.deckService.getDeckWithEditPermission(card.getDeck().getId());
         return card;
     }
 }

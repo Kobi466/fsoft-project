@@ -51,7 +51,7 @@ notification:
       name: ${NOTIFICATION_EMAIL_SENDER_NAME:FSoft Flashcards}
       email: ${NOTIFICATION_EMAIL_SENDER_EMAIL}
 fsoft-ai:
-  backend-token: ${FSOFT_AI_BACKEND_TOKEN}
+  backend-token: ${FSOFT_AI_BACKEND_TOKEN:internal-secret-token}
 
 logging:
   level:
@@ -63,6 +63,3 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: alpha
     tags-sorter: alpha
-
-fsoft-ai:
-  backend-token: ${FSOFT_AI_BACKEND_TOKEN:internal-secret-token}
