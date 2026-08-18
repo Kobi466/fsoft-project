@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Lời mời tham gia học từ vựng trên FSoft Flashcards</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 30px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);">
+        <h2 style="color: #28a745; text-align: center; margin-bottom: 25px; font-size: 24px; font-weight: 700;">Bạn có một Lời Mời Học Từ Vựng!</h2>
+        
+        <p style="font-size: 16px; line-height: 1.6; color: #333333;">Xin chào,</p>
+        
+        <p style="font-size: 16px; line-height: 1.6; color: #333333;">
+            Người dùng <strong style="color: #007bff;" th:text="${ownerName}">Chủ bộ thẻ</strong> vừa gửi cho bạn một lời mời học bộ từ vựng 
+            <strong style="color: #28a745;" th:text="${deckTitle}">Tên bộ thẻ</strong> trên nền tảng <strong>FSoft Flashcards</strong>.
+        </p>
+        
+        <p style="font-size: 16px; line-height: 1.6; color: #333333;">
+            Do địa chỉ email này chưa đăng ký tài khoản trên hệ thống của chúng tôi, bạn vui lòng tạo tài khoản mới để nhận và bắt đầu học bộ thẻ này nhé!
+        </p>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="#" 
+               style="background-color: #28a745; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+               Đăng Ký Tài Khoản Ngay
+            </a>
+        </div>
+        
+        <div style="margin: 30px 0; border-top: 1px solid #eeeeee; padding-top: 20px;">
+            <p style="font-size: 14px; line-height: 1.6; color: #777777; text-align: center; margin: 0;">
+                Đây là email tự động từ hệ thống. Vui lòng không trả lời thư này.
+            </p>
+        </div>
+
+        <p style="margin-top: 30px; font-size: 16px; color: #555555; line-height: 1.6;">
+            Trân trọng,<br/>
+            <strong style="color: #333333;">Đội ngũ phát triển FSoft Flashcards</strong>
+        </p>
+    </div>
+</body>
+</html>

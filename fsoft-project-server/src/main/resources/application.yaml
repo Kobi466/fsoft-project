@@ -63,3 +63,6 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: alpha
     tags-sorter: alpha
+
+fsoft-ai:
+  backend-token: ${FSOFT_AI_BACKEND_TOKEN:internal-secret-token}
