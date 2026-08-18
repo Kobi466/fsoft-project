@@ -73,7 +73,7 @@ public class DeckServiceImpl implements DeckService {
         return deckMapper.toDeckResponse(deck);
     }
 
-    // View public deck or my deck
+    // View public deck, my deck, or shared deck
     @Override
     @Transactional(readOnly = true)
     public DeckResponse getDeck(Long id) {
@@ -81,8 +81,11 @@ public class DeckServiceImpl implements DeckService {
 
         if (deck.getVisibility() == DeckVisibility.PRIVATE) {
             Profile currentProfile = authService.getCurrentProfile();
-            if (!deck.getProfile().getId().equals(currentProfile.getId())) {
-                throw new AppException(ErrorCode.UNAUTHORIZED);
+            boolean isOwner = deck.getProfile().getId().equals(currentProfile.getId());
+            boolean isShared = deckShareRepository.existsByDeckIdAndProfileId(id, currentProfile.getId());
+
+            if (!isOwner && !isShared) {
+                throw new AppException(ErrorCode.ACCESS_DENIED);
             }
         }
 
@@ -122,7 +125,7 @@ public class DeckServiceImpl implements DeckService {
         Profile currentProfile = authService.getCurrentProfile();
 
         if (!deck.getProfile().getId().equals(currentProfile.getId())) {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
+            throw new AppException(ErrorCode.ACCESS_DENIED);
         }
         deck.setVisibility(deckVisibility);
         deckRepository.save(deck);
@@ -134,7 +137,7 @@ public class DeckServiceImpl implements DeckService {
 
         Profile currentProfile = authService.getCurrentProfile();
         if (!deck.getProfile().getId().equals(currentProfile.getId())) {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
+            throw new AppException(ErrorCode.ACCESS_DENIED);
         }
         deck.setDeleted(true);
         deckRepository.save(deck);
@@ -211,7 +214,7 @@ public class DeckServiceImpl implements DeckService {
         var owner = this.authService.getCurrentProfile();
         var deck = this.getExistingDeck(deckId);
         if (!deck.getProfile().getId().equals(owner.getId())){
-            throw new AppException(ErrorCode.UNAUTHORIZED);
+            throw new AppException(ErrorCode.ACCESS_DENIED);
         }
         Profile recipient;
         try {
@@ -347,7 +350,7 @@ public class DeckServiceImpl implements DeckService {
         Profile owner = authService.getCurrentProfile();
         Deck deck = getExistingDeck(deckId);
         if (!deck.getProfile().getId().equals(owner.getId())) {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
+            throw new AppException(ErrorCode.ACCESS_DENIED);
         }
         Page<DeckShare> shares = deckShareRepository.findByDeckId(
                 deckId, pageable
@@ -378,7 +381,7 @@ public class DeckServiceImpl implements DeckService {
         Profile owner = authService.getCurrentProfile();
         Deck deck = getExistingDeck(deckId);
         if (!deck.getProfile().getId().equals(owner.getId())) {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
+            throw new AppException(ErrorCode.ACCESS_DENIED);
         }
         DeckShare deckShare = deckShareRepository.findByDeckIdAndProfileId(deckId, profileId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -392,7 +395,7 @@ public class DeckServiceImpl implements DeckService {
         Profile owner = authService.getCurrentProfile();
         Deck deck = getExistingDeck(deckId);
         if (!deck.getProfile().getId().equals(owner.getId())) {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
+            throw new AppException(ErrorCode.ACCESS_DENIED);
         }
         DeckShare deckShare = deckShareRepository.findByDeckIdAndProfileId(deckId, profileId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -406,7 +409,7 @@ public class DeckServiceImpl implements DeckService {
         Deck deck = getExistingDeck(deckId);
 
         if (!deck.getProfile().getId().equals(owner.getId())) {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
+            throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
         boolean newState = !deck.isShareLinkEnabled();
