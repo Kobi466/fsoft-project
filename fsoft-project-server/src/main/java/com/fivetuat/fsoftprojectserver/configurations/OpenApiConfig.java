@@ -11,38 +11,44 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class OpenApiConfig {
-	@Bean
-	public OpenAPI customOpenAPI() {
-		return new OpenAPI()
-				.info(new Info()
-						.title("Community Response Platform API")
-						.version("1.0")
-						.description("Tài liệu hướng dẫn tích hợp các API cho hệ thống Community Response Platform")
-						.license(
-								new License()
-										.name("Apache 2.0")
-										.url("http://springdoc.org")
-						)
-				)
-				.addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
-				.components(
-						new Components()
-								.addSecuritySchemes("bearerAuth",
-										new SecurityScheme()
-												.name("bearerAuth")
-												.type(SecurityScheme.Type.HTTP)
-												.scheme("bearer")
-												.bearerFormat("JWT")
-												.in(SecurityScheme.In.HEADER)
-												.description("Nhập Bearer token")
-								)
-								.addSecuritySchemes("internalToken",
-										new SecurityScheme()
-												.name("X-Internal-Token")
-												.type(SecurityScheme.Type.APIKEY)
-												.in(SecurityScheme.In.HEADER)
-												.description("Nhập mã bí mật X-Internal-Token dành riêng cho các API của fsoft-ai")
-								)
-				);
-	}
+    @Bean
+    public OpenAPI customOpenAPI() {
+        return new OpenAPI()
+                .info(apiInfo())
+                .components(apiComponents())
+                .addSecurityItem(new SecurityRequirement().addList("bearerAuth"));
+    }
+
+    private Info apiInfo() {
+        return new Info()
+                .title("Fsoft Project API Documentation")
+                .version("1.0.0")
+                .description("Tài liệu mô tả chi tiết các API của hệ thống Fsoft Project.")
+                .license(
+                        new License()
+                                .name("Apache 2.0")
+                                .url("https://www.apache.org/licenses/LICENSE-2.0.html")
+                );
+    }
+
+
+    private Components apiComponents() {
+        return new Components()
+                .addSecuritySchemes("bearerAuth",
+                        new SecurityScheme()
+                                .name("bearerAuth")
+                                .type(SecurityScheme.Type.HTTP)
+                                .scheme("bearer")
+                                .bearerFormat("JWT")
+                                .in(SecurityScheme.In.HEADER)
+                                .description("Nhập Access Token (JWT) để xác thực. (Giao diện Swagger đã tự động thêm tiền tố 'Bearer ', bạn chỉ cần nhập chuỗi token).")
+                )
+                .addSecuritySchemes("internalToken",
+                        new SecurityScheme()
+                                .name("X-Internal-Token")
+                                .type(SecurityScheme.Type.APIKEY)
+                                .in(SecurityScheme.In.HEADER)
+                                .description("Nhập mã bí mật X-Internal-Token dành riêng cho việc giao tiếp nội bộ giữa các microservices (như fsoft-ai).")
+                );
+    }
 }

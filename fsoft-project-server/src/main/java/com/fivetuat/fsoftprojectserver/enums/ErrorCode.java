@@ -45,7 +45,10 @@ public enum ErrorCode {
     MEANING_REQUIRED(422, "Meaning is required", HttpStatus.BAD_REQUEST),
     DECK_ID_REQUIRED(423, "Deck ID is required", HttpStatus.BAD_REQUEST),
     TAG_NAME_EXISTS(425, "Tag name already exists", HttpStatus.BAD_REQUEST),
-    CANNOT_SHARE_WITH_YOURSELF(426, "Cannot share with yourself", HttpStatus.BAD_REQUEST);
+    CANNOT_SHARE_WITH_YOURSELF(426, "Cannot share with yourself", HttpStatus.BAD_REQUEST), 
+    AI_SEARCH_ERROR(428, "Lỗi tìm kiếm AI", HttpStatus.INTERNAL_SERVER_ERROR),
+    AI_CHAT_ERROR(429, "Lỗi hỏi đáp AI", HttpStatus.INTERNAL_SERVER_ERROR),
+    AI_QUIZ_ERROR(430, "Lỗi sinh bài tập AI", HttpStatus.INTERNAL_SERVER_ERROR);
 
     int status;
     String message;

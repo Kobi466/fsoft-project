@@ -1,8 +1,8 @@
 package com.fivetuat.fsoftprojectserver.configurations;
 
 import com.fivetuat.fsoftprojectserver.httpsClients.BrevoEmailClient;
-import com.fivetuat.fsoftprojectserver.httpClients.GoogleOauth2Client;
-import com.fivetuat.fsoftprojectserver.httpClients.GoogleUserInfoClient;
+import com.fivetuat.fsoftprojectserver.httpsClients.GoogleOauth2Client;
+import com.fivetuat.fsoftprojectserver.httpsClients.GoogleUserInfoClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,12 +10,19 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.support.WebClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
+import com.fivetuat.fsoftprojectserver.httpsClients.AiClient;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import reactor.netty.http.client.HttpClient;
+import java.time.Duration;
 
 @Configuration
 public class WebClientConfiguration {
 
 	@Value("${notification.email.url}")
 	private String brevoUrl;
+
+	@Value("${fsoft-ai.url}")
+	private String aiUrl;
 
 	@Bean
 	public WebClient.Builder webClient(){
@@ -50,5 +57,21 @@ public class WebClientConfiguration {
 				.builderFor(WebClientAdapter.create(webClient))
 				.build();
 		return factory.createClient(BrevoEmailClient.class);
+	}
+
+	@Bean
+	public AiClient aiClient() {
+		HttpClient httpClient = HttpClient.create()
+				.responseTimeout(Duration.ofSeconds(65));
+
+		WebClient webClient = WebClient.builder()
+				.baseUrl(aiUrl)
+				.clientConnector(new ReactorClientHttpConnector(httpClient))
+				.build();
+
+		HttpServiceProxyFactory factory = HttpServiceProxyFactory
+				.builderFor(WebClientAdapter.create(webClient))
+				.build();
+		return factory.createClient(AiClient.class);
 	}
 }

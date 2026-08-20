@@ -47,7 +47,7 @@ public class UserCardSrs {
     LocalDateTime lastReviewedAt;
 
     @Column(name = "next_review_date", nullable = false)
-    LocalDate nextReviewDate;
+    LocalDateTime nextReviewDate;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;

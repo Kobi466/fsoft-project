@@ -26,6 +26,13 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      base-url: https://api.groq.com/openai/v1
+      chat:
+        model: openai/gpt-oss-120b
+
 aws:
     region: ${AWS_REGION}
     access-key: ${AWS_ACCESS_KEY}
@@ -50,8 +57,6 @@ notification:
     sender:
       name: ${NOTIFICATION_EMAIL_SENDER_NAME:FSoft Flashcards}
       email: ${NOTIFICATION_EMAIL_SENDER_EMAIL}
-fsoft-ai:
-  backend-token: ${FSOFT_AI_BACKEND_TOKEN:internal-secret-token}
 
 logging:
   level:
@@ -63,3 +68,8 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: alpha
     tags-sorter: alpha
+
+fsoft-ai:
+  url: ${FSOFT_AI_URL}
+  internal-token: ${FSOFT_AI_INTERNAL_TOKEN}
+  backend-token: ${FSOFT_AI_BACKEND_TOKEN}

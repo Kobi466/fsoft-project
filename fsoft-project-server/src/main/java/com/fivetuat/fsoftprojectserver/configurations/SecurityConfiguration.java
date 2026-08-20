@@ -3,6 +3,7 @@ package com.fivetuat.fsoftprojectserver.configurations;
 import java.util.Arrays;
 import java.util.List;
 
+import com.fivetuat.fsoftprojectserver.filters.InternalTokenFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -49,7 +50,8 @@ public class SecurityConfiguration {
             "/v3/api-docs/**",
             "/api-docs/**",
             "/decks/public",
-            "/actuator/health"
+            "/actuator/health",
+            "/api/chat-ai/test",
     };
 
     CustomJwtDecoder customJwtDecoder;

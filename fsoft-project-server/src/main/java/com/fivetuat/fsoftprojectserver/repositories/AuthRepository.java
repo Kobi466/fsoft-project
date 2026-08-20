@@ -17,5 +17,4 @@ public interface AuthRepository extends JpaRepository<Auth, UUID> {
 
     Optional<Auth> findById(UUID id);
 
-    Page<Auth> findAllByRoles_Name(String roleName, Pageable pageable);
 }
