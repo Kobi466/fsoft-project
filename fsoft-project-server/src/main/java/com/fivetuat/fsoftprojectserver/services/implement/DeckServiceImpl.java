@@ -88,12 +88,10 @@ public class DeckServiceImpl implements DeckService {
         return deckMapper.toDeckResponse(deck);
     }
 
-    // View public deck, my deck, or shared deck
     @Override
     @Transactional(readOnly = true)
     public DeckResponse getDeck(Long id) {
         Deck deck = this.getExistingDeck(id);
-
         if (deck.getVisibility() == DeckVisibility.PRIVATE) {
             Profile currentProfile = authService.getCurrentProfile();
             boolean isOwner = deck.getProfile().getId().equals(currentProfile.getId());
