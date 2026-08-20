@@ -44,7 +44,7 @@ public enum SuccessCode {
     DELETE_ACCOUNT_SUCCESS(200, "Xóa tài khoản thành công", HttpStatus.OK),
     FORGOT_PASSWORD_SUCCESS(200, "Gửi mã OTP thành công", HttpStatus.OK),
     RESET_PASSWORD_SUCCESS(200, "Đặt lại mật khẩu thành công", HttpStatus.OK),
-    GENERATED_QUIZ_SUCCESS(200, "", HttpStatus.OK),
+    GENERATED_QUIZ_SUCCESS(200, "Tạo bài kiểm tra thành công", HttpStatus.OK),
     CREATED_EMERGENCY_SUCCESS(200, "Tạo yêu cầu khẩn cấp thành công", HttpStatus.OK),
     GET_NEARBY_SUCCESS(200, "Lấy danh sách yêu cầu khẩn cấp gần nhất thành công", HttpStatus.OK),
     CREATE_DECK_SUCCESS(201, "Tạo bộ thẻ thành công", HttpStatus.CREATED),
@@ -69,8 +69,8 @@ public enum SuccessCode {
     GET_STREAK_SUCCESS(200, "Lấy thông tin chuỗi ngày học thành công", HttpStatus.OK),
     GET_ACTIVITIES_SUCCESS(200, "Lấy danh sách nhật ký hoạt động thành công", HttpStatus.OK),
     GET_SHARED_USERS_SUCCESS(200, "Lấy danh sách người được chia sẻ thành công", HttpStatus.OK),
-    UPDATE_ROLE_DECK_SUCCESS(200, "Cập nhật quyền truy cập thành công", HttpStatus.OK);
-
+    UPDATE_ROLE_DECK_SUCCESS(200, "Cập nhật quyền truy cập thành công", HttpStatus.OK),
+    REVIEW_CARD_SUCCESS(200, "Đánh giá thẻ ghi nhớ thành công", HttpStatus.OK);
     final int status;
     final String message;
     final HttpStatus httpStatus;

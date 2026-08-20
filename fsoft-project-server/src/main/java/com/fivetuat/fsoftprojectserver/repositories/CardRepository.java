@@ -2,6 +2,7 @@ package com.fivetuat.fsoftprojectserver.repositories;
 
 import com.fivetuat.fsoftprojectserver.entities.Card;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -11,11 +12,14 @@ import org.springframework.stereotype.Repository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface CardRepository extends JpaRepository<Card, Long> {
     List<Card> findByDeckId(Long deckId);
     Page<Card> findByDeckIdOrderByPositionAsc(Long deckId, Pageable pageable);
+
+    List<Card> findByDeckIdOrderByPositionAsc(Long deckId);
 
     @Query(
             value = "select coalesce(max(position), 0) from cards where deck_id = :deckId",

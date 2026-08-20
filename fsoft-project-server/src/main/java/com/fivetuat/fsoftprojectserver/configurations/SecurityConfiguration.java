@@ -3,6 +3,7 @@ package com.fivetuat.fsoftprojectserver.configurations;
 import java.util.Arrays;
 import java.util.List;
 
+import com.fivetuat.fsoftprojectserver.filters.InternalTokenFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;

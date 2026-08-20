@@ -1,8 +1,8 @@
 package com.fivetuat.fsoftprojectserver.configurations;
 
 import com.fivetuat.fsoftprojectserver.httpsClients.BrevoEmailClient;
-import com.fivetuat.fsoftprojectserver.httpClients.GoogleOauth2Client;
-import com.fivetuat.fsoftprojectserver.httpClients.GoogleUserInfoClient;
+import com.fivetuat.fsoftprojectserver.httpsClients.GoogleOauth2Client;
+import com.fivetuat.fsoftprojectserver.httpsClients.GoogleUserInfoClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

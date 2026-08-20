@@ -254,7 +254,7 @@ public class TestDataInitConfig implements ApplicationRunner {
     private void seedSrsForFamilyDeck(Profile owner, Deck deck) {
         List<Card> cards = deck.getCards();
         LocalDateTime now = LocalDateTime.now();
-        LocalDate today = LocalDate.now();
+        LocalDateTime today = LocalDateTime.now();
 
         // card 0 (mother): NEW - chưa ôn lần nào, đến hạn ngay hôm nay
         userCardSrsRepository.save(UserCardSrs.builder()

@@ -1,4 +1,4 @@
-package com.fivetuat.fsoftprojectserver.configurations;
+package com.fivetuat.fsoftprojectserver.filters;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
@@ -23,7 +23,7 @@ public class InternalTokenFilter extends OncePerRequestFilter {
     private String backendToken;
 
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+    protected boolean shouldNotFilter(HttpServletRequest request) {
         // chỉ chạy filter này cho các API nội bộ
         String path = request.getServletPath();
         return !path.startsWith("/internal/");

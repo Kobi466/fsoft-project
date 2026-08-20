@@ -65,4 +65,38 @@ public class ProgressServiceImpl implements ProgressService {
 
         return userActivityMapper.toUserActivityResponseList(activities);
     }
+
+    @Override
+    public void updateUserActivityAndStreak(Profile profile, LocalDate activityDate) {
+//        log.info("Updating activity and streak for profile: {} on date: {}", profile.getId(), activityDate);
+//
+//        UserActivity activity = userActivityRepository.findByProfileIdAndActivityDate(profile.getId(), activityDate)
+//                .orElseGet(() -> UserActivity.builder()
+//                        .profile(profile)
+//                        .activityDate(activityDate)
+//                        .cardsReviewedCount(0)
+//                        .quizzesCompletedCount(0)
+//                        .build());
+//        activity.setCardsReviewedCount(activity.getCardsReviewedCount() + 1);
+//        userActivityRepository.save(activity);
+//        UserStreak streak = userStreakRepository.findByProfileId(profile.getId())
+//                .orElseGet(() -> UserStreak.builder()
+//                        .profile(profile)
+//                        .currentStreak(0)
+//                        .longestStreak(0)
+//                        .build());
+//        LocalDate lastActive = streak.getLastActiveDate();
+//        if (lastActive == null) {
+//            streak.setCurrentStreak(1);
+//        } else if (lastActive.equals(activityDate.minusDays(1))) {
+//            streak.setCurrentStreak(streak.getCurrentStreak() + 1);
+//        } else if (!lastActive.equals(activityDate)) {
+//            streak.setCurrentStreak(1);
+//        }
+//        if (streak.getCurrentStreak() > streak.getLongestStreak()) {
+//            streak.setLongestStreak(streak.getCurrentStreak());
+//        }
+//        streak.setLastActiveDate(activityDate);
+//        userStreakRepository.save(streak);
+    }
 }

@@ -1,4 +1,4 @@
-package com.fivetuat.fsoftprojectserver.httpClients;
+package com.fivetuat.fsoftprojectserver.httpsClients;
 
 import com.fivetuat.fsoftprojectserver.dtos.response.ExchangeTokenResponse;
 import org.springframework.http.MediaType;
