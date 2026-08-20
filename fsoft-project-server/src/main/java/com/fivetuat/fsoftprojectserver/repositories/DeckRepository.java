@@ -45,4 +45,6 @@ public interface DeckRepository extends JpaRepository<Deck, Long> {
     );
 
     Optional<Deck> findByShareTokenAndIsShareLinkEnabledTrueAndIsDeletedFalse(String shareToken);
+    
+    List<Long> findAllAccessibleDeckIdsByProfileId(UUID currentUserId);
 }

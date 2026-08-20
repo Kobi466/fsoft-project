@@ -50,7 +50,8 @@ public class SecurityConfiguration {
             "/v3/api-docs/**",
             "/api-docs/**",
             "/decks/public",
-            "/actuator/health"
+            "/actuator/health",
+            "/api/chat-ai/test",
     };
 
     CustomJwtDecoder customJwtDecoder;
