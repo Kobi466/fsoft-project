@@ -3,9 +3,9 @@ package com.fivetuat.fsoftprojectserver.controllers;
 
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.SrsReviewRequest;
-import com.fivetuat.fsoftprojectserver.dtos.response.SrsCardResponse;
+import com.fivetuat.fsoftprojectserver.dtos.response.ReviewCardResponse;
 import com.fivetuat.fsoftprojectserver.enums.SuccessCode;
-import com.fivetuat.fsoftprojectserver.services.SrsService;
+import com.fivetuat.fsoftprojectserver.services.ReviewCardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,16 +22,16 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "Card SRS Controller", description = "Quản lý hệ thống học lặp lại ngắt quãng (Spaced Repetition System) cho thẻ học")
-public class CardSrsController {
+public class ReviewCardController {
 
-    SrsService srsService;
+    ReviewCardService srsService;
 
 	@Operation(
         summary = "Lấy danh sách thẻ cần học/ôn tập", 
         description = "Truy xuất danh sách các thẻ bài đang nằm trong hàng đợi SRS (đã đến hạn ôn tập hoặc thẻ bài mới học). Có thể lọc theo một bộ thẻ cụ thể."
     )
     @GetMapping("/study-queue")
-    public ApiResponse<List<SrsCardResponse>> getStudyQueue(
+    public ApiResponse<List<ReviewCardResponse>> getStudyQueue(
 		    @Parameter(description = "Lọc thẻ theo bộ thẻ (bỏ trống nếu muốn lấy tất cả)") @RequestParam(value = "deckId", required = false) Long deckId,
 			@Parameter(description = "Số lượng thẻ tối đa trả về") @RequestParam(value = "limit", required = false, defaultValue = "20") int limit
     ) {
@@ -43,7 +43,7 @@ public class CardSrsController {
         description = "Sau khi người dùng học/ôn một thẻ, API này nhận vào độ khó mà người dùng đánh giá (AGAIN, HARD, GOOD, EASY). Hệ thống sẽ tự động tính toán thời điểm ôn tập tiếp theo (next_review) cho thẻ đó."
     )
 	@PostMapping("/review")
-	public ApiResponse<SrsCardResponse> reviewCard(
+	public ApiResponse<ReviewCardResponse> reviewCard(
         @Parameter(description = "Dữ liệu đánh giá (ID thẻ bài và mức độ đánh giá)") @RequestBody @Valid SrsReviewRequest request
     ) {
 		return ApiResponse.ok(srsService.reviewCard(request), SuccessCode.REVIEW_CARD_SUCCESS);

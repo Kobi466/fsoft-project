@@ -37,6 +37,12 @@ public class UserCardSrs {
     @Builder.Default
     float easinessFactor = 2.5f;
 
+    @Column(name = "stability")
+    Double stability;
+
+    @Column(name = "difficulty")
+    Double difficulty;
+
     @Column(nullable = false)
     int repetitions;
 
