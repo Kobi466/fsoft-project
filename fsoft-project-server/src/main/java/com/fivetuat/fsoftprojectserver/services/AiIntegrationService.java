@@ -12,13 +12,11 @@ import com.fivetuat.fsoftprojectserver.httpsClients.AiClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.fivetuat.fsoftprojectserver.repositories.DeckRepository;
-import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.Collections;
 
 @Slf4j
@@ -47,14 +45,7 @@ public class AiIntegrationService {
     }
 
     public AiSearchResponse searchCards(String query) {
-        List<Long> allowedDeckIds = new ArrayList<>(){
-            {
-                add(1L);
-                add(2L);
-                add(3L);
-                add(4L);
-            }
-        };
+        List<Long> allowedDeckIds = this.getAccessibleDeckIds();
         
         if (allowedDeckIds == null || allowedDeckIds.isEmpty()) {
             return new AiSearchResponse(Collections.emptyList(), 0, 0);
@@ -82,7 +73,7 @@ public class AiIntegrationService {
         List<Long> allowedDeckIds = getAccessibleDeckIds();
 
         if (allowedDeckIds == null || allowedDeckIds.isEmpty()) {
-            throw new AppException(ErrorCode.INVALID_KEY); // Could create a specific invalid scope error
+            throw new AppException(ErrorCode.INVALID_KEY);
         }
 
         request.setAllowedDeckIds(allowedDeckIds);

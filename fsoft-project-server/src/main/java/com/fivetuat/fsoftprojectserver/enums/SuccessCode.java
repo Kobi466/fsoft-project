@@ -72,7 +72,9 @@ public enum SuccessCode {
     UPDATE_ROLE_DECK_SUCCESS(200, "Cập nhật quyền truy cập thành công", HttpStatus.OK),
     REVIEW_CARD_SUCCESS(200, "Đánh giá thẻ ghi nhớ thành công", HttpStatus.OK),
     AI_SEARCH_SUCCESS(200, "Tìm kiếm thông minh thành công", HttpStatus.OK),
-    AI_CHAT_SUCCESS(200, "Hỏi đáp AI thành công", HttpStatus.OK);
+    AI_CHAT_SUCCESS(200, "Hỏi đáp AI thành công", HttpStatus.OK),
+    DICTIONARY_LOOKUP_SUCCESS(200, "Tra từ điển thành công", HttpStatus.OK),
+    AI_EXTRACTION_SUCCESS(200, "Trích xuất từ vựng thành công", HttpStatus.OK);
     
     final int status;
     final String message;

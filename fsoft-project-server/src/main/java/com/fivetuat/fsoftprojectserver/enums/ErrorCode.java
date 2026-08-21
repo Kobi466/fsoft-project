@@ -48,7 +48,11 @@ public enum ErrorCode {
     CANNOT_SHARE_WITH_YOURSELF(426, "Cannot share with yourself", HttpStatus.BAD_REQUEST), 
     AI_SEARCH_ERROR(428, "Lỗi tìm kiếm AI", HttpStatus.INTERNAL_SERVER_ERROR),
     AI_CHAT_ERROR(429, "Lỗi hỏi đáp AI", HttpStatus.INTERNAL_SERVER_ERROR),
-    AI_QUIZ_ERROR(430, "Lỗi sinh bài tập AI", HttpStatus.INTERNAL_SERVER_ERROR);
+    AI_QUIZ_ERROR(430, "Lỗi sinh bài tập AI", HttpStatus.INTERNAL_SERVER_ERROR),
+    DICTIONARY_LOOKUP_ERROR(431, "Lỗi tra từ điển", HttpStatus.INTERNAL_SERVER_ERROR),
+    FILE_READ_ERROR(432, "Lỗi đọc file", HttpStatus.INTERNAL_SERVER_ERROR),
+    URL_READ_ERROR(433, "Lỗi đọc URL", HttpStatus.INTERNAL_SERVER_ERROR),
+    AI_EXTRACTION_ERROR(434, "Lỗi trích xuất AI", HttpStatus.INTERNAL_SERVER_ERROR);
 
     int status;
     String message;
