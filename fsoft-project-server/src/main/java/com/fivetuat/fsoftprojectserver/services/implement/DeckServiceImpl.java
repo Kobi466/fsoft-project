@@ -41,6 +41,16 @@ import com.fivetuat.fsoftprojectserver.services.NotificationService;
 import com.fivetuat.fsoftprojectserver.services.ProfileService;
 import com.fivetuat.fsoftprojectserver.services.UploadService;
 import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
+import com.fivetuat.fsoftprojectserver.dtos.response.CrammingCardResponse;
+import com.fivetuat.fsoftprojectserver.dtos.response.CrammingQueueResponse;
+import com.fivetuat.fsoftprojectserver.entities.UserCardSrs;
+import com.fivetuat.fsoftprojectserver.enums.SrsStatus;
+import com.fivetuat.fsoftprojectserver.mappers.CardMapper;
+import com.fivetuat.fsoftprojectserver.repositories.UserCardSrsRepository;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -62,6 +72,8 @@ public class DeckServiceImpl implements DeckService {
     ProfileService profileService;
     DeckShareRepository deckShareRepository;
     NotificationService notificationService;
+    UserCardSrsRepository userCardSrsRepository;
+    CardMapper cardMapper;
 
     @Transactional
     @Override
@@ -497,6 +509,62 @@ public class DeckServiceImpl implements DeckService {
                 .totalElements(deckPage.getTotalElements())
                 .content(content)
                 .last(deckPage.isLast())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CrammingQueueResponse getCramCards(Long deckId, Boolean shuffle, String filter, Integer limit) {
+        Deck deck = deckRepository.findById(deckId)
+                .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
+
+        List<Card> allCards = cardRepository.findByDeckIdOrderByPositionAsc(deckId);
+
+        Profile currentProfile = null;
+        try {
+            currentProfile = authService.getCurrentProfile();
+        } catch (Exception e) {
+            log.debug("No authenticated profile found for cramming mode");
+        }
+
+        Map<Long, UserCardSrs> srsMap = new HashMap<>();
+        if (currentProfile != null) {
+            List<UserCardSrs> srsList = userCardSrsRepository.findByProfileIdAndCardDeckId(currentProfile.getId(), deckId);
+            for (UserCardSrs srs : srsList) {
+                srsMap.put(srs.getCard().getId(), srs);
+            }
+        }
+
+        List<CrammingCardResponse> crammingCards = new ArrayList<>();
+        for (Card card : allCards) {
+            UserCardSrs srs = srsMap.get(card.getId());
+            boolean isLearned = srs != null && srs.getStatus() != SrsStatus.NEW;
+            SrsStatus status = srs != null ? srs.getStatus() : SrsStatus.NEW;
+
+            if (filter != null) {
+                if ("LEARNED".equalsIgnoreCase(filter) && !isLearned) continue;
+                if ("UNLEARNED".equalsIgnoreCase(filter) && isLearned) continue;
+            }
+
+            crammingCards.add(CrammingCardResponse.builder()
+                    .card(cardMapper.toCardResponse(card))
+                    .srsStatus(status)
+                    .build());
+        }
+
+        if (Boolean.TRUE.equals(shuffle)) {
+            Collections.shuffle(crammingCards);
+        }
+
+        if (limit != null && limit > 0 && crammingCards.size() > limit) {
+            crammingCards = new ArrayList<>(crammingCards.subList(0, limit));
+        }
+
+        return CrammingQueueResponse.builder()
+                .deckId(deck.getId())
+                .deckTitle(deck.getTitle())
+                .totalCards(crammingCards.size())
+                .cards(crammingCards)
                 .build();
     }
 }

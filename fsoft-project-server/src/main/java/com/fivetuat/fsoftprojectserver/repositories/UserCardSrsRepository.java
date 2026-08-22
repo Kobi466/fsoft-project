@@ -18,6 +18,8 @@ import java.util.UUID;
 public interface UserCardSrsRepository extends JpaRepository<UserCardSrs, Long> {
     Optional<UserCardSrs> findByProfileIdAndCardId(UUID profileId, Long cardId);
 
+    List<UserCardSrs> findByProfileIdAndCardDeckId(UUID profileId, Long deckId);
+
     @Query(
             value = """
             select s.card.id
