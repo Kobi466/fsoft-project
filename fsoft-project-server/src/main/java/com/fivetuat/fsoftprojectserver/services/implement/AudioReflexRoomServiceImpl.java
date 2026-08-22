@@ -1,0 +1,390 @@
+// services/implement/AudioReflexRoomServiceImpl.java
+package com.fivetuat.fsoftprojectserver.services.implement;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
+
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+
+import com.fivetuat.fsoftprojectserver.dtos.game.AudioReflexRoomState;
+import com.fivetuat.fsoftprojectserver.dtos.game.PlayerState;
+import com.fivetuat.fsoftprojectserver.dtos.response.AudioReflexGameResponse.AudioQuestionItem;
+import com.fivetuat.fsoftprojectserver.dtos.response.AudioReflexGameResponse.OptionItem;
+import com.fivetuat.fsoftprojectserver.entities.Card;
+import com.fivetuat.fsoftprojectserver.entities.Deck;
+import com.fivetuat.fsoftprojectserver.entities.GameRecord;
+import com.fivetuat.fsoftprojectserver.entities.authentication.Auth;
+import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
+import com.fivetuat.fsoftprojectserver.enums.RoomStatus;
+import com.fivetuat.fsoftprojectserver.exceptions.AppException;
+import com.fivetuat.fsoftprojectserver.repositories.*;
+import com.fivetuat.fsoftprojectserver.services.AudioReflexRoomService;
+import com.fivetuat.fsoftprojectserver.services.support.AudioReflexDisconnectGraceTimer;
+import com.fivetuat.fsoftprojectserver.services.support.AudioReflexQuestionTimer;
+
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+
+@Service
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+public class AudioReflexRoomServiceImpl implements AudioReflexRoomService {
+
+    @Qualifier("audioReflexRoomRedisTemplate")
+    RedisTemplate<String, AudioReflexRoomState> redis;
+
+    SimpMessagingTemplate messagingTemplate;
+    DeckRepository deckRepository;
+    CardRepository cardRepository;
+    AuthRepository authRepository;
+    GameRecordRepository gameRecordRepository;
+    AudioReflexQuestionTimer questionTimer;
+    AudioReflexDisconnectGraceTimer disconnectGraceTimer;
+
+    private static final String KEY_PREFIX = "room:audio-reflex-multi:";
+    private static final String GAME_TYPE_MULTI = "AUDIO_REFLEX_MULTI";
+    private static final String CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // bỏ ký tự dễ nhầm (0,O,1,I,L)
+    private static final int MAX_PLAYERS = 20;
+    private static final int QUESTION_TIME_LIMIT_SECONDS = 15;
+    private static final int GRACE_PERIOD_SECONDS = 20;
+
+    private final Map<String, Object> roomLocks = new ConcurrentHashMap<>();
+
+    private String key(String code) { return KEY_PREFIX + code; }
+    private Object lockFor(String roomCode) { return roomLocks.computeIfAbsent(roomCode, k -> new Object()); }
+
+    @Override
+    public AudioReflexRoomState createRoom(Long deckId, int questionCount, String hostUserId) {
+        deckRepository.findById(deckId).orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
+        Auth host = authRepository.findById(UUID.fromString(hostUserId))
+                .orElseThrow(() -> new AppException(ErrorCode.AUTHENTICATION_FAILED));
+
+        String code = generateUniqueCode();
+        PlayerState hostPlayer = toPlayerState(host, true);
+
+        AudioReflexRoomState state = AudioReflexRoomState.builder()
+                .roomCode(code)
+                .deckId(deckId)
+                .hostUserId(hostUserId)
+                .status(RoomStatus.WAITING)
+                .questionCount(questionCount)
+                .questions(new ArrayList<>())
+                .currentQuestionIndex(-1)
+                .players(new LinkedHashMap<>(Map.of(hostUserId, hostPlayer)))
+                .answeredThisQuestion(new HashSet<>())
+                .build();
+
+        save(state);
+        return state;
+    }
+
+    @Override
+    public AudioReflexRoomState joinRoom(String roomCode, String userId) {
+        synchronized (lockFor(roomCode)) {
+            AudioReflexRoomState state = getRoomOrThrow(roomCode);
+
+            PlayerState existing = state.getPlayers().get(userId);
+            if (existing != null) {
+                // Người chơi cũ quay lại sau khi rớt mạng -> luôn cho vào lại, bất kể phòng WAITING hay PLAYING
+                existing.setConnected(true);
+                disconnectGraceTimer.cancel(roomCode, userId);
+                save(state);
+                broadcast(state, "PLAYER_RECONNECTED");
+                return state;
+            }
+
+            if (state.getStatus() != RoomStatus.WAITING) throw new AppException(ErrorCode.ROOM_ALREADY_STARTED);
+            if (state.getPlayers().size() >= MAX_PLAYERS) throw new AppException(ErrorCode.ROOM_FULL);
+
+            Auth user = authRepository.findById(UUID.fromString(userId))
+                    .orElseThrow(() -> new AppException(ErrorCode.AUTHENTICATION_FAILED));
+            state.getPlayers().put(userId, toPlayerState(user, false));
+            save(state);
+            broadcast(state, "PLAYER_JOINED");
+            return state;
+        }
+    }
+
+    @Override
+    public AudioReflexRoomState startGame(String roomCode, String requesterId) {
+        synchronized (lockFor(roomCode)) {
+            AudioReflexRoomState state = getRoomOrThrow(roomCode);
+            if (!state.getHostUserId().equals(requesterId)) throw new AppException(ErrorCode.NOT_ROOM_HOST);
+            if (state.getStatus() != RoomStatus.WAITING) throw new AppException(ErrorCode.ROOM_ALREADY_STARTED);
+            if (state.getPlayers().size() < 2) throw new AppException(ErrorCode.NOT_ENOUGH_PLAYERS);
+
+            state.setQuestions(generateQuestions(state.getDeckId(), state.getQuestionCount()));
+            state.setStatus(RoomStatus.PLAYING);
+            state.setCurrentQuestionIndex(0);
+            state.setStartedAt(Instant.now().toEpochMilli());
+            state.setCurrentQuestionStartedAt(Instant.now().toEpochMilli());
+            state.getAnsweredThisQuestion().clear();
+            save(state);
+            broadcast(state, "ROOM_STARTED");
+            scheduleNextTimerIfNeeded(state);
+            return state;
+        }
+    }
+
+    @Override
+    public AudioReflexRoomState submitAnswer(String roomCode, String userId, Long cardId) {
+        synchronized (lockFor(roomCode)) {
+            AudioReflexRoomState state = getRoomOrThrow(roomCode);
+            if (state.getStatus() != RoomStatus.PLAYING) throw new AppException(ErrorCode.ROOM_ALREADY_STARTED);
+            PlayerState player = state.getPlayers().get(userId);
+            if (player == null) throw new AppException(ErrorCode.PLAYER_NOT_IN_ROOM);
+            if (state.getAnsweredThisQuestion().contains(userId)) return state;
+
+            AudioQuestionItem question = state.getQuestions().get(state.getCurrentQuestionIndex());
+            boolean correct = question.getCorrectOptionId().equals(cardId);
+
+            int points = 0;
+            if (correct) {
+                long elapsedMs = Instant.now().toEpochMilli() - state.getCurrentQuestionStartedAt();
+                long speedBonus = Math.max(0, 500 - elapsedMs / 20);
+                points = (int) (500 + speedBonus);
+                player.setCorrectCount(player.getCorrectCount() + 1);
+            }
+            player.setScore(player.getScore() + points);
+            player.setLastAnswerAt(Instant.now().toEpochMilli());
+            state.getAnsweredThisQuestion().add(userId);
+
+            long connectedCount = state.getPlayers().values().stream().filter(PlayerState::isConnected).count();
+            boolean everyoneAnswered = state.getAnsweredThisQuestion().size() >= connectedCount;
+            String eventType = "SCOREBOARD_UPDATE";
+            if (everyoneAnswered) {
+                boolean finished = advanceQuestionOrFinish(state);
+                eventType = finished ? "ROOM_FINISHED" : "NEXT_QUESTION";
+            }
+            save(state);
+            broadcast(state, eventType);
+            if (everyoneAnswered) scheduleNextTimerIfNeeded(state);
+            return state;
+        }
+    }
+
+    private boolean advanceQuestionOrFinish(AudioReflexRoomState state) {
+        state.getAnsweredThisQuestion().clear();
+        int next = state.getCurrentQuestionIndex() + 1;
+        if (next >= state.getQuestions().size()) {
+            state.setStatus(RoomStatus.FINISHED);
+            state.setCurrentQuestionIndex(next);
+            persistGameRecords(state);
+            return true;
+        }
+        state.setCurrentQuestionIndex(next);
+        state.setCurrentQuestionStartedAt(Instant.now().toEpochMilli());
+        return false;
+    }
+
+    private void handleQuestionTimeout(String roomCode, int questionIndexAtSchedule) {
+        synchronized (lockFor(roomCode)) {
+            AudioReflexRoomState state;
+            try {
+                state = getRoomOrThrow(roomCode);
+            } catch (AppException e) {
+                return;
+            }
+            if (state.getStatus() != RoomStatus.PLAYING) return;
+            if (state.getCurrentQuestionIndex() != questionIndexAtSchedule) return;
+
+            boolean finished = advanceQuestionOrFinish(state);
+            save(state);
+            broadcast(state, finished ? "ROOM_FINISHED" : "QUESTION_TIMEOUT_NEXT");
+            scheduleNextTimerIfNeeded(state);
+        }
+    }
+
+    private void scheduleNextTimerIfNeeded(AudioReflexRoomState state) {
+        if (state.getStatus() == RoomStatus.PLAYING) {
+            int idx = state.getCurrentQuestionIndex();
+            questionTimer.schedule(state.getRoomCode(),
+                    () -> handleQuestionTimeout(state.getRoomCode(), idx),
+                    QUESTION_TIME_LIMIT_SECONDS);
+        } else {
+            questionTimer.cancel(state.getRoomCode());
+        }
+    }
+
+    private void persistGameRecords(AudioReflexRoomState state) {
+        Deck deck = deckRepository.findById(state.getDeckId()).orElse(null);
+        if (deck == null) return;
+        for (PlayerState p : state.getPlayers().values()) {
+            Auth user = authRepository.findById(UUID.fromString(p.getUserId())).orElse(null);
+            if (user == null) continue;
+            gameRecordRepository.save(GameRecord.builder()
+                    .user(user)
+                    .deck(deck)
+                    .gameType(GAME_TYPE_MULTI)
+                    .score(p.getScore())
+                    .correctAnswers(p.getCorrectCount())
+                    .totalQuestions(state.getQuestions().size())
+                    .build());
+        }
+    }
+
+    @Override
+    public AudioReflexRoomState leaveRoom(String roomCode, String userId) {
+        synchronized (lockFor(roomCode)) {
+            AudioReflexRoomState state = getRoomOrThrow(roomCode);
+            state.getPlayers().remove(userId);
+            disconnectGraceTimer.cancel(roomCode, userId);
+            if (state.getPlayers().isEmpty()) {
+                redis.delete(key(roomCode));
+                questionTimer.cancel(roomCode);
+                roomLocks.remove(roomCode);
+                return state;
+            }
+            if (state.getHostUserId().equals(userId)) {
+                String newHostId = state.getPlayers().keySet().iterator().next();
+                state.setHostUserId(newHostId);
+                state.getPlayers().get(newHostId).setHost(true);
+            }
+            save(state);
+            broadcast(state, "PLAYER_LEFT");
+            return state;
+        }
+    }
+
+    @Override
+    public AudioReflexRoomState getRoom(String roomCode) {
+        return getRoomOrThrow(roomCode);
+    }
+
+    @Override
+    public AudioReflexRoomState markDisconnected(String roomCode, String userId) {
+        synchronized (lockFor(roomCode)) {
+            AudioReflexRoomState state;
+            try {
+                state = getRoomOrThrow(roomCode);
+            } catch (AppException e) {
+                return null;
+            }
+            PlayerState player = state.getPlayers().get(userId);
+            if (player == null) return state;
+
+            player.setConnected(false);
+            save(state);
+            broadcast(state, "PLAYER_DISCONNECTED");
+
+            disconnectGraceTimer.schedule(roomCode, userId,
+                    () -> finalizeDisconnect(roomCode, userId), GRACE_PERIOD_SECONDS);
+            return state;
+        }
+    }
+
+    @Override
+    public AudioReflexRoomState markReconnected(String roomCode, String userId) {
+        synchronized (lockFor(roomCode)) {
+            AudioReflexRoomState state = getRoomOrThrow(roomCode);
+            PlayerState player = state.getPlayers().get(userId);
+            if (player == null) throw new AppException(ErrorCode.PLAYER_NOT_IN_ROOM);
+
+            player.setConnected(true);
+            disconnectGraceTimer.cancel(roomCode, userId);
+            save(state);
+            broadcast(state, "PLAYER_RECONNECTED");
+            return state;
+        }
+    }
+
+    /** Được gọi sau GRACE_PERIOD_SECONDS nếu người chơi vẫn chưa quay lại -> xóa thật. */
+    private void finalizeDisconnect(String roomCode, String userId) {
+        synchronized (lockFor(roomCode)) {
+            AudioReflexRoomState state;
+            try {
+                state = getRoomOrThrow(roomCode);
+            } catch (AppException e) {
+                return;
+            }
+            PlayerState player = state.getPlayers().get(userId);
+            if (player == null || player.isConnected()) return; // đã tự quay lại trong lúc chờ -> không xóa nữa
+            leaveRoom(roomCode, userId);
+        }
+    }
+
+    // ---- helpers ----
+
+    private AudioReflexRoomState getRoomOrThrow(String code) {
+        AudioReflexRoomState state = redis.opsForValue().get(key(code));
+        if (state == null) throw new AppException(ErrorCode.ROOM_NOT_FOUND);
+        return state;
+    }
+
+    private void save(AudioReflexRoomState state) {
+        redis.opsForValue().set(key(state.getRoomCode()), state, Duration.ofHours(2));
+    }
+
+    private void broadcast(AudioReflexRoomState state, String eventType) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", eventType);
+        payload.put("timeLimitSeconds", QUESTION_TIME_LIMIT_SECONDS);
+        payload.put("room", state);
+        messagingTemplate.convertAndSend("/topic/room/" + state.getRoomCode(), (Object) payload);
+    }
+
+    private String generateUniqueCode() {
+        String code;
+        do {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 6; i++) sb.append(CHARS.charAt(ThreadLocalRandom.current().nextInt(CHARS.length())));
+            code = sb.toString();
+        } while (Boolean.TRUE.equals(redis.hasKey(key(code))));
+        return code;
+    }
+
+    private PlayerState toPlayerState(Auth user, boolean host) {
+        return PlayerState.builder()
+                .userId(String.valueOf(user.getId()))
+                .displayName(user.getProfile() != null ? user.getProfile().getFullName() : user.getEmail())
+                .avatar(user.getProfile() != null ? user.getProfile().getAvatar() : null)
+                .host(host)
+                .score(0)
+                .correctCount(0)
+                .build();
+    }
+
+    /** Y hệt logic sinh câu hỏi trong AudioReflexGameServiceImpl.generateGame() — chế độ 1 người. */
+    private List<AudioQuestionItem> generateQuestions(Long deckId, int questionCount) {
+        List<Card> allCards = cardRepository.findByDeckIdOrderByPositionAsc(deckId);
+        if (allCards.size() < 4) throw new AppException(ErrorCode.INSUFFICIENT_CARDS);
+
+        List<Card> pool = new ArrayList<>(allCards);
+        Collections.shuffle(pool);
+        int count = Math.min(questionCount, pool.size());
+
+        List<AudioQuestionItem> questions = new ArrayList<>();
+        for (Card target : pool.subList(0, count)) {
+            List<OptionItem> options = new ArrayList<>();
+            options.add(OptionItem.builder().optionId(target.getId()).text(target.getMeaning()).build());
+
+            List<Card> distractors = new ArrayList<>(allCards);
+            distractors.removeIf(c -> c.getId().equals(target.getId()));
+            Collections.shuffle(distractors);
+            for (int i = 0; i < Math.min(3, distractors.size()); i++) {
+                Card d = distractors.get(i);
+                options.add(OptionItem.builder().optionId(d.getId()).text(d.getMeaning()).build());
+            }
+            Collections.shuffle(options);
+
+            questions.add(AudioQuestionItem.builder()
+                    .cardId(target.getId())
+                    .word(target.getWord())
+                    .phonetic(target.getPhonetic())
+                    .imageUrl(target.getImageUrl())
+                    .exampleSentence(target.getExampleSentence())
+                    .exampleMeaning(target.getExampleMeaning())
+                    .correctOptionId(target.getId())
+                    .options(options)
+                    .build());
+        }
+        return questions;
+    }
+}

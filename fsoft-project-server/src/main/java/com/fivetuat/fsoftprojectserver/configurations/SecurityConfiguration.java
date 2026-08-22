@@ -53,6 +53,7 @@ public class SecurityConfiguration {
             "/actuator/health",
             "/api/chat-ai/test",
             "/ws-chat/**",
+            "/ws-game/**",
     };
 
     CustomJwtDecoder customJwtDecoder;
