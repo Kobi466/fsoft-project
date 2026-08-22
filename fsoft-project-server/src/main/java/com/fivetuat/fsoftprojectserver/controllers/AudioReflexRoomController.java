@@ -57,6 +57,25 @@ public class AudioReflexRoomController {
                 .status(200).data(roomService.getRoom(code)).build());
     }
 
+    @PostMapping("/{code}/answer")
+    public ResponseEntity<ApiResponse<AudioReflexRoomState>> submitAnswer(
+            @PathVariable String code,
+            @RequestBody com.fivetuat.fsoftprojectserver.dtos.request.SubmitAnswerRequest request) {
+        Long cardId = request != null ? request.getCardId() : null;
+        return ResponseEntity.ok(ApiResponse.<AudioReflexRoomState>builder()
+                .status(200).message("Nộp câu trả lời thành công")
+                .data(roomService.submitAnswer(code, currentUserId(), cardId)).build());
+    }
+
+    @PutMapping("/{code}/select-deck")
+    public ResponseEntity<ApiResponse<AudioReflexRoomState>> selectDeck(
+            @PathVariable String code,
+            @RequestParam(required = false) Long selectedDeckId) {
+        return ResponseEntity.ok(ApiResponse.<AudioReflexRoomState>builder()
+                .status(200).message("Đã cập nhật bộ thẻ đóng góp")
+                .data(roomService.selectPlayerDeck(code, currentUserId(), selectedDeckId)).build());
+    }
+
     @DeleteMapping("/{code}/leave")
     public ResponseEntity<ApiResponse<Void>> leave(@PathVariable String code) {
         roomService.leaveRoom(code, currentUserId());

@@ -11,6 +11,9 @@ public class PlayerState {
     int score;
     int correctCount;
     long lastAnswerAt;
+    Long selectedDeckId;
+    String selectedDeckTitle;
+    int selectedDeckCardCount;
     @Builder.Default
     boolean connected = true;
 }

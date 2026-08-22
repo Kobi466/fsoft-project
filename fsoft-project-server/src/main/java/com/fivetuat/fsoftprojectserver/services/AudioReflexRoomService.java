@@ -7,6 +7,7 @@ public interface AudioReflexRoomService {
     AudioReflexRoomState joinRoom(String roomCode, String userId);
     AudioReflexRoomState startGame(String roomCode, String requesterId);
     AudioReflexRoomState submitAnswer(String roomCode, String userId, Long cardId);
+    AudioReflexRoomState selectPlayerDeck(String roomCode, String userId, Long selectedDeckId);
     AudioReflexRoomState getRoom(String roomCode);
     AudioReflexRoomState leaveRoom(String roomCode, String userId);
     AudioReflexRoomState markDisconnected(String roomCode, String userId);

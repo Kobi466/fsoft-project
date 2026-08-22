@@ -1,7 +1,7 @@
-// filters/StompAuthChannelInterceptor.java
 package com.fivetuat.fsoftprojectserver.filters;
 
 import java.security.Principal;
+import java.util.Map;
 
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -23,16 +23,25 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
-        if (StompCommand.CONNECT.equals(accessor.getCommand())) {
-            String authHeader = accessor.getFirstNativeHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                if (jwtService.validateToken(token)) {
-                    String userId = jwtService.getIdFromToken(token);
-                    accessor.setUser((Principal) () -> userId);
-                }
-            }
+
+        String token = null;
+        String authHeader = accessor.getFirstNativeHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
         }
+
+        if (token != null && jwtService.validateToken(token)) {
+            String userId = jwtService.getIdFromToken(token);
+            accessor.setUser((Principal) () -> userId);
+            Map<String, Object> sessionAttributes = accessor.getSessionAttributes();
+            if (sessionAttributes != null) {
+                sessionAttributes.put("userId", userId);
+            }
+        } else if (accessor.getSessionAttributes() != null && accessor.getSessionAttributes().containsKey("userId")) {
+            String userId = (String) accessor.getSessionAttributes().get("userId");
+            accessor.setUser((Principal) () -> userId);
+        }
+
         return message;
     }
 }

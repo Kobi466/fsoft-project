@@ -49,7 +49,7 @@ public enum ErrorCode {
     AI_SEARCH_ERROR(428, "Lỗi tìm kiếm AI", HttpStatus.INTERNAL_SERVER_ERROR),
     AI_CHAT_ERROR(429, "Lỗi hỏi đáp AI", HttpStatus.INTERNAL_SERVER_ERROR),
     AI_QUIZ_ERROR(430, "Lỗi sinh bài tập AI", HttpStatus.INTERNAL_SERVER_ERROR),
-    INSUFFICIENT_CARDS(428, "Deck must contain at least 4 cards to play game", HttpStatus.BAD_REQUEST),
+    INSUFFICIENT_CARDS(428, "Bộ thẻ gốc phải có ít nhất 12 từ vựng để tạo phòng chơi", HttpStatus.BAD_REQUEST),
 
     // --- Word Blast multiplayer room ---
     ROOM_NOT_FOUND(440, "Room not found", HttpStatus.NOT_FOUND),

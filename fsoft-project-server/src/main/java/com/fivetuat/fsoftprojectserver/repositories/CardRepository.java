@@ -20,6 +20,7 @@ public interface CardRepository extends JpaRepository<Card, Long> {
     Page<Card> findByDeckIdOrderByPositionAsc(Long deckId, Pageable pageable);
 
     List<Card> findByDeckIdOrderByPositionAsc(Long deckId);
+    List<Card> findByDeckIdIn(List<Long> deckIds);
 
     @Query(
             value = "select coalesce(max(position), 0) from cards where deck_id = :deckId",
