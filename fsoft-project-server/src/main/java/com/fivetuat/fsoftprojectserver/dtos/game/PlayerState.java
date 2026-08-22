@@ -16,4 +16,7 @@ public class PlayerState {
     int selectedDeckCardCount;
     @Builder.Default
     boolean connected = true;
+
+    @Builder.Default
+    int lives = 3;
 }

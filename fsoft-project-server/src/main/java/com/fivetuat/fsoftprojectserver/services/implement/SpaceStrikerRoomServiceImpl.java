@@ -176,12 +176,23 @@ public class SpaceStrikerRoomServiceImpl implements SpaceStrikerRoomService {
             if (state.getStatus() != RoomStatus.PLAYING) throw new AppException(ErrorCode.ROOM_ALREADY_STARTED);
             PlayerState player = state.getPlayers().get(userId);
             if (player == null) throw new AppException(ErrorCode.PLAYER_NOT_IN_ROOM);
+            if (player.getLives() <= 0) return state; // đã hết máu, không còn được bắn
             if (state.isQuestionResolved()) return state;
 
             AudioQuestionItem question = state.getQuestions().get(state.getCurrentQuestionIndex());
             boolean correct = cardId != null && question.getCorrectOptionId() != null
                     && question.getCorrectOptionId().longValue() == cardId.longValue();
-            if (!correct) return state;
+
+            if (!correct) {
+                player.setLives(Math.max(0, player.getLives() - 1));
+                boolean eliminated = player.getLives() <= 0;
+                save(state);
+                broadcast(state, eliminated ? "PLAYER_ELIMINATED" : "PLAYER_MISSED");
+                if (eliminated && allPlayersEliminated(state)) {
+                    finishRoomEarly(state);
+                }
+                return state;
+            }
 
             state.setQuestionResolved(true);
             long elapsedMs = Instant.now().toEpochMilli() - state.getCurrentQuestionStartedAt();
@@ -199,7 +210,6 @@ public class SpaceStrikerRoomServiceImpl implements SpaceStrikerRoomService {
             return state;
         }
     }
-
     private boolean advanceQuestionOrFinish(SpaceStrikerRoomState state) {
         int next = state.getCurrentQuestionIndex() + 1;
         if (next >= state.getQuestions().size()) {
@@ -213,6 +223,18 @@ public class SpaceStrikerRoomServiceImpl implements SpaceStrikerRoomService {
         state.setQuestionResolved(false);
         return false;
     }
+    private boolean allPlayersEliminated(SpaceStrikerRoomState state) {
+        return state.getPlayers().values().stream().allMatch(p -> p.getLives() <= 0);
+    }
+
+    private void finishRoomEarly(SpaceStrikerRoomState state) {
+        state.setStatus(RoomStatus.FINISHED);
+        persistGameRecords(state);
+        save(state);
+        broadcast(state, "ROOM_FINISHED");
+        questionTimer.cancel(state.getRoomCode());
+    }
+
 
     private void handleQuestionTimeout(String roomCode, int questionIndexAtSchedule) {
         synchronized (lockFor(roomCode)) {
