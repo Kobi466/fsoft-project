@@ -52,6 +52,8 @@ public class SecurityConfiguration {
             "/decks/public",
             "/actuator/health",
             "/api/chat-ai/test",
+            "/ws-chat/**",
+            "/ws-game/**",
     };
 
     CustomJwtDecoder customJwtDecoder;

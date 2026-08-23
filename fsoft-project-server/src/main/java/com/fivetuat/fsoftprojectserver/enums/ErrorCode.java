@@ -53,8 +53,14 @@ public enum ErrorCode {
     FILE_READ_ERROR(432, "Lỗi đọc file", HttpStatus.INTERNAL_SERVER_ERROR),
     URL_READ_ERROR(433, "Lỗi đọc URL", HttpStatus.INTERNAL_SERVER_ERROR),
     AI_EXTRACTION_ERROR(434, "Lỗi trích xuất AI", HttpStatus.INTERNAL_SERVER_ERROR),
-    INSUFFICIENT_CARDS(435, "Không đủ thẻ để tạo bài tập", HttpStatus.BAD_REQUEST);
-
+    INSUFFICIENT_CARDS(435, "Không đủ thẻ để tạo bài tập", HttpStatus.BAD_REQUEST),
+    // --- Word Blast multiplayer room ---
+    ROOM_NOT_FOUND(440, "Room not found", HttpStatus.NOT_FOUND),
+    ROOM_FULL(441, "Room is full (max 20 players)", HttpStatus.BAD_REQUEST),
+    ROOM_ALREADY_STARTED(442, "Room already started or already finished", HttpStatus.BAD_REQUEST),
+    NOT_ROOM_HOST(443, "Only the host can perform this action", HttpStatus.FORBIDDEN),
+    PLAYER_NOT_IN_ROOM(444, "You are not a member of this room", HttpStatus.FORBIDDEN),
+    NOT_ENOUGH_PLAYERS(445, "Need at least 2 players to start", HttpStatus.BAD_REQUEST);
     int status;
     String message;
     HttpStatus httpStatus;

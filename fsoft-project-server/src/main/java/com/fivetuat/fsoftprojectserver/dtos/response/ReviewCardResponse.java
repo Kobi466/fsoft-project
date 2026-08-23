@@ -11,12 +11,14 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class SrsCardResponse {
+public class ReviewCardResponse {
 	CardResponse card;
 	SrsStatus status;
 	int repetitions;
 	int interval;
 	float easinessFactor;
+	Double stability;
+	Double difficulty;
 	LocalDate nextReviewDate;
 }
 
