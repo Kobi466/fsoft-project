@@ -26,7 +26,7 @@ public class CardStarController {
 
     @Operation(
         summary = "Bật/Tắt đánh dấu từ khó (Toggle Star)",
-        description = "Bấm nút ⭐ để lưu thẻ vào danh sách từ khó ôn riêng, hoặc bấm lại lần nữa để bỏ lưu. Trả về trạng thái isStarred mới (true/false)."
+        description = "Bấm nút để lưu thẻ vào danh sách từ khó ôn riêng, hoặc bấm lại lần nữa để bỏ lưu. Trả về trạng thái isStarred mới (true/false)."
     )
     @PostMapping("/{cardId}/toggle-star")
     public ApiResponse<CardStarToggleResponse> toggleStar(
@@ -37,7 +37,7 @@ public class CardStarController {
 
     @Operation(
         summary = "Lấy danh sách các từ khó đã gắn sao",
-        description = "Lấy danh sách toàn bộ các thẻ bài người dùng đã bấm ⭐ để phục vụ việc ôn tập riêng. Hỗ trợ lọc theo bộ thẻ (deckId) và phân trang."
+        description = "Lấy danh sách toàn bộ các thẻ bài người dùng đã bấm lưu để phục vụ việc ôn tập riêng. Hỗ trợ lọc theo bộ thẻ (deckId) và phân trang."
     )
     @GetMapping("/starred")
     public ApiResponse<PageResponse<CardResponse>> getStarredCards(
