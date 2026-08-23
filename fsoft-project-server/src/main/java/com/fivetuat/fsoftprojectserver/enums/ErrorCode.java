@@ -52,7 +52,8 @@ public enum ErrorCode {
     DICTIONARY_LOOKUP_ERROR(431, "Lỗi tra từ điển", HttpStatus.INTERNAL_SERVER_ERROR),
     FILE_READ_ERROR(432, "Lỗi đọc file", HttpStatus.INTERNAL_SERVER_ERROR),
     URL_READ_ERROR(433, "Lỗi đọc URL", HttpStatus.INTERNAL_SERVER_ERROR),
-    AI_EXTRACTION_ERROR(434, "Lỗi trích xuất AI", HttpStatus.INTERNAL_SERVER_ERROR);
+    AI_EXTRACTION_ERROR(434, "Lỗi trích xuất AI", HttpStatus.INTERNAL_SERVER_ERROR),
+    INSUFFICIENT_CARDS(435, "Không đủ thẻ để tạo bài tập", HttpStatus.BAD_REQUEST);
 
     int status;
     String message;

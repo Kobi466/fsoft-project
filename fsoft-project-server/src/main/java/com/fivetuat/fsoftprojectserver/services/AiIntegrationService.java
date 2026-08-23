@@ -9,15 +9,18 @@ import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.AiSearchResponse;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.httpsClients.AiClient;
+import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.fivetuat.fsoftprojectserver.repositories.DeckRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Collections;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -31,22 +34,13 @@ public class AiIntegrationService {
     private String internalTokenA;
 
     private List<Long> getAccessibleDeckIds() {
-//        UUID currentUserId = SecurityUtils.getCurrentUserLogin()
-//                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED));
-//        return deckRepository.findAllAccessibleDeckIdsByProfileId(currentUserId);
-        return new ArrayList<>(){
-            {
-                add(1L);
-                add(2L);
-                add(3L);
-                add(4L);
-            }
-        };
+        UUID currentUserId = SecurityUtils.getCurrentUserLogin()
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED));
+        return deckRepository.findAllAccessibleDeckIdsByProfileId(currentUserId);
     }
 
     public AiSearchResponse searchCards(String query) {
-        List<Long> allowedDeckIds = this.getAccessibleDeckIds();
-        
+        List<Long> allowedDeckIds = getAccessibleDeckIds();
         if (allowedDeckIds == null || allowedDeckIds.isEmpty()) {
             return new AiSearchResponse(Collections.emptyList(), 0, 0);
         }
@@ -63,54 +57,89 @@ public class AiIntegrationService {
             AiSearchResponse response = aiClient.search(internalTokenA, request);
             log.info("Nhận được kết quả tìm kiếm từ fsoft-ai: {} kết quả", response.getCandidateCount());
             return response;
+        } catch (WebClientResponseException e) {
+            log.error("fsoft-ai trả về lỗi HTTP {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw e;
         } catch (Exception e) {
-            log.error("Lỗi khi gọi fsoft-ai search: {}", e.getMessage(), e);
+            log.error("Lỗi kết nối hoặc parse kết quả từ fsoft-ai search: {}", e.getMessage(), e);
             throw new AppException(ErrorCode.AI_SEARCH_ERROR);
         }
     }
 
     public AiChatResponse chat(AiChatRequest request) {
-        List<Long> allowedDeckIds = getAccessibleDeckIds();
+        List<Long> accessibleDeckIds = getAccessibleDeckIds();
 
-        if (allowedDeckIds == null || allowedDeckIds.isEmpty()) {
-            throw new AppException(ErrorCode.INVALID_KEY);
+        if (accessibleDeckIds == null || accessibleDeckIds.isEmpty()) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
-        request.setAllowedDeckIds(allowedDeckIds);
+        List<Long> finalAllowed;
+        if (request.getAllowedDeckIds() != null && !request.getAllowedDeckIds().isEmpty()) {
+            finalAllowed = new ArrayList<>(accessibleDeckIds);
+            finalAllowed.retainAll(request.getAllowedDeckIds());
+            if (finalAllowed.isEmpty()) {
+                throw new AppException(ErrorCode.ACCESS_DENIED);
+            }
+        } else {
+            finalAllowed = accessibleDeckIds;
+        }
 
-        log.info("Gửi request chat tới fsoft-ai cho các deck {}", allowedDeckIds);
+        request.setAllowedDeckIds(finalAllowed);
+
+        log.info("Gửi request chat tới fsoft-ai cho các deck {}", finalAllowed);
 
         try {
             AiChatResponse response = aiClient.chat(internalTokenA, request);
             log.info("Nhận được kết quả chat từ fsoft-ai. Nguồn: {}", response.getAnswerSource());
             return response;
+        } catch (WebClientResponseException e) {
+            log.error("fsoft-ai trả về lỗi HTTP {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw e;
         } catch (Exception e) {
-            log.error("Lỗi khi gọi fsoft-ai chat: {}", e.getMessage(), e);
+            log.error("Lỗi kết nối hoặc parse kết quả từ fsoft-ai chat: {}", e.getMessage(), e);
             throw new AppException(ErrorCode.AI_CHAT_ERROR);
         }
     }
 
     public AiQuizResponse generateQuiz(AiQuizRequest request) {
-        List<Long> allowedDeckIds = getAccessibleDeckIds();
+        List<Long> accessibleDeckIds = getAccessibleDeckIds();
 
-        if (allowedDeckIds == null || allowedDeckIds.isEmpty()) {
-            throw new AppException(ErrorCode.INVALID_KEY); 
+        if (accessibleDeckIds == null || accessibleDeckIds.isEmpty()) {
+            throw new AppException(ErrorCode.ACCESS_DENIED); 
+        }
+
+        List<Long> finalAllowed;
+        if (request.getAllowedDeckIds() != null && !request.getAllowedDeckIds().isEmpty()) {
+            finalAllowed = new ArrayList<>(accessibleDeckIds);
+            finalAllowed.retainAll(request.getAllowedDeckIds());
+            if (finalAllowed.isEmpty()) {
+                throw new AppException(ErrorCode.ACCESS_DENIED);
+            }
+        } else {
+            finalAllowed = accessibleDeckIds;
         }
         
-        if (request.getCardIds() != null && request.getCardIds().size() < 4) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR);
+        if (request.getCardIds() != null && !request.getCardIds().isEmpty() && request.getCardIds().size() < 4) {
+            throw new AppException(ErrorCode.INSUFFICIENT_CARDS);
         }
 
-        request.setAllowedDeckIds(allowedDeckIds);
+        if (request.getTypes() == null || request.getTypes().isEmpty()) {
+            request.setTypes(List.of("MULTIPLE_CHOICE"));
+        }
 
-        log.info("Gửi request sinh quiz tới fsoft-ai cho các deck {}", allowedDeckIds);
+        request.setAllowedDeckIds(finalAllowed);
+
+        log.info("Gửi request sinh quiz tới fsoft-ai cho các deck {}", finalAllowed);
 
         try {
             AiQuizResponse response = aiClient.generateQuiz(internalTokenA, request);
             log.info("Nhận được kết quả sinh quiz từ fsoft-ai.");
             return response;
+        } catch (WebClientResponseException e) {
+            log.error("fsoft-ai trả về lỗi HTTP {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw e;
         } catch (Exception e) {
-            log.error("Lỗi khi gọi fsoft-ai generateQuiz: {}", e.getMessage(), e);
+            log.error("Lỗi kết nối hoặc parse kết quả từ fsoft-ai generateQuiz: {}", e.getMessage(), e);
             throw new AppException(ErrorCode.AI_QUIZ_ERROR);
         }
     }

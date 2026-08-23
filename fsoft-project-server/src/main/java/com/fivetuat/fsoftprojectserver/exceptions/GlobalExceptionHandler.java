@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
@@ -23,6 +24,7 @@ import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -119,6 +121,26 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Map<String, Object>>> handleException(Exception ex, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Something went wrong: " + ex.getMessage(), request);
+    }
+
+    // Xử lý lỗi trả về từ fsoft-ai (hoặc các external API)
+    @ExceptionHandler(WebClientResponseException.class)
+    public ResponseEntity<Object> handleWebClientResponseException(WebClientResponseException ex) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            Object body = mapper.readValue(ex.getResponseBodyAsString(), Object.class);
+            
+            // Ẩn mã 401 (lỗi cấu hình token BE-fsoft-ai)
+            if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("status", 500, "message", "Internal Server Error: AI service configuration error"));
+            }
+            
+            // Trả về đúng HTTP status và body của fsoft-ai
+            return ResponseEntity.status(ex.getStatusCode()).body(body);
+        } catch (Exception e) {
+            return ResponseEntity.status(ex.getStatusCode()).body(ex.getResponseBodyAsString());
+        }
     }
 
     private ResponseEntity<ApiResponse<Map<String, Object>>> buildErrorResponse(HttpStatus status, String message, HttpServletRequest request) {
