@@ -76,6 +76,8 @@ public enum SuccessCode {
     CREATE_GAME_SUCCESS(200, "Tạo ván chơi thành công", HttpStatus.OK),
     SUBMIT_GAME_SUCCESS(201, "Lưu kết quả thành công", HttpStatus.CREATED),
     GET_LEADERBOARD_SUCCESS(200, "Lấy bảng xếp hạng thành công", HttpStatus.OK);
+    DICTIONARY_LOOKUP_SUCCESS(200, "Tra từ điển thành công", HttpStatus.OK),
+    AI_EXTRACTION_SUCCESS(200, "Trích xuất từ vựng thành công", HttpStatus.OK);
     
     final int status;
     final String message;

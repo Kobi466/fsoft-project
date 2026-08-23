@@ -1,8 +1,6 @@
 package com.fivetuat.fsoftprojectserver.configurations;
 
-import com.fivetuat.fsoftprojectserver.httpsClients.BrevoEmailClient;
-import com.fivetuat.fsoftprojectserver.httpsClients.GoogleOauth2Client;
-import com.fivetuat.fsoftprojectserver.httpsClients.GoogleUserInfoClient;
+import com.fivetuat.fsoftprojectserver.httpsClients.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,7 +8,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.support.WebClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
-import com.fivetuat.fsoftprojectserver.httpsClients.AiClient;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import reactor.netty.http.client.HttpClient;
 import java.time.Duration;
@@ -73,5 +70,16 @@ public class WebClientConfiguration {
 				.builderFor(WebClientAdapter.create(webClient))
 				.build();
 		return factory.createClient(AiClient.class);
+	}
+
+	@Bean
+	public DictionaryClient dictionaryClient() {
+		WebClient webClient = WebClient.builder()
+				.baseUrl("https://api.dictionaryapi.dev")
+				.build();
+		HttpServiceProxyFactory factory = HttpServiceProxyFactory
+				.builderFor(WebClientAdapter.create(webClient))
+				.build();
+		return factory.createClient(DictionaryClient.class);
 	}
 }
