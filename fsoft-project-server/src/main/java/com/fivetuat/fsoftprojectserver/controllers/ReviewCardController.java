@@ -4,6 +4,7 @@ package com.fivetuat.fsoftprojectserver.controllers;
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.SrsReviewRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.ReviewCardResponse;
+import com.fivetuat.fsoftprojectserver.dtos.response.SrsMasteryResponse;
 import com.fivetuat.fsoftprojectserver.enums.SuccessCode;
 import com.fivetuat.fsoftprojectserver.services.ReviewCardService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -60,4 +61,24 @@ public class ReviewCardController {
 		srsService.resetDeckProgress(deckId);
 		return ApiResponse.ok(null, SuccessCode.DELETE_CARD_SUCCESS);
 	}
+
+	@Operation(
+		summary = "Biểu đồ thống kê tiến độ thuộc từ (SRS Mastery Dashboard)",
+		description = """
+			Trả về thống kê tổng quan tiến độ học SRS của học viên:
+			- Tổng thẻ đã học, thẻ thuộc lòng (interval >= 30), đang học, hay quên.
+			- Tỷ lệ % thuộc lòng (masteryRate).
+			- Số thẻ cần ôn hôm nay (bao gồm thẻ quá hạn từ hôm trước).
+			- Số thẻ chưa bắt đầu học (chỉ khi truyền deckId).
+			- Dự báo số thẻ scheduled trong 7 ngày tới.
+		"""
+	)
+	@GetMapping("/mastery")
+	public ApiResponse<SrsMasteryResponse> getMasteryDashboard(
+			@Parameter(description = "ID bộ thẻ (bỏ trống để xem thống kê toàn bộ)")
+			@RequestParam(value = "deckId", required = false) Long deckId
+	) {
+		return ApiResponse.ok(srsService.getMasteryDashboard(deckId), SuccessCode.GET_SRS_MASTERY_SUCCESS);
+	}
 }
+

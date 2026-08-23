@@ -55,4 +55,73 @@ public interface UserCardSrsRepository extends JpaRepository<UserCardSrs, Long> 
     List<UserCardSrs> findByProfileIdAndCardDeckIdAndNextReviewDateLessThanEqualOrderByNextReviewDateAsc(UUID userId, Long deckId, LocalDateTime now);
 
     List<UserCardSrs> findByProfileIdAndNextReviewDateLessThanEqualOrderByNextReviewDateAsc(UUID userId, LocalDateTime now);
+
+    // =====================================================================
+    // SRS Mastery Dashboard Queries
+    // =====================================================================
+
+    @Query("""
+        SELECT COUNT(s) FROM UserCardSrs s
+        WHERE s.profile.id = :profileId
+          AND (:deckId IS NULL OR s.card.deck.id = :deckId)
+    """)
+    long countLearnedCards(@Param("profileId") UUID profileId, @Param("deckId") Long deckId);
+
+    @Query("""
+        SELECT COUNT(s) FROM UserCardSrs s
+        WHERE s.profile.id = :profileId
+          AND (:deckId IS NULL OR s.card.deck.id = :deckId)
+          AND s.interval >= 30
+    """)
+    long countMasteredCards(@Param("profileId") UUID profileId, @Param("deckId") Long deckId);
+
+    @Query("""
+        SELECT COUNT(s) FROM UserCardSrs s
+        WHERE s.profile.id = :profileId
+          AND (:deckId IS NULL OR s.card.deck.id = :deckId)
+          AND (s.status = 'LEARNING'
+               OR (s.status = 'REVIEW' AND s.interval < 30))
+    """)
+    long countLearningCards(@Param("profileId") UUID profileId, @Param("deckId") Long deckId);
+
+    @Query("""
+        SELECT COUNT(s) FROM UserCardSrs s
+        WHERE s.profile.id = :profileId
+          AND (:deckId IS NULL OR s.card.deck.id = :deckId)
+          AND s.status = 'LAPSED'
+    """)
+    long countLapsedCards(@Param("profileId") UUID profileId, @Param("deckId") Long deckId);
+
+    @Query("""
+        SELECT COUNT(s) FROM UserCardSrs s
+        WHERE s.profile.id = :profileId
+          AND (:deckId IS NULL OR s.card.deck.id = :deckId)
+          AND s.nextReviewDate <= :now
+    """)
+    long countDueCards(@Param("profileId") UUID profileId,
+                       @Param("deckId") Long deckId,
+                       @Param("now") LocalDateTime now);
+
+    @Query("""
+        SELECT COUNT(s) FROM UserCardSrs s
+        WHERE s.profile.id = :profileId
+          AND (:deckId IS NULL OR s.card.deck.id = :deckId)
+          AND s.nextReviewDate >= :startOfDay
+          AND s.nextReviewDate <= :endOfDay
+    """)
+    long countCardsDueBetween(@Param("profileId") UUID profileId,
+                              @Param("deckId") Long deckId,
+                              @Param("startOfDay") LocalDateTime startOfDay,
+                              @Param("endOfDay") LocalDateTime endOfDay);
+
+    @Query("""
+        SELECT COUNT(c) FROM Card c
+        WHERE c.deck.id = :deckId
+          AND c.id NOT IN (
+              SELECT s.card.id FROM UserCardSrs s
+              WHERE s.profile.id = :profileId
+          )
+    """)
+    long countUnlearnedCardsByDeckAndProfile(@Param("profileId") UUID profileId,
+                                             @Param("deckId") Long deckId);
 }

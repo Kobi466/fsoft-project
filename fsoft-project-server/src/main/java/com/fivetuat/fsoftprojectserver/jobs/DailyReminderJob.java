@@ -31,11 +31,6 @@ public class DailyReminderJob {
 
     public static final int BATCH_SIZE = 500;
 
-    /**
-     * Tự động chạy lúc 20:00:00 hàng ngày (Giờ Việt Nam UTC+7)
-     * Quét các học viên chưa học bài nào trong ngày và có currentStreak > 0.
-     * Gọi NotificationService gửi email bất đồng bộ trực tiếp qua Spring ThreadPool với cơ chế chống gửi lặp bằng Redis Key.
-     */
     @Scheduled(cron = "0 33 20 * * *", zone = "Asia/Ho_Chi_Minh")
     public void executeDailyReminder() {
         LocalDate today = LocalDate.now();
@@ -54,7 +49,6 @@ public class DailyReminderJob {
                     continue;
                 }
 
-                // Redis Idempotency Key chống gửi trùng (TTL 24h)
                 String redisKey = "reminder_sent:" + today + ":" + user.getEmail();
                 Boolean isFirstTime = redisTemplate.opsForValue().setIfAbsent(redisKey, "true", 24, TimeUnit.HOURS);
 

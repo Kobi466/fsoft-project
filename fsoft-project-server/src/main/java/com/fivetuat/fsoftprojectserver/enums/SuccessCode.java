@@ -78,6 +78,7 @@ public enum SuccessCode {
     GET_LEADERBOARD_SUCCESS(200, "Lấy bảng xếp hạng thành công", HttpStatus.OK),
     DICTIONARY_LOOKUP_SUCCESS(200, "Tra từ điển thành công", HttpStatus.OK),
     AI_EXTRACTION_SUCCESS(200, "Trích xuất từ vựng thành công", HttpStatus.OK),
+    GET_SRS_MASTERY_SUCCESS(200, "Lấy thống kê tiến độ thuộc từ thành công", HttpStatus.OK),
     GET_CRAMMING_QUEUE_SUCCESS(200, "Lấy danh sách thẻ ôn tập cấp tốc thành công", HttpStatus.OK);
     
     final int status;
