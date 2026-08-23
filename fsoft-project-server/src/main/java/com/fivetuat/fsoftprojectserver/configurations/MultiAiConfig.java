@@ -2,8 +2,8 @@ package com.fivetuat.fsoftprojectserver.configurations;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.google.genai.GoogleGenAiChatModel;
+import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.context.annotation.Bean;
@@ -36,6 +36,9 @@ public class MultiAiConfig {
 	@Bean(name = "geminiVisionClient")
 	public ChatClient geminiChatClient(GoogleGenAiChatModel chatModel) {
 		return ChatClient.builder(chatModel)
+				.defaultOptions(GoogleGenAiChatOptions.builder()
+						.model("gemini-2.5-flash")
+				)
 				.build();
 	}
 
