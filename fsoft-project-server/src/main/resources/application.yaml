@@ -1,5 +1,5 @@
 server:
-  host: ${HOST:0.0.0.0}
+  address: 0.0.0.0
   port: ${PORT:8080}
   forward-headers-strategy: framework
   servlet:
@@ -31,8 +31,9 @@ spring:
     openai:
       api-key: ${OPENAI_API_KEY}
       base-url: https://api.groq.com/openai/v1
-      chat:
-        model: openai/gpt-oss-120b
+    google:
+      genai:
+        api-key: ${GOOGLE_GENAI_API_KEY}
 
 aws:
     region: ${AWS_REGION}
@@ -64,7 +65,7 @@ logging:
     root: INFO
 springdoc:
   api-docs:
-    path: /api-docs
+    path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
     operations-sorter: alpha

@@ -2,6 +2,8 @@ package com.fivetuat.fsoftprojectserver.services.implement;
 
 import com.fivetuat.fsoftprojectserver.dtos.request.SrsReviewRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.ReviewCardResponse;
+import com.fivetuat.fsoftprojectserver.dtos.response.SrsForecastDayResponse;
+import com.fivetuat.fsoftprojectserver.dtos.response.SrsMasteryResponse;
 import com.fivetuat.fsoftprojectserver.entities.Card;
 import com.fivetuat.fsoftprojectserver.entities.UserCardSrs;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
@@ -10,6 +12,7 @@ import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.mappers.CardMapper;
 import com.fivetuat.fsoftprojectserver.mappers.UserCardSrsMapper;
 import com.fivetuat.fsoftprojectserver.repositories.CardRepository;
+import com.fivetuat.fsoftprojectserver.repositories.DeckRepository;
 import com.fivetuat.fsoftprojectserver.repositories.UserCardSrsRepository;
 import com.fivetuat.fsoftprojectserver.services.AuthService;
 import com.fivetuat.fsoftprojectserver.services.ProgressService;
@@ -25,6 +28,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -36,6 +40,7 @@ import java.util.UUID;
 public class ReviewCardServiceImpl implements ReviewCardService {
 	UserCardSrsRepository userCardSrsRepository;
 	CardRepository cardRepository;
+	DeckRepository deckRepository;
 	UserCardSrsMapper userCardSrsMapper;
 	AuthService authService;
 	CardMapper cardMapper;
@@ -181,4 +186,60 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 		var profile = this.authService.getCurrentProfile();
 		this.userCardSrsRepository.deleteByProfileIdAndCardDeckId(profile.getId(), deckId);
 	}
+
+	@Override
+	public SrsMasteryResponse getMasteryDashboard(Long deckId) {
+		if (deckId != null) {
+			this.deckRepository.findById(deckId)
+					.orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
+		}
+
+		UUID profileId = authService.getCurrentProfile().getId();
+		LocalDateTime now = LocalDateTime.now();
+
+		// Thống kê số lượng thẻ theo từng trạng thái
+		long total    = userCardSrsRepository.countLearnedCards(profileId, deckId);
+		long mastered = userCardSrsRepository.countMasteredCards(profileId, deckId);
+		long learning = userCardSrsRepository.countLearningCards(profileId, deckId);
+		long lapsed   = userCardSrsRepository.countLapsedCards(profileId, deckId);
+		long dueToday = userCardSrsRepository.countDueCards(profileId, deckId, now);
+
+		// Tính % thuộc lòng, tránh chia cho 0
+		double masteryRate = 0.0;
+		if (total > 0) {
+			masteryRate = Math.round(((double) mastered / total) * 100.0 * 10.0) / 10.0;
+		}
+
+		// Thẻ chưa học lần nào — chỉ tính khi có deckId, null nếu không truyền
+		Long newCardsCount = null;
+		if (deckId != null) {
+			newCardsCount = userCardSrsRepository.countUnlearnedCardsByDeckAndProfile(profileId, deckId);
+		}
+
+		// Dự báo số thẻ scheduled trong 7 ngày tới (mỗi ngày đếm riêng)
+		List<SrsForecastDayResponse> forecast = new ArrayList<>();
+		LocalDate today = LocalDate.now();
+		for (int i = 0; i < 7; i++) {
+			LocalDate target     = today.plusDays(i);
+			LocalDateTime start  = target.atStartOfDay();
+			LocalDateTime end    = target.atTime(LocalTime.MAX);
+			long count = userCardSrsRepository.countCardsDueBetween(profileId, deckId, start, end);
+			forecast.add(SrsForecastDayResponse.builder()
+					.date(target)
+					.count(count)
+					.build());
+		}
+
+		return SrsMasteryResponse.builder()
+				.totalLearnedCards(total)
+				.newCardsCount(newCardsCount)
+				.masteredCards(mastered)
+				.learningCards(learning)
+				.lapsedCards(lapsed)
+				.masteryRate(masteryRate)
+				.dueToday(dueToday)
+				.forecastNext7Days(forecast)
+				.build();
+	}
 }
+

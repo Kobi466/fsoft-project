@@ -10,11 +10,14 @@ import lombok.experimental.FieldDefaults;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class AiSearchRequest {
     
     @JsonProperty("query")

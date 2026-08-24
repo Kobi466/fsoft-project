@@ -46,5 +46,10 @@ public interface DeckRepository extends JpaRepository<Deck, Long> {
 
     Optional<Deck> findByShareTokenAndIsShareLinkEnabledTrueAndIsDeletedFalse(String shareToken);
     
-    List<Long> findAllAccessibleDeckIdsByProfileId(UUID currentUserId);
+    @Query("SELECT d.id FROM Deck d WHERE d.isDeleted = false AND (" +
+           "d.profile.id = :currentUserId OR " +
+           "d.visibility = com.fivetuat.fsoftprojectserver.enums.DeckVisibility.PUBLIC OR " +
+           "d.id IN (SELECT ds.deck.id FROM DeckShare ds WHERE ds.profile.id = :currentUserId)" +
+           ")")
+    List<Long> findAllAccessibleDeckIdsByProfileId(@Param("currentUserId") UUID currentUserId);
 }
