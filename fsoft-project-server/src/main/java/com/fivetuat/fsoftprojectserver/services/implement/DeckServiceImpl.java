@@ -88,6 +88,10 @@ public class DeckServiceImpl implements DeckService {
             deck.setParentDeck(parent);
         }
 
+        if (deck.getParentDeck() != null && deck.getVisibility() == DeckVisibility.PRIVATE) {
+            throw new AppException(ErrorCode.FORKED_DECK_CANNOT_BE_PRIVATE);
+        }
+
         if (coverImage != null && !coverImage.isEmpty()) {
             String imageUrl = uploadService.uploadFile(coverImage, FolderName.DECKS);
             log.info("image {}", imageUrl);
@@ -131,6 +135,10 @@ public class DeckServiceImpl implements DeckService {
             deck.setParentDeck(null);
         }
 
+        if (deck.getParentDeck() != null && deck.getVisibility() == DeckVisibility.PRIVATE) {
+            throw new AppException(ErrorCode.FORKED_DECK_CANNOT_BE_PRIVATE);
+        }
+
         if (coverImage != null && !coverImage.isEmpty()) {
             String imageUrl = uploadService.uploadFile(coverImage, FolderName.DECKS);
             deck.setCoverImageUrl(imageUrl);
@@ -151,6 +159,9 @@ public class DeckServiceImpl implements DeckService {
 
         if (!deck.getProfile().getId().equals(currentProfile.getId())) {
             throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+        if (deckVisibility == DeckVisibility.PRIVATE && deck.getParentDeck() != null) {
+            throw new AppException(ErrorCode.FORKED_DECK_CANNOT_BE_PRIVATE);
         }
         deck.setVisibility(deckVisibility);
         deckRepository.save(deck);
@@ -195,6 +206,10 @@ public class DeckServiceImpl implements DeckService {
         Deck deck = deckRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
 
+        if (deck.getProfile().getId().equals(currentProfile.getId())) {
+            throw new AppException(ErrorCode.CANNOT_FORK_OWN_DECK);
+        }
+
         if (deck.getVisibility() != DeckVisibility.PUBLIC) {
             throw new AppException(ErrorCode.DECK_NOT_PUBLIC);
         }
@@ -210,7 +225,7 @@ public class DeckServiceImpl implements DeckService {
         newDeck.setProfile(currentProfile);
         newDeck.setForkCount(0);
         newDeck.setParentDeck(deck);
-        newDeck.setVisibility(DeckVisibility.PRIVATE);
+        newDeck.setVisibility(DeckVisibility.PUBLIC);
         newDeck.setOfficial(false);
 
         if (deck.getTags() != null && !deck.getTags().isEmpty()) {
