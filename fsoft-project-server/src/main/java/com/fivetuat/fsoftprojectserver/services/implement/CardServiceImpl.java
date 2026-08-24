@@ -1,5 +1,15 @@
 package com.fivetuat.fsoftprojectserver.services.implement;
 
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.CardCreationRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.CardPositionRequest;
@@ -7,7 +17,6 @@ import com.fivetuat.fsoftprojectserver.dtos.request.CardUpdateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.CardResponse;
 import com.fivetuat.fsoftprojectserver.entities.Card;
 import com.fivetuat.fsoftprojectserver.entities.Deck;
-import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.enums.FolderName;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
@@ -16,23 +25,11 @@ import com.fivetuat.fsoftprojectserver.repositories.CardRepository;
 import com.fivetuat.fsoftprojectserver.services.CardService;
 import com.fivetuat.fsoftprojectserver.services.DeckService;
 import com.fivetuat.fsoftprojectserver.services.UploadService;
-import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service

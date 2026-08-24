@@ -69,6 +69,9 @@ public class Profile {
     @OneToMany(mappedBy = "profile", fetch = FetchType.LAZY, orphanRemoval = true)
     Set<QuizResult> quizResults;
 
+    @OneToMany(mappedBy = "profile", fetch = FetchType.LAZY, orphanRemoval = true)
+    Set<UserCardStar> starredCards;
+
     LocalDateTime createTime;
     LocalDateTime updateTime;
 
