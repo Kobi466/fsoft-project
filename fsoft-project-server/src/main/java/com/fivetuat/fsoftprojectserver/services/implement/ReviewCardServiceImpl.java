@@ -102,6 +102,46 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 	}
 
 	/**
+	 * Lấy từ vựng cần ôn tập theo Thuật toán Gom Cụm Thời Gian FSRS (Pure FSRS Time-Clustering - No Limit).
+	 * Chỉ tập trung vào các thẻ ĐÃ CÓ trong hệ thống FSRS (UserCardSrs).
+	 */
+	@Override
+	public List<ReviewCardResponse> getFsrsStudyQueue(Long deckId, Integer maxEarlyBufferMinutes, Integer clusterWindowMinutes) {
+		UUID userId = SecurityUtils.getCurrentUserLogin().orElseThrow(
+				() -> new AppException(ErrorCode.AUTHENTICATION_FAILED)
+		);
+
+		int earlyBufferMins = (maxEarlyBufferMinutes != null && maxEarlyBufferMinutes >= 0) ? maxEarlyBufferMinutes : 120;
+		int clusterMins = (clusterWindowMinutes != null && clusterWindowMinutes > 0) ? clusterWindowMinutes : 30;
+
+		List<UserCardSrs> allSrsCards = userCardSrsRepository.findAllUserSrsCardsOrdered(userId, deckId);
+		LocalDateTime now = LocalDateTime.now();
+		List<ReviewCardResponse> responses = new ArrayList<>();
+
+		if (allSrsCards.isEmpty()) {
+			return responses;
+		}
+
+		UserCardSrs firstCard = allSrsCards.get(0);
+		LocalDateTime targetStartDate = firstCard.getNextReviewDate();
+
+		// Hợp lệ nếu mốc hẹn đã đến hạn (targetStartDate <= now) HOẶC sắp đến hạn trong khoảng earlyBufferMins
+		if (targetStartDate.isBefore(now) || targetStartDate.isEqual(now) || targetStartDate.isBefore(now.plusMinutes(earlyBufferMins))) {
+			LocalDateTime clusterEndTime = targetStartDate.plusMinutes(clusterMins);
+
+			for (UserCardSrs srs : allSrsCards) {
+				if (!srs.getNextReviewDate().isAfter(clusterEndTime)) {
+					responses.add(userCardSrsMapper.toResponse(srs));
+				} else {
+					break;
+				}
+			}
+		}
+
+		return responses;
+	}
+
+	/**
 	 * Thực hiện thuật toán FSRS (Free Spaced Repetition Scheduler - 21 parameters DSR model)
 	 * để tính toán độ bền (Stability), độ khó (Difficulty) và lịch ôn tập tiếp theo cho flashcard.
 	 */

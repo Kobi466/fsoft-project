@@ -27,15 +27,16 @@ public class ReviewCardController {
     ReviewCardService srsService;
 
 	@Operation(
-        summary = "Lấy danh sách thẻ cần học/ôn tập", 
-        description = "Truy xuất danh sách các thẻ bài đang nằm trong hàng đợi SRS (đã đến hạn ôn tập hoặc thẻ bài mới học). Có thể lọc theo một bộ thẻ cụ thể."
+        summary = "Lấy danh sách thẻ cần học/ôn tập theo cụm thời gian FSRS", 
+        description = "Truy xuất danh sách toàn bộ thẻ bài trong cụm thời gian FSRS gần nhất của người dùng. Có thể lọc theo 1 bộ thẻ cụ thể hoặc tất cả bộ thẻ."
     )
     @GetMapping("/study-queue")
     public ApiResponse<List<ReviewCardResponse>> getStudyQueue(
-		    @Parameter(description = "Lọc thẻ theo bộ thẻ (bỏ trống nếu muốn lấy tất cả)") @RequestParam(value = "deckId", required = false) Long deckId,
-			@Parameter(description = "Số lượng thẻ tối đa trả về") @RequestParam(value = "limit", required = false, defaultValue = "20") int limit
+		    @Parameter(description = "Lọc thẻ theo bộ thẻ (bỏ trống nếu muốn lấy tất cả bộ bài)") @RequestParam(value = "deckId", required = false) Long deckId,
+			@Parameter(description = "Khoảng thời gian tối đa cho phép xem trước cụm tương lai (phút)") @RequestParam(value = "earlyBufferMinutes", required = false, defaultValue = "120") Integer earlyBufferMinutes,
+			@Parameter(description = "Phạm vi cửa sổ thời gian để gom cụm thẻ bài (phút)") @RequestParam(value = "clusterMinutes", required = false, defaultValue = "30") Integer clusterMinutes
     ) {
-        return ApiResponse.ok(srsService.getStudyQueue(deckId, limit), SuccessCode.GET_CARDS_SUCCESS);
+        return ApiResponse.ok(srsService.getFsrsStudyQueue(deckId, earlyBufferMinutes, clusterMinutes), SuccessCode.GET_CARDS_SUCCESS);
     }
 
 	@Operation(

@@ -53,4 +53,16 @@ public interface UserCardSrsRepository extends JpaRepository<UserCardSrs, Long> 
     List<UserCardSrs> findByProfileIdAndCardDeckIdAndNextReviewDateLessThanEqualOrderByNextReviewDateAsc(UUID userId, Long deckId, LocalDateTime now);
 
     List<UserCardSrs> findByProfileIdAndNextReviewDateLessThanEqualOrderByNextReviewDateAsc(UUID userId, LocalDateTime now);
+
+    @Query("""
+        SELECT s FROM UserCardSrs s
+        WHERE s.profile.id = :profileId
+          AND s.card.deck.isDeleted = false
+          AND (:deckId IS NULL OR s.card.deck.id = :deckId)
+        ORDER BY s.nextReviewDate ASC
+    """)
+    List<UserCardSrs> findAllUserSrsCardsOrdered(
+            @Param("profileId") UUID profileId,
+            @Param("deckId") Long deckId
+    );
 }
