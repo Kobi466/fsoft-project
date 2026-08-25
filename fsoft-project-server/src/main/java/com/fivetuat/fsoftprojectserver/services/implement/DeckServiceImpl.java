@@ -83,6 +83,10 @@ public class DeckServiceImpl implements DeckService {
         Deck deck = deckMapper.toDeck(request);
         deck.setProfile(profile);
 
+        if (!SecurityUtils.isCurrentUserInRole("ROLE_ADMIN")) {
+            deck.setOfficial(false);
+        }
+
         if (request.getParentDeckId() != null) {
             Deck parent = this.getExistingDeck(request.getParentDeckId());
             deck.setParentDeck(parent);

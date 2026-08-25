@@ -42,7 +42,7 @@ public class ApplicationInitConfig implements ApplicationRunner {
         roleService.createRole("USER", "USER", Set.of(c1));
 
         authService.createAuthAdmin(Auth.builder()
-                .email("admin")
+                .email("admin@gmail.com")
                 .phone("0123456789")
                 .passwordHash("13456789")
                 .build());

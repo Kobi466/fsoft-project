@@ -52,4 +52,8 @@ public interface DeckRepository extends JpaRepository<Deck, Long> {
            "d.id IN (SELECT ds.deck.id FROM DeckShare ds WHERE ds.profile.id = :currentUserId)" +
            ")")
     List<Long> findAllAccessibleDeckIdsByProfileId(@Param("currentUserId") UUID currentUserId);
+
+    long countByIsOfficialTrueAndIsDeletedFalse();
+    long countByVisibilityAndIsDeletedFalse(DeckVisibility visibility);
 }
+
