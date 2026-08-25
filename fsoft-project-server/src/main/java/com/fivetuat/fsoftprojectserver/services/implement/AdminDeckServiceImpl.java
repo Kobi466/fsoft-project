@@ -36,8 +36,8 @@ public class AdminDeckServiceImpl implements AdminDeckService {
     @Override
     @Transactional
     public DeckResponse createOfficialDeck(DeckCreateRequest request, MultipartFile coverImage) {
-        request.setOfficial(true);
-        request.setVisibility(DeckVisibility.PUBLIC);
+//        request.setOfficial(true);
+//        request.setVisibility(DeckVisibility.PUBLIC);
         return deckService.createDeck(request, coverImage);
     }
 

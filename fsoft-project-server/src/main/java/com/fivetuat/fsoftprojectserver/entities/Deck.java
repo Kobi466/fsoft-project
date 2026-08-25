@@ -86,7 +86,10 @@ public class Deck {
 
     @Column(name = "updated_at", nullable = false)
     LocalDateTime updatedAt;
-
+    
+    @Column(name = "pending_public", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    boolean pendingPublic = false;
     @OneToMany(mappedBy = "deck", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     List<Card> cards;
 
