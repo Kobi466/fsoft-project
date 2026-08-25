@@ -27,6 +27,7 @@ import com.fivetuat.fsoftprojectserver.repositories.*;
 import com.fivetuat.fsoftprojectserver.services.AudioReflexRoomService;
 import com.fivetuat.fsoftprojectserver.services.support.AudioReflexDisconnectGraceTimer;
 import com.fivetuat.fsoftprojectserver.services.support.AudioReflexQuestionTimer;
+import com.fivetuat.fsoftprojectserver.services.support.MultiplayerRoomHelper;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,7 @@ public class AudioReflexRoomServiceImpl implements AudioReflexRoomService {
     GameRecordRepository gameRecordRepository;
     AudioReflexQuestionTimer questionTimer;
     AudioReflexDisconnectGraceTimer disconnectGraceTimer;
+    MultiplayerRoomHelper roomHelper;
 
     private static final String KEY_PREFIX = "room:audio-reflex-multi:";
     private static final String GAME_TYPE_MULTI = "AUDIO_REFLEX_MULTI";
@@ -150,12 +152,16 @@ public class AudioReflexRoomServiceImpl implements AudioReflexRoomService {
     }
 
     @Override
-    public AudioReflexRoomState startGame(String roomCode, String requesterId) {
+    public AudioReflexRoomState startGame(String roomCode, String requesterId, Integer questionCount) {
         synchronized (lockFor(roomCode)) {
             AudioReflexRoomState state = getRoomOrThrow(roomCode);
             if (!state.getHostUserId().equals(requesterId)) throw new AppException(ErrorCode.NOT_ROOM_HOST);
             if (state.getStatus() != RoomStatus.WAITING) throw new AppException(ErrorCode.ROOM_ALREADY_STARTED);
             if (state.getPlayers().size() < 2) throw new AppException(ErrorCode.NOT_ENOUGH_PLAYERS);
+
+            state.setQuestionCount(roomHelper.resolveQuestionCount(
+                    state.getDeckId(), state.getPlayers().values(), state.getQuestionCount(), questionCount
+            ));
 
             state.setQuestions(generateQuestions(state));
             state.setStatus(RoomStatus.PLAYING);

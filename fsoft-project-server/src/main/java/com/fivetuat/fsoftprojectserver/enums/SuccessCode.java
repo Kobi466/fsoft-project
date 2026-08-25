@@ -79,8 +79,14 @@ public enum SuccessCode {
     DICTIONARY_LOOKUP_SUCCESS(200, "Tra từ điển thành công", HttpStatus.OK),
     AI_EXTRACTION_SUCCESS(200, "Trích xuất từ vựng thành công", HttpStatus.OK),
     GET_SRS_MASTERY_SUCCESS(200, "Lấy thống kê tiến độ thuộc từ thành công", HttpStatus.OK),
-    GET_CRAMMING_QUEUE_SUCCESS(200, "Lấy danh sách thẻ ôn tập cấp tốc thành công", HttpStatus.OK);
-    
+    GET_CRAMMING_QUEUE_SUCCESS(200, "Lấy danh sách thẻ ôn tập cấp tốc thành công", HttpStatus.OK),
+    CREATE_ROOM_SUCCESS(201, "Tạo phòng thành công", HttpStatus.CREATED),
+    JOIN_ROOM_SUCCESS(200, "Vào phòng thành công", HttpStatus.OK),
+    START_ROOM_SUCCESS(200, "Bắt đầu ván chơi thành công", HttpStatus.OK),
+    GET_ROOM_SUCCESS(200, "Lấy thông tin phòng thành công", HttpStatus.OK),
+    SUBMIT_ANSWER_SUCCESS(200, "Nộp câu trả lời thành công", HttpStatus.OK),
+    SELECT_DECK_SUCCESS(200, "Đã cập nhật bộ thẻ đóng góp thành công", HttpStatus.OK),
+    LEAVE_ROOM_SUCCESS(200, "Đã rời phòng thành công", HttpStatus.OK);
     final int status;
     final String message;
     final HttpStatus httpStatus;

@@ -24,6 +24,7 @@ import com.fivetuat.fsoftprojectserver.enums.RoomStatus;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.repositories.*;
 import com.fivetuat.fsoftprojectserver.services.SpaceStrikerRoomService;
+import com.fivetuat.fsoftprojectserver.services.support.MultiplayerRoomHelper;
 import com.fivetuat.fsoftprojectserver.services.support.SpaceStrikerQuestionTimer;
 
 import lombok.AccessLevel;
@@ -44,6 +45,7 @@ public class SpaceStrikerRoomServiceImpl implements SpaceStrikerRoomService {
     AuthRepository authRepository;
     GameRecordRepository gameRecordRepository;
     SpaceStrikerQuestionTimer questionTimer;
+    MultiplayerRoomHelper roomHelper;
 
     private static final String KEY_PREFIX = "room:space-striker:";
     private static final String GAME_TYPE_MULTI = "SPACE_STRIKER_MULTI";
@@ -60,7 +62,7 @@ public class SpaceStrikerRoomServiceImpl implements SpaceStrikerRoomService {
     public SpaceStrikerRoomState createRoom(Long deckId, int questionCount, String hostUserId) {
         Deck deck = deckRepository.findById(deckId).orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
         List<Card> deckCards = cardRepository.findByDeckIdOrderByPositionAsc(deckId);
-        if (deckCards.size() < 12) {
+        if (deckCards.size() <= 12) {
             throw new AppException(ErrorCode.INSUFFICIENT_CARDS);
         }
         Auth host = authRepository.findById(UUID.fromString(hostUserId))
@@ -145,12 +147,16 @@ public class SpaceStrikerRoomServiceImpl implements SpaceStrikerRoomService {
     }
 
     @Override
-    public SpaceStrikerRoomState startGame(String roomCode, String requesterId) {
+    public SpaceStrikerRoomState startGame(String roomCode, String requesterId, Integer questionCount) {
         synchronized (lockFor(roomCode)) {
             SpaceStrikerRoomState state = getRoomOrThrow(roomCode);
             if (!state.getHostUserId().equals(requesterId)) throw new AppException(ErrorCode.NOT_ROOM_HOST);
             if (state.getStatus() != RoomStatus.WAITING) throw new AppException(ErrorCode.ROOM_ALREADY_STARTED);
             if (state.getPlayers().size() < 2) throw new AppException(ErrorCode.NOT_ENOUGH_PLAYERS);
+
+            state.setQuestionCount(roomHelper.resolveQuestionCount(
+                    state.getDeckId(), state.getPlayers().values(), state.getQuestionCount(), questionCount
+            ));
 
             state.setQuestions(generateQuestions(state));
             state.setStatus(RoomStatus.PLAYING);
