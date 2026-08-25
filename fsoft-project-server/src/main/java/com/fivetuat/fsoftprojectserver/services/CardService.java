@@ -24,4 +24,7 @@ public interface CardService {
     void deleteCard(Long cardId);
 
     void updateCardPositions(Long deckId, List<CardPositionRequest> cardPositionRequests);
+
+    byte[] exportCardsToExcel(Long deckId);
+    byte[] exportCardsToPdf(Long deckId);
 }
