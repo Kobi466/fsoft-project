@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Thông Báo Nhắc Nhở Học Bài</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f6f9; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .header { text-align: center; border-bottom: 2px solid #f0f0f0; padding-bottom: 20px; }
+        .header h1 { color: #d9534f; margin: 0; font-size: 24px; }
+        .content { margin-top: 20px; font-size: 16px; line-height: 1.6; }
+        .highlight { background: #fffbe6; border-left: 4px solid #ffe58f; padding: 15px; margin: 20px 0; border-radius: 4px; }
+        .btn-container { text-align: center; margin-top: 25px; }
+        .btn { background-color: #1890ff; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; }
+        .footer { margin-top: 30px; text-align: center; font-size: 13px; color: #8c8c8c; border-top: 1px solid #f0f0f0; padding-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 th:if="${streak > 0}">⚠️ Đừng Để Đứt Chuỗi Học Tập!</h1>
+            <h1 th:if="${streak == 0}" style="color: #52c41a;">🌱 Dành 3 Phút Khởi Động Thói Quen!</h1>
+        </div>
+        <div class="content">
+            <p>Chào <b th:text="${name}">Học viên</b>,</p>
+            
+            <!-- Trường hợp có thẻ cần học (thẻ SRS đến hạn + thẻ mới tạo chưa học) -->
+            <div th:if="${dueCards > 0}">
+                <p>Hôm nay bạn chưa học bài nào. Đừng bỏ lỡ ngày hôm nay để bảo vệ và duy trì phong độ học tập của bạn!</p>
+                <div class="highlight">
+                    <p style="margin:0;">🔥 <b>Chuỗi hiện tại:</b> <span th:text="${streak}">0</span> ngày liên tục</p>
+                    <p style="margin:5px 0 0 0;">📚 <b>Từ vựng cần ôn/học hôm nay:</b> <span th:text="${dueCards}">0</span> từ</p>
+                </div>
+                <p>Chỉ cần 5 phút lướt qua các thẻ từ vựng là bạn đã hoàn thành mục tiêu ngày rồi!</p>
+                <div class="btn-container">
+                    <a href="http://localhost:3000/study" class="btn">Học Ngay Bây Giờ</a>
+                </div>
+            </div>
+
+            <!-- Trường hợp chưa có thẻ nào cần học (dueCards == 0) -->
+            <div th:if="${dueCards == 0}">
+                <p>Hôm nay bạn chưa học bài nào. Hiện tại bạn chưa có từ vựng nào đến hạn ôn tập.</p>
+                <div class="highlight">
+                    <p style="margin:0;">🔥 <b>Chuỗi hiện tại:</b> <span th:text="${streak}">0</span> ngày liên tục</p>
+                    <p style="margin:5px 0 0 0; color: #555;">💡 <b>Gợi ý:</b> Hãy chọn một bộ từ vựng mới để khám phá và bắt đầu lượt học mới nào!</p>
+                </div>
+                <div class="btn-container">
+                    <a href="http://localhost:3000/decks" class="btn">Khám Phá Bộ Bài Mới</a>
+                </div>
+            </div>
+        </div>
+        <div class="footer">
+            <p>Email này được gửi tự động từ hệ thống FSoft Flashcards.</p>
+        </div>
+    </div>
+</body>
+</html>

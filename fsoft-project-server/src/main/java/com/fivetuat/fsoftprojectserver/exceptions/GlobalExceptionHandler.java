@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
+import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.reactive.function.client.WebClientResponseException;

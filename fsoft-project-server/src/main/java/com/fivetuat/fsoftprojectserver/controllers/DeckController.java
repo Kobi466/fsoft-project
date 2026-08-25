@@ -16,6 +16,7 @@ import com.fivetuat.fsoftprojectserver.dtos.request.DeckCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckUpdateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckVisibilityRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.ShareDeckRequest;
+import com.fivetuat.fsoftprojectserver.dtos.response.CrammingQueueResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.DeckResponse;
 import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
 import com.fivetuat.fsoftprojectserver.enums.SuccessCode;
@@ -185,12 +186,24 @@ public class DeckController {
         return ApiResponse.ok(response, SuccessCode.GET_DECK_SUCCESS);
     }
 
-    @Operation(summary = "Lấy các bộ thẻ mà người khác chia sẻ cho tôi", description = "Liệt kê danh sách các bộ bài mà tài khoản hiện tại được người khác cấp quyền truy cập.")
+    @Operation(summary = "Lấy danh sách các bộ thẻ mà người khác chia sẻ cho tôi", description = "Liệt kê danh sách các bộ bài mà tài khoản hiện tại được người khác cấp quyền truy cập.")
     @GetMapping("/shared-with-me")
     public ApiResponse<PageResponse<DeckResponse>> getSharedWithMeDecks(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
         return ApiResponse.ok(deckService.getSharedWithMeDecks(page, size), SuccessCode.GET_DECKS_SUCCESS);
+    }
+
+    @Operation(summary = "Lấy danh sách thẻ bài ôn tập cấp tốc (Cramming Mode) trước kỳ thi", 
+               description = "Lấy toàn bộ từ vựng trong bộ bài để lướt xem nhanh trước kỳ thi. HOÀN TOÀN KHÔNG làm thay đổi tiến trình SRS/FSRS.")
+    @GetMapping("/{deckId}/cram-cards")
+    public ApiResponse<CrammingQueueResponse> getCramCards(
+            @Parameter(description = "ID của bộ thẻ cần ôn cấp tốc") @PathVariable Long deckId,
+            @Parameter(description = "Có tráo đổi thứ tự thẻ ngẫu nhiên hay không (default: false)") @RequestParam(required = false, defaultValue = "false") Boolean shuffle,
+            @Parameter(description = "Bộ lọc từ vựng: ALL, LEARNED, UNLEARNED (default: ALL)") @RequestParam(required = false, defaultValue = "ALL") String filter,
+            @Parameter(description = "Số lượng thẻ tối đa lấy ra (0 = lấy tất cả)") @RequestParam(required = false, defaultValue = "0") Integer limit
+    ) {
+        return ApiResponse.ok(deckService.getCramCards(deckId, shuffle, filter, limit), SuccessCode.GET_CRAMMING_QUEUE_SUCCESS);
     }
 }
