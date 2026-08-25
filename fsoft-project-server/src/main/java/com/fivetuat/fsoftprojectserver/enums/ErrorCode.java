@@ -36,6 +36,8 @@ public enum ErrorCode {
     DECK_NOT_SHARED(420, "Only SHARED decks can be SHARE", HttpStatus.BAD_REQUEST),
     DECK_ALREADY_FORKED(426, "You have already forked this deck", HttpStatus.CONFLICT),
     DECK_ALREADY_SHARED(427, "Deck already shared with this user", HttpStatus.CONFLICT),
+    CANNOT_FORK_OWN_DECK(436, "Cannot fork your own deck", HttpStatus.BAD_REQUEST),
+    FORKED_DECK_CANNOT_BE_PRIVATE(437, "Deck with parent deck cannot be set to private", HttpStatus.BAD_REQUEST),
 
     //tanvy Mã lỗi bổ sung cho Module Card:
     TAG_NOT_FOUND(424, "Tag not found", HttpStatus.NOT_FOUND),

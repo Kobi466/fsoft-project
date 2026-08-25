@@ -30,7 +30,6 @@ public interface DeckService {
     PageResponse<DeckResponse> getDecksByStatus(DeckVisibility status, int page, int size);
     Deck getMyDeck(Long id);
     Deck getDeckWithEditPermission(Long id);
-    void save(Deck deck);
 
     PageResponse<DeckShareResponse> getSharedUsers(Long deckId, Pageable pageable);
     void updateSharePermission(Long deckId, UUID profileId, SharePermission permission);

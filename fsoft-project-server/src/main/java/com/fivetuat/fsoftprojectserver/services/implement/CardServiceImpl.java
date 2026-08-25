@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.fivetuat.fsoftprojectserver.repositories.DeckRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -41,7 +42,7 @@ public class CardServiceImpl implements CardService {
     CardMapper cardMapper;
     DeckService deckService;
     UploadService uploadService;
-
+    DeckRepository deckRepository;
     @Override
     @Transactional
     public CardResponse createCard(
@@ -123,7 +124,7 @@ public class CardServiceImpl implements CardService {
 
         if (deck.getTotalCards() > 0) {
             deck.setTotalCards(deck.getTotalCards() - 1);
-            deckService.save(deck);
+            this.deckRepository.save(deck);
         }
     }
 
