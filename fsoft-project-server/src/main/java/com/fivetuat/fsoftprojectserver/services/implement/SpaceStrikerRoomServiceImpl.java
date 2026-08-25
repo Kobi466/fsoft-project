@@ -60,7 +60,7 @@ public class SpaceStrikerRoomServiceImpl implements SpaceStrikerRoomService {
     public SpaceStrikerRoomState createRoom(Long deckId, int questionCount, String hostUserId) {
         Deck deck = deckRepository.findById(deckId).orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
         List<Card> deckCards = cardRepository.findByDeckIdOrderByPositionAsc(deckId);
-        if (deckCards.size() < 12) {
+        if (deckCards.size() <= 12) {
             throw new AppException(ErrorCode.INSUFFICIENT_CARDS);
         }
         Auth host = authRepository.findById(UUID.fromString(hostUserId))
