@@ -206,4 +206,50 @@ public class NotificationServiceImpl implements NotificationService {
     public void recoverDeckInviteEmail(Exception e, String toEmail, String ownerName, String deckTitle) {
         log.error("CRITICAL: Failed to send deck invite email to {} after 3 attempts. Error: {}", toEmail, e.getMessage());
     }
+
+    @Async
+    @Retryable(
+            retryFor = Exception.class,
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 5000)
+    )
+    @Override
+    public void sendDailyReminderEmail(String toEmail, String name, int currentStreak, long dueCardsCount) {
+        log.info("Sending daily reminder email to {} (Running asynchronously)", toEmail);
+
+        Sender sender = Sender.builder()
+                .name(senderName)
+                .email(senderEmail)
+                .build();
+
+        Recipient recipient = Recipient.builder()
+                .name(name != null && !name.isBlank() ? name : toEmail)
+                .email(toEmail)
+                .build();
+
+        Context context = new Context();
+        context.setVariable("name", name != null && !name.isBlank() ? name : "Học viên");
+        context.setVariable("streak", currentStreak);
+        context.setVariable("dueCards", dueCardsCount);
+        String htmlContent = templateEngine.process("daily-reminder-email", context);
+
+        String subject = currentStreak > 0
+                ? "⚠️ [FSoft Flashcards] Đừng để đứt chuỗi " + currentStreak + " ngày học tập!"
+                : "🌱 [FSoft Flashcards] Dành 3 phút khởi động lại thói quen học tập hôm nay!";
+
+        EmailRequest emailRequest = EmailRequest.builder()
+                .sender(sender)
+                .to(List.of(recipient))
+                .subject(subject)
+                .htmlContent(htmlContent)
+                .build();
+
+        EmailResponse response = brevoEmailClient.sendEmail(apiKey, emailRequest);
+        log.info("Daily reminder email sent successfully to {}. Brevo Message ID: {}", toEmail, response.getMessageId());
+    }
+
+    @Recover
+    public void recoverDailyReminderEmail(Exception e, String toEmail, String name, int currentStreak, long dueCardsCount) {
+        log.error("CRITICAL: Failed to send daily reminder email to {} after 3 attempts. Error: {}", toEmail, e.getMessage());
+    }
 }

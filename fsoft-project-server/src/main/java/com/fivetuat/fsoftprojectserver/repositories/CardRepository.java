@@ -17,6 +17,7 @@ import java.util.UUID;
 @Repository
 public interface CardRepository extends JpaRepository<Card, Long> {
     List<Card> findByDeckId(Long deckId);
+    boolean existsByWordAndDeckId(String word, Long deckId);
     Page<Card> findByDeckIdOrderByPositionAsc(Long deckId, Pageable pageable);
 
     List<Card> findByDeckIdOrderByPositionAsc(Long deckId);

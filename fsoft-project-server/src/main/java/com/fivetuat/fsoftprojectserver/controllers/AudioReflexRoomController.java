@@ -45,8 +45,10 @@ public class AudioReflexRoomController {
 
     @PostMapping("/{code}/start")
     @Operation(summary = "Bắt đầu ván chơi")
-    public ApiResponse<AudioReflexRoomState> start(@PathVariable String code) {
-        return ApiResponse.ok(roomService.startGame(code, currentUserId()), SuccessCode.START_ROOM_SUCCESS);
+    public ApiResponse<AudioReflexRoomState> start(
+            @PathVariable String code,
+            @RequestParam(required = false) Integer questionCount) {
+        return ApiResponse.ok(roomService.startGame(code, currentUserId(), questionCount), SuccessCode.START_ROOM_SUCCESS);
     }
 
     @GetMapping("/{code}")

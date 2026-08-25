@@ -31,8 +31,9 @@ spring:
     openai:
       api-key: ${OPENAI_API_KEY}
       base-url: https://api.groq.com/openai/v1
-      chat:
-        model: openai/gpt-oss-120b
+    google:
+      genai:
+        api-key: ${GOOGLE_GENAI_API_KEY}
 
 aws:
     region: ${AWS_REGION}

@@ -60,7 +60,8 @@ public enum ErrorCode {
     ROOM_ALREADY_STARTED(442, "Room already started or already finished", HttpStatus.BAD_REQUEST),
     NOT_ROOM_HOST(443, "Only the host can perform this action", HttpStatus.FORBIDDEN),
     PLAYER_NOT_IN_ROOM(444, "You are not a member of this room", HttpStatus.FORBIDDEN),
-    NOT_ENOUGH_PLAYERS(445, "Need at least 2 players to start", HttpStatus.BAD_REQUEST);
+    NOT_ENOUGH_PLAYERS(445, "Need at least 2 players to start", HttpStatus.BAD_REQUEST),
+    INVALID_QUESTION_COUNT(446, "Số lượng câu hỏi phải lớn hơn 0 và không vượt quá tổng số từ của các bộ thẻ", HttpStatus.BAD_REQUEST);
     int status;
     String message;
     HttpStatus httpStatus;
