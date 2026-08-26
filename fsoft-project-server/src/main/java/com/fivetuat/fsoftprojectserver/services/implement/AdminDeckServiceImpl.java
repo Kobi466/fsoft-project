@@ -24,6 +24,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.fivetuat.fsoftprojectserver.utils.PageUtils;
+
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -45,19 +47,7 @@ public class AdminDeckServiceImpl implements AdminDeckService {
     @Transactional(readOnly = true)
     public PageResponse<DeckResponse> getAllDecks(String keyword, Boolean isOfficial, DeckVisibility visibility, Pageable pageable) {
         Page<Deck> deckPage = deckRepository.findAll(pageable);
-
-        List<DeckResponse> content = deckPage.getContent().stream()
-                .map(deckMapper::toDeckResponse)
-                .collect(Collectors.toList());
-
-        return PageResponse.<DeckResponse>builder()
-                .content(content)
-                .totalElements(deckPage.getTotalElements())
-                .totalPages(deckPage.getTotalPages())
-                .pageNo(deckPage.getNumber())
-                .pageSize(deckPage.getSize())
-                .last(deckPage.isLast())
-                .build();
+        return PageUtils.toPageResponse(deckPage, deckMapper::toDeckResponse);
     }
 
     @Override
@@ -77,6 +67,35 @@ public class AdminDeckServiceImpl implements AdminDeckService {
         deckRepository.save(deck);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<DeckResponse> getPendingPublicDecks(Pageable pageable) {
+        Page<Deck> deckPage = deckRepository.findByPendingPublicTrueAndIsDeletedFalse(pageable);
+        return PageUtils.toPageResponse(deckPage, deckMapper::toDeckResponse);
+    }
+
+    @Override
+    @Transactional
+    public DeckResponse approvePublicDeck(Long deckId, boolean approved) {
+        Deck deck = this.getExistingDeck(deckId);
+        if (approved) {
+            deck.setVisibility(DeckVisibility.PUBLIC);
+        } else {
+            deck.setVisibility(DeckVisibility.PRIVATE);
+        }
+        deck.setPendingPublic(false);
+        Deck savedDeck = deckRepository.save(deck);
+        return deckMapper.toDeckResponse(savedDeck);
+    }
+
+    @Override
+    @Transactional
+    public DeckResponse convertDeckVisibility(Long deckId, DeckVisibility visibility) {
+        Deck deck = this.getExistingDeck(deckId);
+        deck.setVisibility(visibility);
+        Deck savedDeck = deckRepository.save(deck);
+        return deckMapper.toDeckResponse(savedDeck);
+    }
 
     private Deck getExistingDeck(Long deckId) {
         return deckRepository.findByIdAndIsDeletedFalse(deckId)

@@ -3,6 +3,7 @@ package com.fivetuat.fsoftprojectserver.controllers;
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
 import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.AdminUpdateDeckOfficialRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.DeckVisibilityRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.DeckResponse;
 import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
 import com.fivetuat.fsoftprojectserver.enums.SuccessCode;
@@ -66,5 +67,29 @@ public class AdminDeckController {
     public ApiResponse<Void> deleteDeck(@PathVariable Long deckId) {
         adminDeckService.deleteDeck(deckId);
         return ApiResponse.ok(null, SuccessCode.DELETE_DECK_SUCCESS);
+    }
+
+    @GetMapping("/pending-public")
+    @Operation(summary = "Lấy danh sách các bộ bài đang chờ duyệt lên Public (pendingPublic = true)")
+    public ApiResponse<PageResponse<DeckResponse>> getPendingPublicDecks(Pageable pageable) {
+        return ApiResponse.ok(adminDeckService.getPendingPublicDecks(pageable), SuccessCode.GET_DECKS_SUCCESS);
+    }
+
+    @PatchMapping("/{deckId}/approve-public")
+    @Operation(summary = "Duyệt hoặc Từ chối yêu cầu đưa bộ bài lên Public của Người dùng")
+    public ApiResponse<DeckResponse> approvePublicDeck(
+            @PathVariable Long deckId,
+            @RequestParam boolean approved
+    ) {
+        return ApiResponse.ok(adminDeckService.approvePublicDeck(deckId, approved), SuccessCode.UPDATE_DECK_SUCCESS);
+    }
+
+    @PutMapping("/{deckId}/visibility")
+    @Operation(summary = "Chuyển đổi trạng thái hiển thị của Bộ bài (PUBLIC <-> PRIVATE)")
+    public ApiResponse<DeckResponse> convertDeckVisibility(
+            @PathVariable Long deckId,
+            @RequestBody DeckVisibilityRequest request
+    ) {
+        return ApiResponse.ok(adminDeckService.convertDeckVisibility(deckId, request.getVisibility()), SuccessCode.DECK_VISIBILITY_UPDATED);
     }
 }

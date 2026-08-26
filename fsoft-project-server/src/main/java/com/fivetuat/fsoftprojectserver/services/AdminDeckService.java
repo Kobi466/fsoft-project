@@ -13,5 +13,8 @@ public interface AdminDeckService {
     PageResponse<DeckResponse> getAllDecks(String keyword, Boolean isOfficial, DeckVisibility visibility, Pageable pageable);
     DeckResponse updateDeckOfficial(Long deckId, AdminUpdateDeckOfficialRequest request);
     void deleteDeck(Long deckId);
+    PageResponse<DeckResponse> getPendingPublicDecks(Pageable pageable);
+    DeckResponse approvePublicDeck(Long deckId, boolean approved);
+    DeckResponse convertDeckVisibility(Long deckId, DeckVisibility visibility);
 }
 
