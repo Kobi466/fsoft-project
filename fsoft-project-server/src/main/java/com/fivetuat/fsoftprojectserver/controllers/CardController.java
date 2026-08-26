@@ -22,6 +22,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+
 @RestController
 @RequestMapping("/cards")
 @RequiredArgsConstructor
@@ -103,5 +106,35 @@ public class CardController {
     ) {
         cardService.updateCardPositions(deckId, requests);
         return ApiResponse.ok(null, SuccessCode.UPDATE_CARD_SUCCESS);
+    }
+
+    @Operation(
+        summary = "Xuất danh sách thẻ bài ra file Excel (.xlsx)",
+        description = "Tải file Excel .xlsx chứa toàn bộ thẻ bài có trong bộ bài."
+    )
+    @GetMapping("/deck/{deckId}/export/excel")
+    public ResponseEntity<byte[]> exportCardsToExcel(
+            @Parameter(description = "ID của bộ thẻ") @PathVariable Long deckId
+    ) {
+        byte[] excelBytes = cardService.exportCardsToExcel(deckId);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Deck_" + deckId + "_Flashcards.xlsx\"")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(excelBytes);
+    }
+
+    @Operation(
+        summary = "Xuất danh sách thẻ bài ra file PDF (.pdf)",
+        description = "Tải file PDF chứa toàn bộ thẻ bài có trong bộ bài để in ấn hoặc học tập offline."
+    )
+    @GetMapping("/deck/{deckId}/export/pdf")
+    public ResponseEntity<byte[]> exportCardsToPdf(
+            @Parameter(description = "ID của bộ thẻ") @PathVariable Long deckId
+    ) {
+        byte[] pdfBytes = cardService.exportCardsToPdf(deckId);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Deck_" + deckId + "_Flashcards.pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdfBytes);
     }
 }

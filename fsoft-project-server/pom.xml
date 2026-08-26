@@ -182,6 +182,18 @@
 <!--            <groupId>org.springframework.ai</groupId>-->
 <!--            <artifactId>spring-ai-tika-document-reader</artifactId>-->
 <!--        </dependency>-->
+        <!-- Apache POI cho Excel Export -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.5</version>
+        </dependency>
+        <!-- OpenPDF cho PDF Export hỗ trợ Tiếng Việt -->
+        <dependency>
+            <groupId>com.github.librepdf</groupId>
+            <artifactId>openpdf</artifactId>
+            <version>1.3.39</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
