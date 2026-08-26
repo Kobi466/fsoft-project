@@ -69,25 +69,26 @@ public class DeckServiceImpl implements DeckService {
     @Transactional
     @Override
     public DeckResponse createDeck(DeckCreateRequest request, MultipartFile coverImage) {
+        String role = SecurityUtils.isCurrentUserInRole("ROLE_ADMIN")
+                ? "ADMIN"
+                : "USER";
+
         Profile profile = authService.getCurrentProfile();
         Deck deck = deckMapper.toDeck(request);
         deck.setProfile(profile);
-
-        if (!SecurityUtils.isCurrentUserInRole("ROLE_ADMIN")) {
-            deck.setOfficial(false);
+        switch (role) {
+            case "ADMIN":
+                deck.setOfficial(true);
+                break;
+            case "USER":
+                if (request.getVisibility() == DeckVisibility.PUBLIC) {
+                    throw new AppException(ErrorCode.ACCESS_DENIED);
+                }
+                deck.setOfficial(false);
+                break;
+            default:
+                throw new AppException(ErrorCode.ACCESS_DENIED);
         }
-
-        if (request.getParentDeckId() != null) {
-            Deck parent = this.getExistingDeck(request.getParentDeckId());
-            deck.setParentDeck(parent);
-        }
-
-        if (coverImage != null && !coverImage.isEmpty()) {
-            String imageUrl = uploadService.uploadFile(coverImage, FolderName.DECKS);
-            log.info("image {}", imageUrl);
-            deck.setCoverImageUrl(imageUrl);
-        }
-
         applyParentDeck(deck, request.getParentDeckId());
         applyCoverImage(deck, coverImage);
         deck.setTags(processTags(request.getTagIds()));
@@ -108,8 +109,27 @@ public class DeckServiceImpl implements DeckService {
     @Transactional
     @Override
     public DeckResponse updateDeck(Long id, DeckUpdateRequest request, MultipartFile coverImage) {
-        Deck deck = getMyDeck(id);
+        String role = SecurityUtils.isCurrentUserInRole("ROLE_ADMIN")
+                ? "ADMIN"
+                : "USER";
+
+        Deck deck;
+        switch (role) {
+            case "ADMIN":
+                deck = getExistingDeck(id);
+                break;
+            case "USER":
+                deck = getMyDeck(id);
+                if (request.getVisibility() == DeckVisibility.PUBLIC && !deck.isOfficial()) {
+                    throw new AppException(ErrorCode.ACCESS_DENIED);
+                }
+                break;
+            default:
+                throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
         deckMapper.updateDeck(deck, request);
+
         applyParentDeck(deck, request.getParentDeckId());
         applyCoverImage(deck, coverImage);
         deck.setTags(processTags(request.getTagIds()));
@@ -120,16 +140,16 @@ public class DeckServiceImpl implements DeckService {
     @Transactional
     @Override
     public void convertDeckVisibility(Long id, DeckVisibility deckVisibility) {
-        Deck deck = getExistingDeck(id);
-        Profile profile = authService.getCurrentProfile();
-
-        deckValidator.verifyOwner(deck, profile.getId());
-
-        if (deckVisibility == DeckVisibility.PRIVATE && deck.getParentDeck() != null) {
-            throw new AppException(ErrorCode.FORKED_DECK_CANNOT_BE_PRIVATE);
+        Deck deck = getMyDeck(id);
+        if (deckVisibility == DeckVisibility.PUBLIC) {
+            if (deck.getParentDeck() != null) {
+                throw new AppException(ErrorCode.FORKED_DECK_CANNOT_BE_PUBLIC);
+            }
+            deck.setPendingPublic(true);
+        } else {
+            deck.setVisibility(DeckVisibility.PRIVATE);
+            deck.setPendingPublic(false);
         }
-
-        deck.setVisibility(deckVisibility);
         deckRepository.save(deck);
     }
 
@@ -317,7 +337,7 @@ public class DeckServiceImpl implements DeckService {
         newDeck.setProfile(newOwner);
         newDeck.setForkCount(0);
         newDeck.setParentDeck(sourceDeck);
-        newDeck.setVisibility(DeckVisibility.PUBLIC);
+        newDeck.setVisibility(DeckVisibility.PRIVATE);
         newDeck.setOfficial(false);
 
         if (sourceDeck.getTags() != null && !sourceDeck.getTags().isEmpty()) {

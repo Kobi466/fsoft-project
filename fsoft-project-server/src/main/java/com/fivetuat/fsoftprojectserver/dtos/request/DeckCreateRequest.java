@@ -39,7 +39,5 @@ public class DeckCreateRequest {
 
     String coverImageUrl;
 
-    boolean isOfficial;
-
     Set<Long> tagIds;
 }
