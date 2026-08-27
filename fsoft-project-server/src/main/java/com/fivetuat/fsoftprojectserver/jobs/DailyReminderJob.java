@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 
 import com.fivetuat.fsoftprojectserver.dtos.response.ReminderUserResponse;
 import com.fivetuat.fsoftprojectserver.repositories.UserStreakRepository;
-import com.fivetuat.fsoftprojectserver.services.NotificationService;
+import com.fivetuat.fsoftprojectserver.services.NotificationEmailService;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 public class DailyReminderJob {
 
     UserStreakRepository userStreakRepository;
-    NotificationService notificationService;
+    NotificationEmailService notificationEmailService;
     RedisTemplate<String, Object> redisTemplate;
 
     public static final int BATCH_SIZE = 500;
@@ -53,11 +53,10 @@ public class DailyReminderJob {
                 Boolean isFirstTime = redisTemplate.opsForValue().setIfAbsent(redisKey, "true", 24, TimeUnit.HOURS);
 
                 if (Boolean.TRUE.equals(isFirstTime)) {
-                    notificationService.sendDailyReminderEmail(
+                    notificationEmailService.sendDailyReminderEmail(
                             user.getEmail(),
                             user.getFullName(),
-                            user.getCurrentStreak(),
-                            user.getDueCardsCount()
+                            user.getCurrentStreak()
                     );
                     totalDispatched++;
                 } else {

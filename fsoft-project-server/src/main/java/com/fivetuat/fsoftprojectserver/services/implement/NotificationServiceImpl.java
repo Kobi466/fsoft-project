@@ -1,255 +1,137 @@
 package com.fivetuat.fsoftprojectserver.services.implement;
 
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Recover;
-import org.springframework.retry.annotation.Retryable;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Service;
-import org.thymeleaf.TemplateEngine;
-import org.thymeleaf.context.Context;
-
-import com.fivetuat.fsoftprojectserver.dtos.https.brevo.EmailRequest;
-import com.fivetuat.fsoftprojectserver.dtos.https.brevo.EmailResponse;
-import com.fivetuat.fsoftprojectserver.dtos.https.brevo.Recipient;
-import com.fivetuat.fsoftprojectserver.dtos.https.brevo.Sender;
-import com.fivetuat.fsoftprojectserver.httpsClients.BrevoEmailClient;
+import com.fivetuat.fsoftprojectserver.dtos.request.NotificationCreationRequest;
+import com.fivetuat.fsoftprojectserver.dtos.response.NotificationResponse;
+import com.fivetuat.fsoftprojectserver.entities.Notification;
+import com.fivetuat.fsoftprojectserver.entities.Profile;
+import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
+import com.fivetuat.fsoftprojectserver.exceptions.AppException;
+import com.fivetuat.fsoftprojectserver.mappers.NotificationMapper;
+import com.fivetuat.fsoftprojectserver.repositories.NotificationRepository;
+import com.fivetuat.fsoftprojectserver.repositories.ProfileRepository;
 import com.fivetuat.fsoftprojectserver.services.NotificationService;
-
+import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE)
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class NotificationServiceImpl implements NotificationService {
 
-    final BrevoEmailClient brevoEmailClient;
-    final TemplateEngine templateEngine;
+    NotificationRepository notificationRepository;
+    ProfileRepository profileRepository;
+    NotificationMapper notificationMapper;
+    SimpMessagingTemplate messagingTemplate;
 
-    @Value("${notification.email.apikey}")
-    String apiKey;
-
-    @Value("${notification.email.sender.name}")
-    String senderName;
-
-    @Value("${notification.email.sender.email}")
-    String senderEmail;
-
-    @Async
-    @Retryable(
-        retryFor = Exception.class,
-        maxAttempts = 3,
-        backoff = @Backoff(delay = 5000)
-    )
     @Override
-    public void sendWelcomeEmail(String toEmail, String name) {
-        log.info("Sending welcome email to {} (Running asynchronously)", toEmail);
+    @Transactional
+    public NotificationResponse createNotification(NotificationCreationRequest request) {
+        log.info("Creating notification for user ID: {}", request.getRecipientId());
 
-        Sender sender = Sender.builder()
-                .name(senderName)
-                .email(senderEmail)
-                .build();
+        Profile recipient = profileRepository.findById(request.getRecipientId())
+                .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
 
-        Recipient recipient = Recipient.builder()
-                .name(name)
-                .email(toEmail)
-                .build();
+        Notification notification = notificationMapper.toNotification(request);
+        notification.setRecipient(recipient);
 
-        // Render HTML content using Thymeleaf
-        Context context = new Context();
-        context.setVariable("name", name);
-        String htmlContent = templateEngine.process("welcome-email", context);
+        Notification savedNotification = notificationRepository.save(notification);
+        NotificationResponse response = notificationMapper.toNotificationResponse(savedNotification);
 
-        EmailRequest emailRequest = EmailRequest.builder()
-                .sender(sender)
-                .to(List.of(recipient))
-                .subject("Chào mừng bạn gia nhập FSoft Flashcards!")
-                .htmlContent(htmlContent)
-                .build();
+        sendRealTimeNotification(recipient.getId(), response);
 
-        EmailResponse response = brevoEmailClient.sendEmail(apiKey, emailRequest);
-        log.info("Welcome email sent successfully to {}. Brevo Message ID: {}", toEmail, response.getMessageId());
+        return response;
     }
 
-    @Recover
-    public void recoverWelcomeEmail(Exception e, String toEmail, String name) {
-        log.error("CRITICAL: Failed to send welcome email to {} after 3 attempts. Error: {}", toEmail, e.getMessage());
-    }
-
-    @Async
-    @Retryable(
-            retryFor = Exception.class,
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 5000)
-    )
     @Override
-    public void sendForgotPasswordEmail(String toEmail, String name, String otp) {
-        log.info("Sending forgot password OTP email to {} (Running asynchronously)", toEmail);
+    @Transactional(readOnly = true)
+    public List<NotificationResponse> getMyNotifications(Pageable pageable) {
+        UUID currentUserId = getCurrentUserId();
+        log.info("Getting notifications for current user ID: {}", currentUserId);
 
-        Sender sender = Sender.builder()
-                .name(senderName)
-                .email(senderEmail)
-                .build();
+        Page<Notification> notificationPage = notificationRepository
+                .findByRecipientIdOrderByCreatedAtDesc(currentUserId, pageable);
 
-        Recipient recipient = Recipient.builder()
-                .name(name)
-                .email(toEmail)
-                .build();
-
-        Context context = new Context();
-        context.setVariable("name", name);
-        context.setVariable("otp", otp);
-        String htmlContent = templateEngine.process("forgot-password-email", context);
-
-        EmailRequest emailRequest = EmailRequest.builder()
-                .sender(sender)
-                .to(List.of(recipient))
-                .subject("[FSoft Flashcards] Mã xác thực OTP đặt lại mật khẩu")
-                .htmlContent(htmlContent)
-                .build();
-
-        EmailResponse response = brevoEmailClient.sendEmail(apiKey, emailRequest);
-        log.info("OTP email sent successfully to {}. Brevo Message ID: {}", toEmail, response.getMessageId());
+        return notificationPage.getContent().stream()
+                .map(notificationMapper::toNotificationResponse)
+                .toList();
     }
 
-    @Recover
-    public void recoverForgotPasswordEmail(Exception e, String toEmail, String name, String otp) {
-        log.error("CRITICAL: Failed to send forgot password OTP to {} after 3 attempts. Error: {}", toEmail, e.getMessage());
-    }
-
-    @Async
-    @Retryable(
-            retryFor = Exception.class,
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 5000)
-    )
     @Override
-    public void sendDeckSharedEmail(String toEmail, String recipientName, String ownerName, String deckTitle, String permission) {
-        log.info("Sending deck shared email to {} (Running asynchronously)", toEmail);
-
-        Sender sender = Sender.builder()
-                .name(senderName)
-                .email(senderEmail)
-                .build();
-
-        Recipient recipient = Recipient.builder()
-                .name(recipientName != null ? recipientName : toEmail)
-                .email(toEmail)
-                .build();
-
-        Context context = new Context();
-        context.setVariable("recipientName", recipientName != null ? recipientName : toEmail);
-        context.setVariable("ownerName", ownerName);
-        context.setVariable("deckTitle", deckTitle);
-        context.setVariable("permission", permission);
-        String htmlContent = templateEngine.process("deck-shared-email", context);
-
-        EmailRequest emailRequest = EmailRequest.builder()
-                .sender(sender)
-                .to(List.of(recipient))
-                .subject("[FSoft Flashcards] Bạn được chia sẻ bộ từ vựng \"" + deckTitle + "\"")
-                .htmlContent(htmlContent)
-                .build();
-
-        EmailResponse response = brevoEmailClient.sendEmail(apiKey, emailRequest);
-        log.info("Deck shared email sent successfully to {}. Brevo Message ID: {}", toEmail, response.getMessageId());
+    @Transactional(readOnly = true)
+    public long getUnreadCount() {
+        return notificationRepository.countByRecipientIdAndIsReadFalse(getCurrentUserId());
     }
 
-    @Recover
-    public void recoverDeckSharedEmail(Exception e, String toEmail, String recipientName, String ownerName, String deckTitle, String permission) {
-        log.error("CRITICAL: Failed to send deck shared email to {} after 3 attempts. Error: {}", toEmail, e.getMessage());
-    }
-
-    @Async
-    @Retryable(
-            retryFor = Exception.class,
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 5000)
-    )
     @Override
-    public void sendDeckInviteEmail(String toEmail, String ownerName, String deckTitle) {
-        log.info("Sending deck invite email to {} (Running asynchronously)", toEmail);
+    @Transactional
+    public NotificationResponse markAsRead(Long notificationId) {
+        UUID currentUserId = getCurrentUserId();
+        Notification notification = getNotificationWithOwnerCheck(notificationId, currentUserId);
 
-        Sender sender = Sender.builder()
-                .name(senderName)
-                .email(senderEmail)
-                .build();
-
-        Recipient recipient = Recipient.builder()
-                .name(toEmail)
-                .email(toEmail)
-                .build();
-
-        Context context = new Context();
-        context.setVariable("ownerName", ownerName);
-        context.setVariable("deckTitle", deckTitle);
-        String htmlContent = templateEngine.process("deck-invite-email", context);
-
-        EmailRequest emailRequest = EmailRequest.builder()
-                .sender(sender)
-                .to(List.of(recipient))
-                .subject("[FSoft Flashcards] Lời mời học bộ từ vựng \"" + deckTitle + "\"")
-                .htmlContent(htmlContent)
-                .build();
-
-        EmailResponse response = brevoEmailClient.sendEmail(apiKey, emailRequest);
-        log.info("Deck invite email sent successfully to {}. Brevo Message ID: {}", toEmail, response.getMessageId());
+        notification.setRead(true);
+        Notification updatedNotification = notificationRepository.save(notification);
+        return notificationMapper.toNotificationResponse(updatedNotification);
     }
 
-    @Recover
-    public void recoverDeckInviteEmail(Exception e, String toEmail, String ownerName, String deckTitle) {
-        log.error("CRITICAL: Failed to send deck invite email to {} after 3 attempts. Error: {}", toEmail, e.getMessage());
-    }
-
-    @Async
-    @Retryable(
-            retryFor = Exception.class,
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 5000)
-    )
     @Override
-    public void sendDailyReminderEmail(String toEmail, String name, int currentStreak, long dueCardsCount) {
-        log.info("Sending daily reminder email to {} (Running asynchronously)", toEmail);
+    @Transactional
+    public void markAllAsRead() {
+        UUID currentUserId = getCurrentUserId();
+        List<Notification> unreadNotifications = notificationRepository
+                .findByRecipientIdAndIsReadFalse(currentUserId);
 
-        Sender sender = Sender.builder()
-                .name(senderName)
-                .email(senderEmail)
-                .build();
-
-        Recipient recipient = Recipient.builder()
-                .name(name != null && !name.isBlank() ? name : toEmail)
-                .email(toEmail)
-                .build();
-
-        Context context = new Context();
-        context.setVariable("name", name != null && !name.isBlank() ? name : "Học viên");
-        context.setVariable("streak", currentStreak);
-        context.setVariable("dueCards", dueCardsCount);
-        String htmlContent = templateEngine.process("daily-reminder-email", context);
-
-        String subject = currentStreak > 0
-                ? "⚠️ [FSoft Flashcards] Đừng để đứt chuỗi " + currentStreak + " ngày học tập!"
-                : "🌱 [FSoft Flashcards] Dành 3 phút khởi động lại thói quen học tập hôm nay!";
-
-        EmailRequest emailRequest = EmailRequest.builder()
-                .sender(sender)
-                .to(List.of(recipient))
-                .subject(subject)
-                .htmlContent(htmlContent)
-                .build();
-
-        EmailResponse response = brevoEmailClient.sendEmail(apiKey, emailRequest);
-        log.info("Daily reminder email sent successfully to {}. Brevo Message ID: {}", toEmail, response.getMessageId());
+        if (!unreadNotifications.isEmpty()) {
+            unreadNotifications.forEach(n -> n.setRead(true));
+            notificationRepository.saveAll(unreadNotifications);
+        }
     }
 
-    @Recover
-    public void recoverDailyReminderEmail(Exception e, String toEmail, String name, int currentStreak, long dueCardsCount) {
-        log.error("CRITICAL: Failed to send daily reminder email to {} after 3 attempts. Error: {}", toEmail, e.getMessage());
+    @Override
+    @Transactional
+    public void deleteNotification(Long notificationId) {
+        UUID currentUserId = getCurrentUserId();
+        Notification notification = getNotificationWithOwnerCheck(notificationId, currentUserId);
+        notificationRepository.delete(notification);
+    }
+
+    private Notification getNotificationWithOwnerCheck(Long notificationId, UUID currentUserId) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOTIFICATION_NOT_FOUND));
+
+        boolean isRecipient = notification.getRecipient().getId().equals(currentUserId);
+        boolean isAdmin = SecurityUtils.isCurrentUserInRole("ROLE_ADMIN");
+
+        if (!isRecipient && !isAdmin) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
+        return notification;
+    }
+
+    private void sendRealTimeNotification(UUID recipientId, NotificationResponse response) {
+        try {
+            String destination = "/topic/notifications/" + recipientId;
+            messagingTemplate.convertAndSend(destination, response);
+            log.info("WebSocket notification sent to topic: {}", destination);
+        } catch (Exception e) {
+            log.error("Failed to send WebSocket notification to user {}: {}", recipientId, e.getMessage());
+        }
+    }
+
+    private UUID getCurrentUserId() {
+        return SecurityUtils.getCurrentUserLogin()
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED));
     }
 }
