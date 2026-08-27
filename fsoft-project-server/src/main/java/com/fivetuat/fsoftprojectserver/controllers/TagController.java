@@ -45,27 +45,27 @@ public class TagController {
         return ApiResponse.ok(tagService.getAllTags(), SuccessCode.GET_TAGS_SUCCESS);
     }
 
-    @PutMapping("/{id}")
-    @Operation(
-        summary = "Chỉnh sửa thông tin Tag", 
-        description = "Đổi tên hoặc đổi định dạng hiển thị của một Tag đã tồn tại theo ID tương ứng."
-    )
-    public ApiResponse<TagResponse> updateTag(
-            @Parameter(description = "ID của Nhãn chủ đề cần sửa") @PathVariable Long id,
-            @Parameter(description = "Thông tin mới của Nhãn") @RequestBody @Valid TagRequest request
-    ) {
-        return ApiResponse.ok(tagService.updateTag(id, request), SuccessCode.UPDATE_TAG_SUCCESS);
-    }
+    // @PutMapping("/{id}")
+    // @Operation(
+    //     summary = "Chỉnh sửa thông tin Tag", 
+    //     description = "Đổi tên hoặc đổi định dạng hiển thị của một Tag đã tồn tại theo ID tương ứng."
+    // )
+    // public ApiResponse<TagResponse> updateTag(
+    //         @Parameter(description = "ID của Nhãn chủ đề cần sửa") @PathVariable Long id,
+    //         @Parameter(description = "Thông tin mới của Nhãn") @RequestBody @Valid TagRequest request
+    // ) {
+    //     return ApiResponse.ok(tagService.updateTag(id, request), SuccessCode.UPDATE_TAG_SUCCESS);
+    // }
 
-    @DeleteMapping("/{id}")
-    @Operation(
-        summary = "Xóa vĩnh viễn một Tag", 
-        description = "Gỡ bỏ Tag này khỏi hệ thống. Những bộ bài đang sử dụng Tag này sẽ bị xóa liên kết tương ứng với nó."
-    )
-    public ApiResponse<Void> deleteTag(
-        @Parameter(description = "ID của Nhãn chủ đề cần xóa") @PathVariable Long id
-    ) {
-        tagService.deleteTag(id);
-        return ApiResponse.ok(null, SuccessCode.DELETE_TAG_SUCCESS);
-    }
+    // @DeleteMapping("/{id}")
+    // @Operation(
+    //     summary = "Xóa vĩnh viễn một Tag", 
+    //     description = "Gỡ bỏ Tag này khỏi hệ thống. Những bộ bài đang sử dụng Tag này sẽ bị xóa liên kết tương ứng với nó."
+    // )
+    // public ApiResponse<Void> deleteTag(
+    //     @Parameter(description = "ID của Nhãn chủ đề cần xóa") @PathVariable Long id
+    // ) {
+    //     tagService.deleteTag(id);
+    //     return ApiResponse.ok(null, SuccessCode.DELETE_TAG_SUCCESS);
+    // }
 }
