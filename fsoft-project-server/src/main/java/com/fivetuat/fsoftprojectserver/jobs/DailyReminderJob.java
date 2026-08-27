@@ -3,6 +3,7 @@ package com.fivetuat.fsoftprojectserver.jobs;
 import java.time.LocalDate;
 import java.util.concurrent.TimeUnit;
 
+import com.fivetuat.fsoftprojectserver.services.NotificationEmailService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -12,7 +13,6 @@ import org.springframework.stereotype.Component;
 
 import com.fivetuat.fsoftprojectserver.dtos.response.ReminderUserResponse;
 import com.fivetuat.fsoftprojectserver.repositories.UserStreakRepository;
-import com.fivetuat.fsoftprojectserver.services.NotificationService;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 public class DailyReminderJob {
 
     UserStreakRepository userStreakRepository;
-    NotificationService notificationService;
+    NotificationEmailService notificationService;
     RedisTemplate<String, Object> redisTemplate;
 
     public static final int BATCH_SIZE = 500;

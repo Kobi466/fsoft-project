@@ -1,9 +1,16 @@
 package com.fivetuat.fsoftprojectserver.services;
 
+import com.fivetuat.fsoftprojectserver.dtos.request.NotificationCreationRequest;
+import com.fivetuat.fsoftprojectserver.dtos.response.NotificationResponse;
+import org.springframework.data.domain.Pageable;
+
+import java.util.List;
+
 public interface NotificationService {
-    void sendWelcomeEmail(String toEmail, String name);
-    void sendForgotPasswordEmail(String toEmail, String name, String otp);
-    void sendDeckSharedEmail(String toEmail, String recipientName, String ownerName, String deckTitle, String permission);
-    void sendDeckInviteEmail(String toEmail, String ownerName, String deckTitle);
-    void sendDailyReminderEmail(String toEmail, String name, int currentStreak, long dueCardsCount);
+    NotificationResponse createNotification(NotificationCreationRequest request);
+    List<NotificationResponse> getMyNotifications(Pageable pageable);
+    long getUnreadCount();
+    NotificationResponse markAsRead(Long notificationId);
+    void markAllAsRead();
+    void deleteNotification(Long notificationId);
 }

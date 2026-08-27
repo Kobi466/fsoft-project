@@ -72,6 +72,9 @@ public class Profile {
     @OneToMany(mappedBy = "profile", fetch = FetchType.LAZY, orphanRemoval = true)
     Set<UserCardStar> starredCards;
 
+    @OneToMany(mappedBy = "recipient", fetch = FetchType.LAZY, orphanRemoval = true)
+    Set<Notification> notifications;
+
     LocalDateTime createTime;
     LocalDateTime updateTime;
 
