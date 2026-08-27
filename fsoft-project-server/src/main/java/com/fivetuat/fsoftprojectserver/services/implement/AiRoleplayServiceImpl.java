@@ -1,6 +1,7 @@
 package com.fivetuat.fsoftprojectserver.services.implement;
 
 import com.fivetuat.fsoftprojectserver.dtos.request.AiRoleplayRequest;
+import com.fivetuat.fsoftprojectserver.dtos.response.AiRoleplayHistoryResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.AiRoleplayResponse;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
@@ -12,8 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.memory.ChatMemoryRepository;
-import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.ai.converter.BeanOutputConverter;
@@ -22,9 +22,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -61,8 +63,6 @@ public class AiRoleplayServiceImpl implements AiRoleplayService {
             rawConvId = rawConvId.substring(0, 36);
         }
         final String conversationId = rawConvId;
-
-
 
         BeanOutputConverter<AiRoleplayResponse> converter = new BeanOutputConverter<>(AiRoleplayResponse.class);
         String format = converter.getFormat();
@@ -105,6 +105,47 @@ public class AiRoleplayServiceImpl implements AiRoleplayService {
             log.error("Lỗi khi gọi AI Roleplay Tutor: {}", e.getMessage(), e);
             throw new AppException(ErrorCode.AI_EXTRACTION_ERROR);
         }
+    }
+
+    @Override
+    public List<AiRoleplayHistoryResponse> getRoleplayHistory(String conversationId) {
+        String targetConvId = conversationId;
+        if (targetConvId == null || targetConvId.isBlank()) {
+            targetConvId = SecurityUtils.getCurrentUserLogin()
+                    .map(UUID::toString)
+                    .orElse("default-session-000000000000000000");
+        }
+        if (targetConvId.length() > 36) {
+            targetConvId = targetConvId.substring(0, 36);
+        }
+
+        List<Message> messages = chatMemory.get(targetConvId);
+        if (messages == null) {
+            return Collections.emptyList();
+        }
+
+        return messages.stream()
+                .map(msg -> AiRoleplayHistoryResponse.builder()
+                        .role(msg.getMessageType().name())
+                        .content(msg.getText())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public void clearRoleplayHistory(String conversationId) {
+        String targetConvId = conversationId;
+        if (targetConvId == null || targetConvId.isBlank()) {
+            targetConvId = SecurityUtils.getCurrentUserLogin()
+                    .map(UUID::toString)
+                    .orElse("default-session-000000000000000000");
+        }
+        if (targetConvId.length() > 36) {
+            targetConvId = targetConvId.substring(0, 36);
+        }
+
+        chatMemory.clear(targetConvId);
+        log.info("Đã xóa lịch sử hội thoại AI Roleplay cho conversationId: {}", targetConvId);
     }
 
     private String sanitizeJsonResponse(String rawResponse) {
