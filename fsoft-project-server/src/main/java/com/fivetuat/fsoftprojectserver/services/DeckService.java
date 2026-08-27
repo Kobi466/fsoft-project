@@ -4,6 +4,7 @@ import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckUpdateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.ShareDeckRequest;
+import com.fivetuat.fsoftprojectserver.dtos.response.CrammingQueueResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.DeckResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.DeckShareResponse;
 import com.fivetuat.fsoftprojectserver.entities.Deck;
@@ -39,5 +40,5 @@ public interface DeckService {
     DeckResponse getDeckByShareToken(String shareToken);
     PageResponse<DeckResponse> getSharedWithMeDecks(int page, int size);
 
-    com.fivetuat.fsoftprojectserver.dtos.response.CrammingQueueResponse getCramCards(Long deckId, Boolean shuffle, String filter, Integer limit);
+    CrammingQueueResponse getCramCards(Long deckId, Boolean shuffle, String filter, Integer limit);
 }

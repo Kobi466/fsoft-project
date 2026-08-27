@@ -241,5 +241,13 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 				.forecastNext7Days(forecast)
 				.build();
 	}
+
+	@Override
+	public List<ReviewCardResponse> getSmartQueue(Long deckId, Integer limit) {
+		int maxLimit = (limit != null && limit > 0) ? Math.min(limit, 10) : 5;
+		log.info("Lấy hàng chờ thông minh chống nản bài (Anti-burnout Smart Queue), limit = {}", maxLimit);
+		return getStudyQueue(deckId, maxLimit);
+	}
 }
+
 

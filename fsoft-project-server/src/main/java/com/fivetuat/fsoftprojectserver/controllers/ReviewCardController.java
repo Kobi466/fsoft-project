@@ -81,5 +81,18 @@ public class ReviewCardController {
 	) {
 		return ApiResponse.ok(srsService.getMasteryDashboard(deckId), SuccessCode.GET_SRS_MASTERY_SUCCESS);
 	}
+
+	@Operation(
+		summary = "Lấy hàng chờ bài học thông minh chống nản bài (Anti-burnout Dynamic SRS Queue)",
+		description = "Tự động thu gọn số lượng bài cần học xuống 5-10 từ quan trọng nhất để giúp học viên bận rộn hoàn thành mục tiêu học trong 2 phút và duy trì chuỗi Streak."
+	)
+	@GetMapping("/smart-queue")
+	public ApiResponse<List<ReviewCardResponse>> getSmartQueue(
+			@Parameter(description = "ID bộ thẻ (bỏ trống để xem tất cả)") @RequestParam(value = "deckId", required = false) Long deckId,
+			@Parameter(description = "Số lượng thẻ tối đa (Mặc định 5, max 10)") @RequestParam(value = "limit", required = false, defaultValue = "5") Integer limit
+	) {
+		return ApiResponse.ok(srsService.getSmartQueue(deckId, limit), SuccessCode.GET_CARDS_SUCCESS);
+	}
 }
+
 

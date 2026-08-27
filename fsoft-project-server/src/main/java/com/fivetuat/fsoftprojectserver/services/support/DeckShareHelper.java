@@ -1,11 +1,9 @@
 package com.fivetuat.fsoftprojectserver.services.support;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -102,6 +100,7 @@ public class DeckShareHelper {
         deckValidator.verifyOwner(deck, owner.getId());
 
         boolean newState = !deck.isShareLinkEnabled();
+        log.info("Toggling share link for deck '{}' from {} to {}", deck.getTitle(), deck.isShareLinkEnabled(), newState);
         deck.setShareLinkEnabled(newState);
 
         if (newState && deck.getShareToken() == null) {

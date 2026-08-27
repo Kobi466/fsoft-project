@@ -16,4 +16,7 @@ public interface ReviewCardService {
 	void resetDeckProgress(Long deckId);
 
 	SrsMasteryResponse getMasteryDashboard(Long deckId);
+
+	List<ReviewCardResponse> getSmartQueue(Long deckId, Integer limit);
 }
+

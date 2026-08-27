@@ -86,7 +86,9 @@ public enum SuccessCode {
     GET_ROOM_SUCCESS(200, "Lấy thông tin phòng thành công", HttpStatus.OK),
     SUBMIT_ANSWER_SUCCESS(200, "Nộp câu trả lời thành công", HttpStatus.OK),
     SELECT_DECK_SUCCESS(200, "Đã cập nhật bộ thẻ đóng góp thành công", HttpStatus.OK),
-    LEAVE_ROOM_SUCCESS(200, "Đã rời phòng thành công", HttpStatus.OK);
+    LEAVE_ROOM_SUCCESS(200, "Đã rời phòng thành công", HttpStatus.OK),
+    AI_SITUATIONAL_LEARNING_SUCCESS(200, "Tạo bài học ngữ cảnh thành công", HttpStatus.OK);
+
     final int status;
     final String message;
     final HttpStatus httpStatus;

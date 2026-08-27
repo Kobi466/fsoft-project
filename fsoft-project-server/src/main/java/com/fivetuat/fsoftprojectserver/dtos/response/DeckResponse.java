@@ -1,13 +1,17 @@
 package com.fivetuat.fsoftprojectserver.dtos.response;
 
-import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
-
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+
+import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
+
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.experimental.FieldDefaults;
 
 @Data
 @Builder
@@ -15,6 +19,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class DeckResponse {
+
     Long id;
     UUID profileId;
     Long parentDeckId;
