@@ -5,10 +5,15 @@ import com.fivetuat.fsoftprojectserver.dtos.response.AiRoleplayResponse;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.services.AiRoleplayService;
+import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.memory.ChatMemoryRepository;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.ai.converter.BeanOutputConverter;
@@ -18,6 +23,8 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.UUID;
+
 
 @Slf4j
 @Service
@@ -25,21 +32,30 @@ import java.util.Map;
 public class AiRoleplayServiceImpl implements AiRoleplayService {
 
     ChatClient groqClient;
+    ChatMemory chatMemory;
     Resource systemPromptResource;
     Resource userPromptResource;
 
     public AiRoleplayServiceImpl(
             @Qualifier("groqClient") ChatClient groqClient,
             @Value("classpath:/prompts/roleplay-tutor-system.st") Resource systemPromptResource,
-            @Value("classpath:/prompts/roleplay-tutor-user.st") Resource userPromptResource) {
+            @Value("classpath:/prompts/roleplay-tutor-user.st") Resource userPromptResource,
+            ChatMemoryRepository chatMemoryRepository) {
         this.groqClient = groqClient;
         this.systemPromptResource = systemPromptResource;
         this.userPromptResource = userPromptResource;
+        this.chatMemory = MessageWindowChatMemory.builder()
+                .chatMemoryRepository(chatMemoryRepository)
+                .maxMessages(30)
+                .build();
     }
 
     @Override
     public AiRoleplayResponse processRoleplay(AiRoleplayRequest request) {
         log.info("Bắt đầu AI Roleplay Tutor kịch bản: {}", request.getScenario());
+
+        String conversationId = SecurityUtils.getCurrentUserLogin() != null ? SecurityUtils.getCurrentUserLogin().toString() :
+                "default-roleplay-session";
 
         BeanOutputConverter<AiRoleplayResponse> converter = new BeanOutputConverter<>(AiRoleplayResponse.class);
         String format = converter.getFormat();
@@ -60,6 +76,10 @@ public class AiRoleplayServiceImpl implements AiRoleplayService {
 
         try {
             String rawResponse = groqClient.prompt()
+                    .advisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                    .advisors(advisorSpec -> {
+                        advisorSpec.param(ChatMemory.CONVERSATION_ID, conversationId);
+                    })
                     .system(systemMessage)
                     .user(userMessage)
                     .call()

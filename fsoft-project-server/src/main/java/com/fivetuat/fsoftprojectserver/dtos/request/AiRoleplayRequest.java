@@ -13,10 +13,11 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class AiRoleplayRequest {
     @Builder.Default
-    String scenario = "JOB_INTERVIEW"; // JOB_INTERVIEW, DOCTOR_APPOINTMENT, HOTEL_CHECKIN, RESTAURANT
+    String scenario = "JOB_INTERVIEW"; 
     
     List<String> targetWords;
     
     @NotBlank(message = "Tin nhắn của người dùng không được để trống")
     String userMessage;
 }
+
