@@ -21,6 +21,8 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
+
 
 @Slf4j
 @Service
@@ -62,6 +64,7 @@ public class TagServiceImpl implements TagService {
 
     @Override
     @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
     public TagResponse updateTag(Long id, TagRequest request) {
         log.info("Updating tag ID: {}", id);
         Tag tag = tagRepository.findById(id)
@@ -85,6 +88,7 @@ public class TagServiceImpl implements TagService {
 
     @Override
     @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
     public void deleteTag(Long id) {
         log.info("Deleting tag ID: {}", id);
         if (!tagRepository.existsById(id)) {

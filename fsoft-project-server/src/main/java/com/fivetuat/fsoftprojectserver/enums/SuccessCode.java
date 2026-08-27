@@ -87,8 +87,12 @@ public enum SuccessCode {
     SUBMIT_ANSWER_SUCCESS(200, "Nộp câu trả lời thành công", HttpStatus.OK),
     SELECT_DECK_SUCCESS(200, "Đã cập nhật bộ thẻ đóng góp thành công", HttpStatus.OK),
     LEAVE_ROOM_SUCCESS(200, "Đã rời phòng thành công", HttpStatus.OK),
-    AI_SITUATIONAL_LEARNING_SUCCESS(200, "Tạo bài học ngữ cảnh thành công", HttpStatus.OK);
-
+    AI_SITUATIONAL_LEARNING_SUCCESS(200, "Tạo bài học ngữ cảnh thành công", HttpStatus.OK),
+    CREATE_NOTIFICATION_SUCCESS(201, "Tạo thông báo thành công", HttpStatus.CREATED),
+    GET_NOTIFICATIONS_SUCCESS(200, "Lấy danh sách thông báo thành công", HttpStatus.OK),
+    MARK_NOTIFICATION_READ_SUCCESS(200, "Đánh dấu đã đọc thông báo thành công", HttpStatus.OK),
+    DELETE_NOTIFICATION_SUCCESS(200, "Xóa thông báo thành công", HttpStatus.OK),
+    GET_UNREAD_NOTIFICATION_COUNT_SUCCESS(200, "Lấy số lượng thông báo chưa đọc thành công", HttpStatus.OK);
     final int status;
     final String message;
     final HttpStatus httpStatus;

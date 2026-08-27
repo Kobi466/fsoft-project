@@ -21,6 +21,7 @@ import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.mappers.DeckMapper;
 import com.fivetuat.fsoftprojectserver.repositories.DeckRepository;
 import com.fivetuat.fsoftprojectserver.repositories.DeckShareRepository;
+import com.fivetuat.fsoftprojectserver.services.NotificationEmailService;
 import com.fivetuat.fsoftprojectserver.services.NotificationService;
 import com.fivetuat.fsoftprojectserver.services.ProfileService;
 import com.fivetuat.fsoftprojectserver.utils.PageUtils;
@@ -39,6 +40,7 @@ public class DeckShareHelper {
     DeckShareRepository deckShareRepository;
     DeckRepository deckRepository;
     ProfileService profileService;
+    NotificationEmailService notificationEmailService;
     NotificationService notificationService;
     DeckMapper deckMapper;
     DeckValidator deckValidator;
@@ -129,7 +131,7 @@ public class DeckShareHelper {
             return profileService.getProfileByEmail(email);
         } catch (AppException appException) {
             log.info("Inviting unregistered user {} to deck '{}' owned by {}", email, deckTitle, ownerName);
-            notificationService.sendDeckInviteEmail(email, ownerName, deckTitle);
+            notificationEmailService.sendDeckInviteEmail(email, ownerName, deckTitle);
             return null;
         }
     }
@@ -142,7 +144,8 @@ public class DeckShareHelper {
                 deckShare.setPermission(permission);
                 deckShareRepository.save(deckShare);
                 log.info("Notifying registered user {} ({}) about deck '{}' shared by {}", recipientName, recipient.getAuth().getEmail(), deck.getTitle(), ownerName);
-                notificationService.sendDeckSharedEmail(recipient.getAuth().getEmail(), recipientName, ownerName, deck.getTitle(), permissionStr);
+                notificationEmailService.sendDeckSharedEmail(recipient.getAuth().getEmail(), recipientName, ownerName, deck.getTitle(), permissionStr);
+                sendInAppNotification(deck, recipient, ownerName);
             }
             return;
         }
@@ -154,6 +157,21 @@ public class DeckShareHelper {
                 .build();
         deckShareRepository.save(deckShare);
         log.info("Notifying registered user {} ({}) about deck '{}' shared by {}", recipientName, recipient.getAuth().getEmail(), deck.getTitle(), ownerName);
-        notificationService.sendDeckSharedEmail(recipient.getAuth().getEmail(), recipientName, ownerName, deck.getTitle(), permissionStr);
+        notificationEmailService.sendDeckSharedEmail(recipient.getAuth().getEmail(), recipientName, ownerName, deck.getTitle(), permissionStr);
+        sendInAppNotification(deck, recipient, ownerName);
+    }
+
+    private void sendInAppNotification(Deck deck, Profile recipient, String ownerName) {
+        try {
+            notificationService.createNotification(com.fivetuat.fsoftprojectserver.dtos.request.NotificationCreationRequest.builder()
+                    .recipientId(recipient.getId())
+                    .title("Bộ bài mới được chia sẻ")
+                    .content(ownerName + " đã chia sẻ bộ bài '" + deck.getTitle() + "' với bạn.")
+                    .type(com.fivetuat.fsoftprojectserver.enums.NotificationType.DECK_SHARED)
+                    .referenceId(deck.getId().toString())
+                    .build());
+        } catch (Exception e) {
+            log.error("Failed to create in-app notification for deck share: {}", e.getMessage());
+        }
     }
 }

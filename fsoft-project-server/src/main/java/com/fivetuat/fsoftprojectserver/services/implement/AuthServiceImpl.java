@@ -43,7 +43,7 @@ import com.fivetuat.fsoftprojectserver.repositories.ProfileRepository;
 import com.fivetuat.fsoftprojectserver.repositories.RefreshTokenRepository;
 import com.fivetuat.fsoftprojectserver.services.AuthService;
 import com.fivetuat.fsoftprojectserver.services.JwtService;
-import com.fivetuat.fsoftprojectserver.services.NotificationService;
+import com.fivetuat.fsoftprojectserver.services.NotificationEmailService;
 import com.fivetuat.fsoftprojectserver.services.RedisService;
 import com.fivetuat.fsoftprojectserver.services.RoleService;
 
@@ -66,7 +66,7 @@ public class AuthServiceImpl implements AuthService {
     BCryptPasswordEncoder bCryptPasswordEncoder;
     JwtService jwtService;
     RedisService redisService;
-    NotificationService notificationService;
+    NotificationEmailService notificationEmailService;
     GoogleOauth2Client googleOauth2Client;
     GoogleUserInfoClient googleUserInfoClient;
     @NonFinal
@@ -107,7 +107,7 @@ public class AuthServiceImpl implements AuthService {
         var response = authRepository.save(auth);
 
         String userName = auth.getProfile().getFullName();
-        this.notificationService.sendWelcomeEmail(auth.getEmail(), userName);
+        this.notificationEmailService.sendWelcomeEmail(auth.getEmail(), userName);
         return authMapper.toUserResponse(response);
     }
 
@@ -176,7 +176,7 @@ public class AuthServiceImpl implements AuthService {
                             .avatar(userGG.getPicture())
                             .build());
                     var savedAuth = this.authRepository.save(auths);
-                    this.notificationService.sendWelcomeEmail(savedAuth.getEmail(),userGG.getName());
+                    this.notificationEmailService.sendWelcomeEmail(savedAuth.getEmail(),userGG.getName());
                     return savedAuth;
                 }
         );
@@ -220,7 +220,7 @@ public class AuthServiceImpl implements AuthService {
             String otpValue = generateOtp();
             String redisKey = "password-reset-otp::" + auth.getEmail();
             redisService.saveOtp(redisKey, otpValue, 10);
-            notificationService.sendForgotPasswordEmail(auth.getEmail(), auth.getProfile().getFullName(), otpValue);
+            notificationEmailService.sendForgotPasswordEmail(auth.getEmail(), auth.getProfile().getFullName(), otpValue);
         });
     }
 
