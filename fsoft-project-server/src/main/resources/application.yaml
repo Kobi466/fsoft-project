@@ -28,12 +28,18 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
   ai:
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: ALWAYS
     openai:
       api-key: ${OPENAI_API_KEY}
       base-url: https://api.groq.com/openai/v1
     google:
       genai:
         api-key: ${GOOGLE_GENAI_API_KEY}
+
 
 aws:
     region: ${AWS_REGION}
