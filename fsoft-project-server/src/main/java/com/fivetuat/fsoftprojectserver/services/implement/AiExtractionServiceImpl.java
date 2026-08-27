@@ -26,6 +26,7 @@ import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.MagicSortResult;
 import com.fivetuat.fsoftprojectserver.dtos.request.CardCreationRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.ExtractedCards;
 import com.fivetuat.fsoftprojectserver.dtos.request.MagicSortRequest;
+import com.fivetuat.fsoftprojectserver.dtos.response.CardSuggestionResponse;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.services.AiExtractionService;
@@ -45,6 +46,8 @@ public class AiExtractionServiceImpl implements AiExtractionService {
     Resource textUserPromptResource;
     Resource multimodalSystemPromptResource;
     Resource multimodalUserPromptResource;
+    Resource suggestionSystemPromptResource;
+    Resource suggestionUserPromptResource;
 
     public AiExtractionServiceImpl(
             @Qualifier("groqClient") ChatClient groqClient,
@@ -52,13 +55,17 @@ public class AiExtractionServiceImpl implements AiExtractionService {
             @Value("classpath:/prompts/extraction-system.st") Resource textSystemPromptResource,
             @Value("classpath:/prompts/extraction-user.st") Resource textUserPromptResource,
             @Value("classpath:/prompts/extraction-system.st") Resource multimodalSystemPromptResource,
-            @Value("classpath:/prompts/extraction-multimodal-user.st") Resource multimodalUserPromptResource) {
+            @Value("classpath:/prompts/extraction-multimodal-user.st") Resource multimodalUserPromptResource,
+            @Value("classpath:/prompts/card-suggestion-system.st") Resource suggestionSystemPromptResource,
+            @Value("classpath:/prompts/card-suggestion-user.st") Resource suggestionUserPromptResource) {
         this.groqClient = groqClient;
         this.geminiClient = geminiClient;
         this.textSystemPromptResource = textSystemPromptResource;
         this.textUserPromptResource = textUserPromptResource;
         this.multimodalSystemPromptResource = multimodalSystemPromptResource;
         this.multimodalUserPromptResource = multimodalUserPromptResource;
+        this.suggestionSystemPromptResource = suggestionSystemPromptResource;
+        this.suggestionUserPromptResource = suggestionUserPromptResource;
     }
 
     @Override
@@ -86,15 +93,19 @@ public class AiExtractionServiceImpl implements AiExtractionService {
 
             String cleanedResponse = sanitizeJsonResponse(rawResponse);
             ExtractedCards result = converter.convert(cleanedResponse);
-            
+
             if (result == null || result.cards() == null) {
                 return List.of();
             }
 
             List<CardCreationRequest> validCards = new ArrayList<>();
             for (CardCreationRequest card : result.cards()) {
-                if (card.getWord() == null || card.getWord().isBlank()) continue;
-                if (card.getMeaning() == null) card.setMeaning(card.getWord());
+                if (card.getWord() == null || card.getWord().isBlank()) {
+                    continue;
+                }
+                if (card.getMeaning() == null) {
+                    card.setMeaning(card.getWord());
+                }
                 validCards.add(card);
             }
             return validCards;
@@ -105,7 +116,6 @@ public class AiExtractionServiceImpl implements AiExtractionService {
         }
     }
 
-    
     @Override
     public List<CardCreationRequest> extractedUrl(String url, String category) {
         log.info("Trích xuất từ URL: {}, nhóm: {}", url, category);
@@ -126,7 +136,7 @@ public class AiExtractionServiceImpl implements AiExtractionService {
 
         BeanOutputConverter<ExtractedCards> converter = new BeanOutputConverter<>(ExtractedCards.class);
         String format = converter.getFormat();
-        
+
         SystemPromptTemplate systemTemplate = new SystemPromptTemplate(multimodalSystemPromptResource);
         String systemMessage = systemTemplate.render(Map.of("format", format));
 
@@ -138,7 +148,7 @@ public class AiExtractionServiceImpl implements AiExtractionService {
         Media media = new Media(
                 MimeTypeUtils.parseMimeType(file.getContentType()), imageResource
         );
-        
+
         String rawResponse = geminiClient.prompt()
                 .system(systemMessage)
                 .user(promptUserSpec -> promptUserSpec.text(userMessage).media(media))
@@ -148,15 +158,18 @@ public class AiExtractionServiceImpl implements AiExtractionService {
         String cleanedResponse = sanitizeJsonResponse(rawResponse);
         ExtractedCards result = converter.convert(cleanedResponse);
 
-
         if (result == null || result.cards() == null) {
             return List.of();
         }
 
         List<CardCreationRequest> validCards = new ArrayList<>();
         for (CardCreationRequest card : result.cards()) {
-            if (card.getWord() == null || card.getWord().isBlank()) continue;
-            if (card.getMeaning() == null) card.setMeaning(card.getWord());
+            if (card.getWord() == null || card.getWord().isBlank()) {
+                continue;
+            }
+            if (card.getMeaning() == null) {
+                card.setMeaning(card.getWord());
+            }
             validCards.add(card);
         }
         return validCards;
@@ -167,11 +180,11 @@ public class AiExtractionServiceImpl implements AiExtractionService {
         log.info("Trích xuất từ File: {}, nhóm: {}", file.getOriginalFilename(), category);
         try {
             String mimeType = file.getContentType();
-            
+
             if (mimeType != null && (mimeType.startsWith("image/") || mimeType.equals("application/pdf"))) {
                 return extractWithGemini(file, mimeType, category);
             }
-            
+
             Tika tika = new Tika();
             String text = tika.parseToString(file.getInputStream());
             if (text == null || text.trim().isEmpty()) {
@@ -185,23 +198,22 @@ public class AiExtractionServiceImpl implements AiExtractionService {
             throw new AppException(ErrorCode.FILE_READ_ERROR);
         }
     }
-    
+
     @Override
     public List<MagicSortResult> magicSort(MagicSortRequest request) {
         log.info("Bắt đầu Magic Sort cho {} từ vựng", request.words().size());
 
-        BeanOutputConverter<MagicSortCards> converter =
-            new BeanOutputConverter<>(MagicSortCards.class);
+        BeanOutputConverter<MagicSortCards> converter = new BeanOutputConverter<>(MagicSortCards.class);
         String format = converter.getFormat();
 
         StringBuilder decksInfoBuilder = new StringBuilder();
         if (request.decks() != null) {
-            request.decks().forEach((id, name) -> 
-                decksInfoBuilder.append("- ID: ").append(id).append(", Tên: ").append(name).append("\n")
+            request.decks().forEach((id, name)
+                    -> decksInfoBuilder.append("- ID: ").append(id).append(", Tên: ").append(name).append("\n")
             );
         }
         String decksInfo = decksInfoBuilder.toString();
-        
+
         String wordsStr = String.join(", ", request.words());
 
         SystemPromptTemplate systemTemplate = new SystemPromptTemplate(new ClassPathResource("/prompts/magic-sort-system.st"));
@@ -222,7 +234,7 @@ public class AiExtractionServiceImpl implements AiExtractionService {
 
             String cleanedResponse = sanitizeJsonResponse(rawResponse);
             MagicSortCards result = converter.convert(cleanedResponse);
-            
+
             if (result == null || result.results() == null) {
                 return List.of();
             }
@@ -235,8 +247,61 @@ public class AiExtractionServiceImpl implements AiExtractionService {
         }
     }
 
+    @Override
+    public CardSuggestionResponse getSuggestions(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return CardSuggestionResponse.builder()
+                    .query("")
+                    .termSuggestions(List.of())
+                    .definitionSuggestions(List.of())
+                    .build();
+        }
+
+        log.info("Bắt đầu AI Autocomplete Suggestion cho từ vựng: '{}'", query);
+
+        BeanOutputConverter<CardSuggestionResponse> converter = new BeanOutputConverter<>(CardSuggestionResponse.class);
+        String format = converter.getFormat();
+
+        SystemPromptTemplate systemTemplate = new SystemPromptTemplate(suggestionSystemPromptResource);
+        String systemMessage = systemTemplate.render(Map.of("format", format));
+
+        PromptTemplate userTemplate = new PromptTemplate(suggestionUserPromptResource);
+        String userMessage = userTemplate.render(Map.of("query", query.trim()));
+
+        try {
+            String rawResponse = groqClient.prompt()
+                    .system(systemMessage)
+                    .user(userMessage)
+                    .call()
+                    .content();
+
+            String cleanedResponse = sanitizeJsonResponse(rawResponse);
+            CardSuggestionResponse result = converter.convert(cleanedResponse);
+
+            if (result == null) {
+                return CardSuggestionResponse.builder()
+                        .query(query)
+                        .termSuggestions(List.of(query))
+                        .definitionSuggestions(List.of())
+                        .build();
+            }
+
+            return result;
+
+        } catch (Exception e) {
+            log.error("Lỗi khi gọi AI Autocomplete Suggestion: {}", e.getMessage(), e);
+            return CardSuggestionResponse.builder()
+                    .query(query)
+                    .termSuggestions(List.of(query))
+                    .definitionSuggestions(List.of())
+                    .build();
+        }
+    }
+
     private String sanitizeJsonResponse(String rawResponse) {
-        if (rawResponse == null) return "";
+        if (rawResponse == null) {
+            return "";
+        }
         String cleaned = rawResponse.trim();
         if (cleaned.startsWith("```json")) {
             cleaned = cleaned.substring(7);
@@ -249,4 +314,3 @@ public class AiExtractionServiceImpl implements AiExtractionService {
         return cleaned.trim();
     }
 }
-
