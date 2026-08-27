@@ -1,31 +1,38 @@
 package com.fivetuat.fsoftprojectserver.services.implement;
 
-import com.fivetuat.fsoftprojectserver.dtos.request.CardCreationRequest;
-import com.fivetuat.fsoftprojectserver.dtos.request.ExtractedCards;
-import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
-import com.fivetuat.fsoftprojectserver.exceptions.AppException;
-import com.fivetuat.fsoftprojectserver.repositories.CardRepository;
-import com.fivetuat.fsoftprojectserver.services.AiExtractionService;
-import com.fivetuat.fsoftprojectserver.services.CardService;
-import lombok.AccessLevel;
-import lombok.experimental.FieldDefaults;
-import lombok.extern.slf4j.Slf4j;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.tika.Tika;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.ai.content.Media;
 import org.springframework.ai.converter.BeanOutputConverter;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
-import java.util.Map;
+import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.MagicSortCards;
+import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.MagicSortResult;
+import com.fivetuat.fsoftprojectserver.dtos.request.CardCreationRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.ExtractedCards;
+import com.fivetuat.fsoftprojectserver.dtos.request.MagicSortRequest;
+import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
+import com.fivetuat.fsoftprojectserver.exceptions.AppException;
+import com.fivetuat.fsoftprojectserver.services.AiExtractionService;
+
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
@@ -34,155 +41,135 @@ public class AiExtractionServiceImpl implements AiExtractionService {
 
     ChatClient groqClient;
     ChatClient geminiClient;
-    CardService cardService;
-    CardRepository cardRepository;
+    Resource textSystemPromptResource;
+    Resource textUserPromptResource;
+    Resource multimodalSystemPromptResource;
+    Resource multimodalUserPromptResource;
 
     public AiExtractionServiceImpl(
             @Qualifier("groqClient") ChatClient groqClient,
             @Qualifier("geminiVisionClient") ChatClient geminiClient,
-            CardService cardService, 
-            CardRepository cardRepository) {
+            @Value("classpath:/prompts/extraction-system.st") Resource textSystemPromptResource,
+            @Value("classpath:/prompts/extraction-user.st") Resource textUserPromptResource,
+            @Value("classpath:/prompts/extraction-system.st") Resource multimodalSystemPromptResource,
+            @Value("classpath:/prompts/extraction-multimodal-user.st") Resource multimodalUserPromptResource) {
         this.groqClient = groqClient;
         this.geminiClient = geminiClient;
-        this.cardService = cardService;
-        this.cardRepository = cardRepository;
+        this.textSystemPromptResource = textSystemPromptResource;
+        this.textUserPromptResource = textUserPromptResource;
+        this.multimodalSystemPromptResource = multimodalSystemPromptResource;
+        this.multimodalUserPromptResource = multimodalUserPromptResource;
     }
 
-    public List<CardCreationRequest> extractedText(String text, String category, Long deckId) {
+    @Override
+    public List<CardCreationRequest> extractedText(String text, String category) {
         log.info("Bắt đầu trích xuất từ vựng nhóm '{}', chiều dài text: {}", category, text.length());
 
         BeanOutputConverter<ExtractedCards> converter = new BeanOutputConverter<>(ExtractedCards.class);
         String format = converter.getFormat();
 
-        PromptTemplate template = new PromptTemplate(
-                "Hãy trích xuất các từ vựng quan trọng nhất thuộc nhóm/chủ đề '{category}' từ văn bản bên dưới.\n" +
-                "Yêu cầu:\n" +
-                "- Lấy nghĩa tiếng Việt (meaning).\n" +
-                "- Lấy 1 câu ví dụ nguyên gốc từ văn bản (exampleSentence).\n" +
-                "- Trả về kết quả theo ĐÚNG định dạng JSON sau: {format}\n\n" +
-                "Văn bản gốc:\n{text}"
-        );
+        SystemPromptTemplate systemTemplate = new SystemPromptTemplate(textSystemPromptResource);
+        String systemMessage = systemTemplate.render(Map.of("format", format));
 
-        Map<String, Object> variables = Map.of(
+        PromptTemplate userTemplate = new PromptTemplate(textUserPromptResource);
+        String userMessage = userTemplate.render(Map.of(
                 "category", category,
-                "format", format,
                 "text", text
-        );
+        ));
 
         try {
-            String response = groqClient.prompt()
-                    .user(template.create(variables).getContents())
+            String rawResponse = groqClient.prompt()
+                    .system(systemMessage)
+                    .user(userMessage)
                     .call()
                     .content();
 
-            ExtractedCards result = converter.convert(response);
+            String cleanedResponse = sanitizeJsonResponse(rawResponse);
+            ExtractedCards result = converter.convert(cleanedResponse);
             
             if (result == null || result.cards() == null) {
                 return List.of();
             }
 
-            java.util.List<CardCreationRequest> savedCards = new java.util.ArrayList<>();
-
+            List<CardCreationRequest> validCards = new ArrayList<>();
             for (CardCreationRequest card : result.cards()) {
                 if (card.getWord() == null || card.getWord().isBlank()) continue;
-                
-                if (cardRepository.existsByWordAndDeckId(card.getWord().trim(), deckId)) {
-                    log.info("Từ vựng '{}' đã có trong bộ thẻ, bỏ qua.", card.getWord());
-                    continue;
-                }
-
                 if (card.getMeaning() == null) card.setMeaning(card.getWord());
-                
-                try {
-                    cardService.createCard(deckId, card, null, null);
-                    savedCards.add(card);
-                } catch (Exception e) {
-                    log.warn("Lỗi khi lưu thẻ {}: {}", card.getWord(), e.getMessage());
-                }
+                validCards.add(card);
             }
+            return validCards;
 
-            return savedCards;
         } catch (Exception e) {
-            log.error("Lỗi khi gọi AI trích xuất: {}", e.getMessage());
+            log.error("Lỗi khi gọi AI trích xuất: {}", e.getMessage(), e);
             throw new AppException(ErrorCode.AI_EXTRACTION_ERROR);
         }
     }
+
     
     @Override
-    public List<CardCreationRequest> extractedUrl(String url, String category, Long deckId) {
+    public List<CardCreationRequest> extractedUrl(String url, String category) {
         log.info("Trích xuất từ URL: {}, nhóm: {}", url, category);
         try {
             Document doc = Jsoup.connect(url).get();
             log.info("Đã tải xong nội dung từ URL, chiều dài text: {}", doc.text().length());
             String text = doc.text();
             log.info("Đã trích xuất {} từ URL, chiều dài text: {}", text.length(), text.length());
-            return extractedText(text, category, deckId);
+            return extractedText(text, category);
         } catch (Exception e) {
             log.error("Lỗi đọc URL: {}", e.getMessage(), e);
             throw new AppException(ErrorCode.URL_READ_ERROR);
         }
     }
 
-    private List<CardCreationRequest> extractWithGemini(MultipartFile file, String mimeType, String category, Long deckId) throws Exception {
+    private List<CardCreationRequest> extractWithGemini(MultipartFile file, String mimeType, String category) throws Exception {
         log.info("Bắt đầu trích xuất đa phương thức (Gemini) cho nhóm '{}', mime: {}", category, mimeType);
 
         BeanOutputConverter<ExtractedCards> converter = new BeanOutputConverter<>(ExtractedCards.class);
         String format = converter.getFormat();
         
-        String promptText = String.format("Hãy trích xuất TỐI ĐA 10 từ vựng quan trọng nhất thuộc nhóm/chủ đề '%s' từ tệp đính kèm.\n" +
-                "Yêu cầu:\n" +
-                "- Lấy nghĩa tiếng Việt (meaning).\n" +
-                "- Lấy 1 câu ví dụ nguyên gốc từ văn bản trong hình/file (exampleSentence).\n" +
-                "- Trả về kết quả theo ĐÚNG định dạng JSON sau: %s", category, format);
+        SystemPromptTemplate systemTemplate = new SystemPromptTemplate(multimodalSystemPromptResource);
+        String systemMessage = systemTemplate.render(Map.of("format", format));
+
+        PromptTemplate userTemplate = new PromptTemplate(multimodalUserPromptResource);
+        String userMessage = userTemplate.render(Map.of("category", category));
+
         byte[] bytes = file.getBytes();
         Resource imageResource = new ByteArrayResource(bytes);
         Media media = new Media(
                 MimeTypeUtils.parseMimeType(file.getContentType()), imageResource
         );
         
-
-        String response = geminiClient.prompt()
-                .user(promptUserSpec -> promptUserSpec.text(promptText).media(media))
+        String rawResponse = geminiClient.prompt()
+                .system(systemMessage)
+                .user(promptUserSpec -> promptUserSpec.text(userMessage).media(media))
                 .call()
                 .content();
 
-        ExtractedCards result = converter.convert(response);
+        String cleanedResponse = sanitizeJsonResponse(rawResponse);
+        ExtractedCards result = converter.convert(cleanedResponse);
+
 
         if (result == null || result.cards() == null) {
             return List.of();
         }
 
-        List<CardCreationRequest> savedCards = new java.util.ArrayList<>();
-
+        List<CardCreationRequest> validCards = new ArrayList<>();
         for (CardCreationRequest card : result.cards()) {
             if (card.getWord() == null || card.getWord().isBlank()) continue;
-
-            if (cardRepository.existsByWordAndDeckId(card.getWord().trim(), deckId)) {
-                log.info("Từ vựng '{}' đã có trong bộ thẻ, bỏ qua.", card.getWord());
-                continue;
-            }
-
             if (card.getMeaning() == null) card.setMeaning(card.getWord());
-
-            try {
-                cardService.createCard(deckId, card, null, null);
-                savedCards.add(card);
-            } catch (Exception e) {
-                log.warn("Lỗi khi lưu thẻ {}: {}", card.getWord(), e.getMessage());
-            }
+            validCards.add(card);
         }
-
-        return savedCards;
+        return validCards;
     }
 
     @Override
-    public List<CardCreationRequest> extractedFile(MultipartFile file, String category, Long deckId) {
+    public List<CardCreationRequest> extractedFile(MultipartFile file, String category) {
         log.info("Trích xuất từ File: {}, nhóm: {}", file.getOriginalFilename(), category);
         try {
             String mimeType = file.getContentType();
             
             if (mimeType != null && (mimeType.startsWith("image/") || mimeType.equals("application/pdf"))) {
-                return extractWithGemini(file, mimeType, category, deckId);
+                return extractWithGemini(file, mimeType, category);
             }
             
             Tika tika = new Tika();
@@ -190,7 +177,7 @@ public class AiExtractionServiceImpl implements AiExtractionService {
             if (text == null || text.trim().isEmpty()) {
                 throw new AppException(ErrorCode.FILE_READ_ERROR);
             }
-            return extractedText(text, category, deckId);
+            return extractedText(text, category);
         } catch (AppException e) {
             throw e;
         } catch (Exception e) {
@@ -198,4 +185,68 @@ public class AiExtractionServiceImpl implements AiExtractionService {
             throw new AppException(ErrorCode.FILE_READ_ERROR);
         }
     }
+    
+    @Override
+    public List<MagicSortResult> magicSort(MagicSortRequest request) {
+        log.info("Bắt đầu Magic Sort cho {} từ vựng", request.words().size());
+
+        BeanOutputConverter<MagicSortCards> converter =
+            new BeanOutputConverter<>(MagicSortCards.class);
+        String format = converter.getFormat();
+
+        StringBuilder decksInfoBuilder = new StringBuilder();
+        if (request.decks() != null) {
+            request.decks().forEach((id, name) -> 
+                decksInfoBuilder.append("- ID: ").append(id).append(", Tên: ").append(name).append("\n")
+            );
+        }
+        String decksInfo = decksInfoBuilder.toString();
+        
+        String wordsStr = String.join(", ", request.words());
+
+        SystemPromptTemplate systemTemplate = new SystemPromptTemplate(new ClassPathResource("/prompts/magic-sort-system.st"));
+        String systemMessage = systemTemplate.render(Map.of("format", format));
+
+        PromptTemplate userTemplate = new PromptTemplate(new ClassPathResource("/prompts/magic-sort-user.st"));
+        String userMessage = userTemplate.render(Map.of(
+                "words", wordsStr,
+                "decksInfo", decksInfo
+        ));
+
+        try {
+            String rawResponse = groqClient.prompt()
+                    .system(systemMessage)
+                    .user(userMessage)
+                    .call()
+                    .content();
+
+            String cleanedResponse = sanitizeJsonResponse(rawResponse);
+            MagicSortCards result = converter.convert(cleanedResponse);
+            
+            if (result == null || result.results() == null) {
+                return List.of();
+            }
+
+            return result.results();
+
+        } catch (Exception e) {
+            log.error("Lỗi khi gọi AI Magic Sort: {}", e.getMessage(), e);
+            throw new AppException(ErrorCode.AI_EXTRACTION_ERROR);
+        }
+    }
+
+    private String sanitizeJsonResponse(String rawResponse) {
+        if (rawResponse == null) return "";
+        String cleaned = rawResponse.trim();
+        if (cleaned.startsWith("```json")) {
+            cleaned = cleaned.substring(7);
+        } else if (cleaned.startsWith("```")) {
+            cleaned = cleaned.substring(3);
+        }
+        if (cleaned.endsWith("```")) {
+            cleaned = cleaned.substring(0, cleaned.length() - 3);
+        }
+        return cleaned.trim();
+    }
 }
+
