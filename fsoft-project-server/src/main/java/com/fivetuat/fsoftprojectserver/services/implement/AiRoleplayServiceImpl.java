@@ -51,8 +51,18 @@ public class AiRoleplayServiceImpl implements AiRoleplayService {
     public AiRoleplayResponse processRoleplay(AiRoleplayRequest request) {
         log.info("Bắt đầu AI Roleplay Tutor kịch bản: {}", request.getScenario());
 
-        String conversationId = SecurityUtils.getCurrentUserLogin() != null ? SecurityUtils.getCurrentUserLogin().toString() :
-                "default-roleplay-session";
+        String rawConvId = request.getConversationId();
+        if (rawConvId == null || rawConvId.isBlank()) {
+            rawConvId = SecurityUtils.getCurrentUserLogin()
+                    .map(UUID::toString)
+                    .orElse("default-session-000000000000000000");
+        }
+        if (rawConvId.length() > 36) {
+            rawConvId = rawConvId.substring(0, 36);
+        }
+        final String conversationId = rawConvId;
+
+
 
         BeanOutputConverter<AiRoleplayResponse> converter = new BeanOutputConverter<>(AiRoleplayResponse.class);
         String format = converter.getFormat();

@@ -17,7 +17,10 @@ public class AiRoleplayRequest {
     
     List<String> targetWords;
     
+    String conversationId;
+
     @NotBlank(message = "Tin nhắn của người dùng không được để trống")
     String userMessage;
 }
+
 
