@@ -40,14 +40,11 @@ public class AiRoleplayServiceImpl implements AiRoleplayService {
             @Qualifier("groqClient") ChatClient groqClient,
             @Value("classpath:/prompts/roleplay-tutor-system.st") Resource systemPromptResource,
             @Value("classpath:/prompts/roleplay-tutor-user.st") Resource userPromptResource,
-            ChatMemoryRepository chatMemoryRepository) {
+            ChatMemory chatMemory) {
         this.groqClient = groqClient;
         this.systemPromptResource = systemPromptResource;
         this.userPromptResource = userPromptResource;
-        this.chatMemory = MessageWindowChatMemory.builder()
-                .chatMemoryRepository(chatMemoryRepository)
-                .maxMessages(30)
-                .build();
+        this.chatMemory = chatMemory;
     }
 
     @Override
