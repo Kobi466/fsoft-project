@@ -38,7 +38,6 @@ import com.fivetuat.fsoftprojectserver.repositories.TagRepository;
 import com.fivetuat.fsoftprojectserver.services.AuthService;
 import com.fivetuat.fsoftprojectserver.services.DeckService;
 import com.fivetuat.fsoftprojectserver.services.NotificationEmailService;
-import com.fivetuat.fsoftprojectserver.services.NotificationService;
 import com.fivetuat.fsoftprojectserver.services.ProfileService;
 import com.fivetuat.fsoftprojectserver.services.UploadService;
 import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
@@ -73,7 +72,6 @@ public class DeckServiceImpl implements DeckService {
     ProfileService profileService;
     DeckShareRepository deckShareRepository;
     NotificationEmailService notificationEmailService;
-    NotificationService notificationService;
     UserCardSrsRepository userCardSrsRepository;
     CardMapper cardMapper;
 
