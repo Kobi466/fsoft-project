@@ -35,7 +35,11 @@ public interface CommunityPostService {
     // --- Bình luận (Comments) ---
     CommentResponse createComment(Long postId, CommentCreateRequest request);
 
+    // Lấy danh sách bình luận gốc (kèm số lượng replyCount)
     PageResponse<CommentResponse> getCommentsByPostId(Long postId, int page, int size);
+
+    // Lấy danh sách câu trả lời con khi người dùng bấm "Xem phản hồi"
+    PageResponse<CommentResponse> getRepliesByCommentId(Long commentId, int page, int size);
 
     void deleteComment(Long commentId);
 }

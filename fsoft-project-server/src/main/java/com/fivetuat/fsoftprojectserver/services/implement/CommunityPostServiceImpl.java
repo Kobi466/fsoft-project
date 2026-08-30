@@ -32,6 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -266,13 +267,28 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         Page<Comment> rootCommentsPage = commentRepository.findRootCommentsByPostId(postId, pageable);
 
         return PageUtils.toPageResponse(rootCommentsPage, rootComment -> {
-            CommentResponse rootResponse = commentMapper.toCommentResponse(rootComment);
+            CommentResponse response = commentMapper.toCommentResponse(rootComment);
+            long replyCount = commentRepository.countByParentCommentIdAndIsDeletedFalse(rootComment.getId());
+            response.setReplyCount((int) replyCount);
+            return response;
+        });
+    }
 
-            // Tải các câu trả lời con (Replies) chưa bị xóa
-            List<Comment> replies = commentRepository.findRepliesByParentId(rootComment.getId());
-            rootResponse.setReplies(replies.stream().map(commentMapper::toCommentResponse).toList());
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<CommentResponse> getRepliesByCommentId(Long commentId, int page, int size) {
+        // Kiểm tra bình luận cha có tồn tại không
+        commentRepository.findByIdAndIsDeletedFalse(commentId)
+                .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_FOUND));
 
-            return rootResponse;
+        Pageable pageable = PageUtils.createPageable(page, size);
+        Page<Comment> repliesPage = commentRepository.findRepliesByParentId(commentId, pageable);
+
+        return PageUtils.toPageResponse(repliesPage, reply -> {
+            CommentResponse response = commentMapper.toCommentResponse(reply);
+            long replyCount = commentRepository.countByParentCommentIdAndIsDeletedFalse(reply.getId());
+            response.setReplyCount((int) replyCount);
+            return response;
         });
     }
 
@@ -297,7 +313,7 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         commentRepository.save(comment);
 
         // Xóa mềm toàn bộ các câu trả lời con (Cascade soft delete)
-        List<Comment> childReplies = commentRepository.findRepliesByParentId(commentId);
+        List<Comment> childReplies = commentRepository.findAllActiveRepliesByParentId(commentId);
         if (!childReplies.isEmpty()) {
             childReplies.forEach(reply -> reply.setDeleted(true));
             commentRepository.saveAll(childReplies);

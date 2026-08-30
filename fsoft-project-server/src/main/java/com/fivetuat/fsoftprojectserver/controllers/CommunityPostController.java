@@ -160,8 +160,8 @@ public class CommunityPostController {
 
     @GetMapping("/{id}/comments")
     @Operation(
-            summary = "Lấy danh sách bình luận của bài viết",
-            description = "Lấy danh sách các bình luận gốc kèm theo các câu trả lời con (Replies), hỗ trợ phân trang."
+            summary = "Lấy danh sách bình luận gốc của bài viết",
+            description = "Lấy danh sách các bình luận gốc (top-level comments) kèm số lượng câu trả lời con (replyCount), hỗ trợ phân trang."
     )
     public ApiResponse<PageResponse<CommentResponse>> getCommentsByPostId(
             @Parameter(description = "ID của bài viết") @PathVariable Long id,
@@ -169,6 +169,19 @@ public class CommunityPostController {
             @RequestParam(defaultValue = "10") int size
     ) {
         return ApiResponse.ok(communityPostService.getCommentsByPostId(id, page, size), SuccessCode.GET_COMMENTS_SUCCESS);
+    }
+
+    @GetMapping("/comments/{commentId}/replies")
+    @Operation(
+            summary = "Lấy danh sách phản hồi (Replies) của một bình luận",
+            description = "Tải danh sách các câu trả lời con khi người dùng bấm 'Xem phản hồi' dưới một bình luận gốc, hỗ trợ phân trang."
+    )
+    public ApiResponse<PageResponse<CommentResponse>> getRepliesByCommentId(
+            @Parameter(description = "ID của bình luận gốc cần xem phản hồi") @PathVariable Long commentId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.ok(communityPostService.getRepliesByCommentId(commentId, page, size), SuccessCode.GET_COMMENTS_SUCCESS);
     }
 
     @DeleteMapping("/comments/{commentId}")
