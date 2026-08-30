@@ -59,6 +59,7 @@ public class SecurityConfiguration {
             "/community-posts/search",
             "/community-posts/user/**",
             "/community-posts/{id:[0-9]+}",
+            "/community-posts/{id:[0-9]+}/comments",
     };
 
     CustomJwtDecoder customJwtDecoder;

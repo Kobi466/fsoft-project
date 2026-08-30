@@ -99,7 +99,12 @@ public enum SuccessCode {
     GET_COMMUNITY_POST_SUCCESS(200, "Lấy bài viết cộng đồng thành công", HttpStatus.OK),
     GET_COMMUNITY_POSTS_SUCCESS(200, "Lấy danh sách bài viết cộng đồng thành công", HttpStatus.OK),
     UPDATE_COMMUNITY_POST_SUCCESS(200, "Cập nhật bài viết cộng đồng thành công", HttpStatus.OK),
-    DELETE_COMMUNITY_POST_SUCCESS(200, "Xóa bài viết cộng đồng thành công", HttpStatus.OK);
+    DELETE_COMMUNITY_POST_SUCCESS(200, "Xóa bài viết cộng đồng thành công", HttpStatus.OK),
+    LIKE_POST_SUCCESS(200, "Thích bài viết thành công", HttpStatus.OK),
+    UNLIKE_POST_SUCCESS(200, "Bỏ thích bài viết thành công", HttpStatus.OK),
+    CREATE_COMMENT_SUCCESS(201, "Bình luận thành công", HttpStatus.CREATED),
+    GET_COMMENTS_SUCCESS(200, "Lấy danh sách bình luận thành công", HttpStatus.OK),
+    DELETE_COMMENT_SUCCESS(200, "Xóa bình luận thành công", HttpStatus.OK);
     final int status;
     final String message;
     final HttpStatus httpStatus;

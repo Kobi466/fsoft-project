@@ -2,9 +2,12 @@ package com.fivetuat.fsoftprojectserver.controllers;
 
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
 import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
+import com.fivetuat.fsoftprojectserver.dtos.request.CommentCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.CommunityPostCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.CommunityPostUpdateRequest;
+import com.fivetuat.fsoftprojectserver.dtos.response.CommentResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.CommunityPostResponse;
+import com.fivetuat.fsoftprojectserver.dtos.response.PostLikeToggleResponse;
 import com.fivetuat.fsoftprojectserver.enums.SuccessCode;
 import com.fivetuat.fsoftprojectserver.services.CommunityPostService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,10 +25,12 @@ import java.util.UUID;
 @RequestMapping("/community-posts")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-@Tag(name = "Community Post Controller", description = "Quản lý bài viết, bảng tin và chia sẻ kiến thức trong cộng đồng")
+@Tag(name = "Community Post Controller", description = "Quản lý bài viết, bảng tin, thả tim và bình luận trong cộng đồng")
 public class CommunityPostController {
 
     CommunityPostService communityPostService;
+
+    // --- QUẢN LÝ BÀI VIẾT ---
 
     @PostMapping
     @Operation(
@@ -41,7 +46,7 @@ public class CommunityPostController {
     @GetMapping("/{id}")
     @Operation(
             summary = "Xem chi tiết một bài viết",
-            description = "Lấy toàn bộ thông tin chi tiết của bài viết theo ID (nội dung, thông tin tác giả, bộ thẻ đính kèm, danh sách tag, số like, số comment)."
+            description = "Lấy toàn bộ thông tin chi tiết của bài viết theo ID (nội dung, thông tin tác giả, bộ thẻ đính kèm, danh sách tag, số like, số comment, trạng thái đã like chưa)."
     )
     public ApiResponse<CommunityPostResponse> getPostById(
             @Parameter(description = "ID của bài viết") @PathVariable Long id
@@ -72,6 +77,8 @@ public class CommunityPostController {
         communityPostService.deletePost(id);
         return ApiResponse.ok(null, SuccessCode.DELETE_COMMUNITY_POST_SUCCESS);
     }
+
+    // --- BẢNG TIN & TÌM KIẾM ---
 
     @GetMapping("/latest")
     @Operation(
@@ -122,5 +129,57 @@ public class CommunityPostController {
             @RequestParam(defaultValue = "10") int size
     ) {
         return ApiResponse.ok(communityPostService.getPostsByUser(profileId, page, size), SuccessCode.GET_COMMUNITY_POSTS_SUCCESS);
+    }
+
+    // --- TƯƠNG TÁC THẢ TIM (TOGGLE LIKE) ---
+
+    @PostMapping("/{id}/like")
+    @Operation(
+            summary = "Thả tim / Bỏ tim bài viết (Toggle Like)",
+            description = "Bấm để thích bài viết. Nếu đã thích rồi thì bấm lại sẽ tự động bỏ thích và trả về trạng thái thích cùng số lượt thích mới nhất."
+    )
+    public ApiResponse<PostLikeToggleResponse> toggleLike(
+            @Parameter(description = "ID của bài viết") @PathVariable Long id
+    ) {
+        return ApiResponse.ok(communityPostService.toggleLike(id), SuccessCode.LIKE_POST_SUCCESS);
+    }
+
+    // --- BÌNH LUẬN (COMMENTS) ---
+
+    @PostMapping("/{id}/comments")
+    @Operation(
+            summary = "Gửi bình luận vào bài viết",
+            description = "Đăng bình luận mới cho bài viết. Nếu muốn trả lời (Reply) một bình luận khác, hãy truyền thêm parentCommentId."
+    )
+    public ApiResponse<CommentResponse> createComment(
+            @Parameter(description = "ID của bài viết") @PathVariable Long id,
+            @Valid @RequestBody CommentCreateRequest request
+    ) {
+        return ApiResponse.ok(communityPostService.createComment(id, request), SuccessCode.CREATE_COMMENT_SUCCESS);
+    }
+
+    @GetMapping("/{id}/comments")
+    @Operation(
+            summary = "Lấy danh sách bình luận của bài viết",
+            description = "Lấy danh sách các bình luận gốc kèm theo các câu trả lời con (Replies), hỗ trợ phân trang."
+    )
+    public ApiResponse<PageResponse<CommentResponse>> getCommentsByPostId(
+            @Parameter(description = "ID của bài viết") @PathVariable Long id,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.ok(communityPostService.getCommentsByPostId(id, page, size), SuccessCode.GET_COMMENTS_SUCCESS);
+    }
+
+    @DeleteMapping("/comments/{commentId}")
+    @Operation(
+            summary = "Xóa bình luận",
+            description = "Xóa bình luận. Người viết bình luận HOẶC Chủ bài viết HOẶC Quản trị viên (ADMIN) có quyền xóa."
+    )
+    public ApiResponse<Void> deleteComment(
+            @Parameter(description = "ID của bình luận cần xóa") @PathVariable Long commentId
+    ) {
+        communityPostService.deleteComment(commentId);
+        return ApiResponse.ok(null, SuccessCode.DELETE_COMMENT_SUCCESS);
     }
 }
