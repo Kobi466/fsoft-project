@@ -54,6 +54,11 @@ public class SecurityConfiguration {
             "/api/chat-ai/test",
             "/ws-chat/**",
             "/ws-game/**",
+            "/community-posts/latest",
+            "/community-posts/popular",
+            "/community-posts/search",
+            "/community-posts/user/**",
+            "/community-posts/{id:[0-9]+}",
     };
 
     CustomJwtDecoder customJwtDecoder;

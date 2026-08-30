@@ -92,7 +92,14 @@ public enum SuccessCode {
     GET_NOTIFICATIONS_SUCCESS(200, "Lấy danh sách thông báo thành công", HttpStatus.OK),
     MARK_NOTIFICATION_READ_SUCCESS(200, "Đánh dấu đã đọc thông báo thành công", HttpStatus.OK),
     DELETE_NOTIFICATION_SUCCESS(200, "Xóa thông báo thành công", HttpStatus.OK),
-    GET_UNREAD_NOTIFICATION_COUNT_SUCCESS(200, "Lấy số lượng thông báo chưa đọc thành công", HttpStatus.OK);
+    GET_UNREAD_NOTIFICATION_COUNT_SUCCESS(200, "Lấy số lượng thông báo chưa đọc thành công", HttpStatus.OK),
+
+    // Community Posts
+    CREATE_COMMUNITY_POST_SUCCESS(201, "Tạo bài viết cộng đồng thành công", HttpStatus.CREATED),
+    GET_COMMUNITY_POST_SUCCESS(200, "Lấy bài viết cộng đồng thành công", HttpStatus.OK),
+    GET_COMMUNITY_POSTS_SUCCESS(200, "Lấy danh sách bài viết cộng đồng thành công", HttpStatus.OK),
+    UPDATE_COMMUNITY_POST_SUCCESS(200, "Cập nhật bài viết cộng đồng thành công", HttpStatus.OK),
+    DELETE_COMMUNITY_POST_SUCCESS(200, "Xóa bài viết cộng đồng thành công", HttpStatus.OK);
     final int status;
     final String message;
     final HttpStatus httpStatus;

@@ -64,7 +64,11 @@ public enum ErrorCode {
     PLAYER_NOT_IN_ROOM(444, "You are not a member of this room", HttpStatus.FORBIDDEN),
     NOT_ENOUGH_PLAYERS(445, "Need at least 2 players to start", HttpStatus.BAD_REQUEST),
     INVALID_QUESTION_COUNT(446, "Số lượng câu hỏi phải lớn hơn 0 và không vượt quá tổng số từ của các bộ thẻ", HttpStatus.BAD_REQUEST),
-    NOTIFICATION_NOT_FOUND(450, "Notification not found", HttpStatus.NOT_FOUND);
+    NOTIFICATION_NOT_FOUND(450, "Notification not found", HttpStatus.NOT_FOUND),
+
+    // Community Posts
+    COMMUNITY_POST_NOT_FOUND(450, "Bài viết cộng đồng không tồn tại", HttpStatus.NOT_FOUND),
+    COMMUNITY_POST_ACCESS_DENIED(454, "Bạn không có quyền chỉnh sửa hoặc xóa bài viết này", HttpStatus.FORBIDDEN);
     int status;
     String message;
     HttpStatus httpStatus;
