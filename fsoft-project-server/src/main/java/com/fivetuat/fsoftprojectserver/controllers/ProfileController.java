@@ -3,6 +3,7 @@ package com.fivetuat.fsoftprojectserver.controllers;
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.ProfileUpdateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.ProfileUpdateResponse;
+import com.fivetuat.fsoftprojectserver.dtos.response.PublicProfileResponse;
 import com.fivetuat.fsoftprojectserver.enums.SuccessCode;
 import com.fivetuat.fsoftprojectserver.services.ProfileService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,6 +16,8 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/profiles")
@@ -32,6 +35,17 @@ public class ProfileController {
     )
     public ApiResponse<ProfileUpdateResponse> getMyProfile() {
         return ApiResponse.ok(profileService.getMyProfile(), SuccessCode.GET_PROFILE_SUCCESS);
+    }
+
+    @GetMapping("/{profileId}")
+    @Operation(
+        summary = "Xem hồ sơ công khai của người dùng", 
+        description = "Truy xuất hồ sơ công khai của một người dùng theo Profile ID, bao gồm thông tin cá nhân, liên kết mạng xã hội, chuỗi ngày học liên tục (Streak) và các chỉ số đóng góp (tổng số bài viết, tổng số bộ thẻ công khai)."
+    )
+    public ApiResponse<PublicProfileResponse> getPublicProfileById(
+            @Parameter(description = "ID hồ sơ cá nhân của người dùng") @PathVariable UUID profileId
+    ) {
+        return ApiResponse.ok(profileService.getPublicProfileById(profileId), SuccessCode.GET_PUBLIC_PROFILE_SUCCESS);
     }
 
     @PutMapping("/me")

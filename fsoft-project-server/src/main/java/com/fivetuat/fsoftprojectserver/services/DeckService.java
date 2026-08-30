@@ -39,6 +39,8 @@ public interface DeckService {
     DeckResponse toggleShareLink(Long deckId);
     DeckResponse getDeckByShareToken(String shareToken);
     PageResponse<DeckResponse> getSharedWithMeDecks(int page, int size);
+    PageResponse<DeckResponse> getPublicDecksByUserId(UUID profileId, int page, int size);
+    List<Long> getAccessibleDeckIds();
 
     CrammingQueueResponse getCramCards(Long deckId, Boolean shuffle, String filter, Integer limit);
 }
