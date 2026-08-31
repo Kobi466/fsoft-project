@@ -107,6 +107,19 @@ public class DeckController {
         );
     }
 
+    @Operation(summary = "Lấy danh sách bộ thẻ công khai của một người dùng", description = "Truy xuất tất cả các bộ thẻ ở chế độ PUBLIC của một người dùng cụ thể, hỗ trợ phân trang.")
+    @GetMapping("/public/user/{profileId}")
+    public ApiResponse<PageResponse<DeckResponse>> getPublicDecksByUserId(
+            @Parameter(description = "ID hồ sơ cá nhân của người dùng") @PathVariable UUID profileId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.ok(
+                deckService.getPublicDecksByUserId(profileId, page, size),
+                SuccessCode.GET_DECKS_SUCCESS
+        );
+    }
+
     @Operation(summary = "Lọc bộ thẻ theo trạng thái Visibility", description = "Ví dụ lấy toàn bộ các bộ thẻ PRIVATE của mình hoặc PUBLIC của mình.")
     @GetMapping("/status")
     public ApiResponse<PageResponse<DeckResponse>> getDecksByStatus(

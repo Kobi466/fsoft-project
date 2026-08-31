@@ -18,6 +18,7 @@ public enum SuccessCode {
     UPDATE_PROFILE_SUCCESS(200, "Cập nhật thành công", HttpStatus.OK),
     UPDATE_AVATAR_SUCCESS(200, "Cập nhật avatar thành công", HttpStatus.OK),
     GET_PROFILE_SUCCESS(200, "Lấy thông tin thành công", HttpStatus.OK),
+    GET_PUBLIC_PROFILE_SUCCESS(200, "Lấy hồ sơ công khai thành công", HttpStatus.OK),
     UPLOAD_POST_THUMBNAIL_SUCCESS(200, "Cập nhật ảnh bài viết thành công", HttpStatus.OK),
     GET_POSTS_BY_STATUS_SUCCESS(200, "Lấy danh sách bài viết theo trạng thái thành công", HttpStatus.OK),
     GET_POST_SUCCESS(200, "Lấy bài viết thành công", HttpStatus.OK),
@@ -92,7 +93,20 @@ public enum SuccessCode {
     GET_NOTIFICATIONS_SUCCESS(200, "Lấy danh sách thông báo thành công", HttpStatus.OK),
     MARK_NOTIFICATION_READ_SUCCESS(200, "Đánh dấu đã đọc thông báo thành công", HttpStatus.OK),
     DELETE_NOTIFICATION_SUCCESS(200, "Xóa thông báo thành công", HttpStatus.OK),
-    GET_UNREAD_NOTIFICATION_COUNT_SUCCESS(200, "Lấy số lượng thông báo chưa đọc thành công", HttpStatus.OK);
+    GET_UNREAD_NOTIFICATION_COUNT_SUCCESS(200, "Lấy số lượng thông báo chưa đọc thành công", HttpStatus.OK),
+
+    // Community Posts
+    CREATE_COMMUNITY_POST_SUCCESS(201, "Tạo bài viết cộng đồng thành công", HttpStatus.CREATED),
+    GET_COMMUNITY_POST_SUCCESS(200, "Lấy bài viết cộng đồng thành công", HttpStatus.OK),
+    GET_COMMUNITY_POSTS_SUCCESS(200, "Lấy danh sách bài viết cộng đồng thành công", HttpStatus.OK),
+    UPDATE_COMMUNITY_POST_SUCCESS(200, "Cập nhật bài viết cộng đồng thành công", HttpStatus.OK),
+    DELETE_COMMUNITY_POST_SUCCESS(200, "Xóa bài viết cộng đồng thành công", HttpStatus.OK),
+    LIKE_POST_SUCCESS(200, "Thích bài viết thành công", HttpStatus.OK),
+    UNLIKE_POST_SUCCESS(200, "Bỏ thích bài viết thành công", HttpStatus.OK),
+    CREATE_COMMENT_SUCCESS(201, "Bình luận thành công", HttpStatus.CREATED),
+    GET_COMMENTS_SUCCESS(200, "Lấy danh sách bình luận thành công", HttpStatus.OK),
+    DELETE_COMMENT_SUCCESS(200, "Xóa bình luận thành công", HttpStatus.OK),
+    MODERATE_COMMUNITY_POST_SUCCESS(200, "Kiểm duyệt bài viết thành công", HttpStatus.OK);
     final int status;
     final String message;
     final HttpStatus httpStatus;
