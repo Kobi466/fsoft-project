@@ -5,6 +5,7 @@ import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.CommentCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.CommunityPostCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.CommunityPostUpdateRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.PostModerateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.CommentResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.CommunityPostResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.PostLikeToggleResponse;
@@ -17,6 +18,7 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -25,7 +27,7 @@ import java.util.UUID;
 @RequestMapping("/community-posts")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-@Tag(name = "Community Post Controller", description = "Quản lý bài viết, bảng tin, thả tim và bình luận trong cộng đồng")
+@Tag(name = "Community Post Controller", description = "Quản lý bài viết, bảng tin, kiểm duyệt, thả tim và bình luận trong cộng đồng")
 public class CommunityPostController {
 
     CommunityPostService communityPostService;
@@ -35,7 +37,7 @@ public class CommunityPostController {
     @PostMapping
     @Operation(
             summary = "Tạo bài viết mới trong cộng đồng",
-            description = "Tạo một bài viết mới với nội dung (Markdown), có thể đính kèm một bộ thẻ Deck công khai (tùy chọn) và gắn nhiều nhãn Tags (tùy chọn)."
+            description = "Tạo một bài viết mới với nội dung (Markdown), có thể đính kèm một bộ thẻ Deck công khai (tùy chọn) và gắn nhiều nhãn Tags (tùy chọn). Bài viết của USER sẽ ở trạng thái PENDING chờ ADMIN duyệt."
     )
     public ApiResponse<CommunityPostResponse> createPost(
             @Valid @RequestBody CommunityPostCreateRequest request
@@ -43,10 +45,22 @@ public class CommunityPostController {
         return ApiResponse.ok(communityPostService.createPost(request), SuccessCode.CREATE_COMMUNITY_POST_SUCCESS);
     }
 
+    @GetMapping("/my-posts")
+    @Operation(
+            summary = "Xem danh sách bài viết của tôi",
+            description = "Lấy tất cả bài viết do người dùng hiện tại đã đăng tải (bao gồm cả các bài PENDING đang chờ duyệt, APPROVED đã duyệt, REJECTED bị từ chối)."
+    )
+    public ApiResponse<PageResponse<CommunityPostResponse>> getMyPosts(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.ok(communityPostService.getMyPosts(page, size), SuccessCode.GET_COMMUNITY_POSTS_SUCCESS);
+    }
+
     @GetMapping("/{id}")
     @Operation(
             summary = "Xem chi tiết một bài viết",
-            description = "Lấy toàn bộ thông tin chi tiết của bài viết theo ID (nội dung, thông tin tác giả, bộ thẻ đính kèm, danh sách tag, số like, số comment, trạng thái đã like chưa)."
+            description = "Lấy toàn bộ thông tin chi tiết của bài viết theo ID (nội dung, thông tin tác giả, bộ thẻ đính kèm, danh sách tag, số like, số comment, trạng thái đã like chưa). Bài chưa duyệt chỉ tác giả hoặc ADMIN mới xem được."
     )
     public ApiResponse<CommunityPostResponse> getPostById(
             @Parameter(description = "ID của bài viết") @PathVariable Long id
@@ -78,12 +92,40 @@ public class CommunityPostController {
         return ApiResponse.ok(null, SuccessCode.DELETE_COMMUNITY_POST_SUCCESS);
     }
 
+    // --- KIỂM DUYỆT BÀI VIẾT (ADMIN MODERATION) ---
+
+    @GetMapping("/admin/pending")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Lấy danh sách bài viết đang chờ duyệt (ADMIN)",
+            description = "Truy xuất danh sách hàng đợi các bài viết có trạng thái PENDING đang chờ phê duyệt, hỗ trợ phân trang."
+    )
+    public ApiResponse<PageResponse<CommunityPostResponse>> getPendingPosts(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.ok(communityPostService.getPendingPosts(page, size), SuccessCode.GET_COMMUNITY_POSTS_SUCCESS);
+    }
+
+    @PutMapping("/admin/{id}/moderate")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Kiểm duyệt bài viết: Duyệt hoặc Từ chối (ADMIN)",
+            description = "ADMIN duyệt bài viết (status = APPROVED) để đưa lên Bảng tin, hoặc từ chối bài viết (status = REJECTED) kèm lý do từ chối (reason)."
+    )
+    public ApiResponse<CommunityPostResponse> moderatePost(
+            @Parameter(description = "ID của bài viết cần duyệt") @PathVariable Long id,
+            @Valid @RequestBody PostModerateRequest request
+    ) {
+        return ApiResponse.ok(communityPostService.moderatePost(id, request), SuccessCode.MODERATE_COMMUNITY_POST_SUCCESS);
+    }
+
     // --- BẢNG TIN & TÌM KIẾM ---
 
     @GetMapping("/latest")
     @Operation(
             summary = "Bảng tin bài viết mới nhất",
-            description = "Lấy danh sách các bài viết mới đăng nhất trong cộng đồng, hỗ trợ phân trang (page, size)."
+            description = "Lấy danh sách các bài viết đã duyệt (APPROVED) mới đăng nhất trong cộng đồng, hỗ trợ phân trang (page, size)."
     )
     public ApiResponse<PageResponse<CommunityPostResponse>> getLatestPosts(
             @RequestParam(defaultValue = "1") int page,
@@ -95,7 +137,7 @@ public class CommunityPostController {
     @GetMapping("/popular")
     @Operation(
             summary = "Bảng tin bài viết nổi bật (Nhiều like nhất)",
-            description = "Lấy danh sách các bài viết được cộng đồng yêu thích nhất (sắp xếp theo lượt Like giảm dần)."
+            description = "Lấy danh sách các bài viết đã duyệt (APPROVED) được cộng đồng yêu thích nhất (sắp xếp theo lượt Like giảm dần)."
     )
     public ApiResponse<PageResponse<CommunityPostResponse>> getPopularPosts(
             @RequestParam(defaultValue = "1") int page,
@@ -107,7 +149,7 @@ public class CommunityPostController {
     @GetMapping("/search")
     @Operation(
             summary = "Tìm kiếm bài viết cộng đồng",
-            description = "Tìm kiếm bài viết theo từ khóa (trong tiêu đề/nội dung) và/hoặc lọc theo nhãn Tag cụ thể."
+            description = "Tìm kiếm bài viết đã duyệt (APPROVED) theo từ khóa (trong tiêu đề/nội dung) và/hoặc lọc theo nhãn Tag cụ thể."
     )
     public ApiResponse<PageResponse<CommunityPostResponse>> searchPosts(
             @Parameter(description = "Từ khóa tìm kiếm") @RequestParam(required = false) String keyword,
@@ -121,7 +163,7 @@ public class CommunityPostController {
     @GetMapping("/user/{profileId}")
     @Operation(
             summary = "Lấy danh sách bài viết theo người dùng",
-            description = "Truy xuất danh sách tất cả các bài viết do một người dùng cụ thể đã đăng tải."
+            description = "Truy xuất danh sách tất cả các bài viết đã duyệt (APPROVED) do một người dùng cụ thể đã đăng tải."
     )
     public ApiResponse<PageResponse<CommunityPostResponse>> getPostsByUser(
             @Parameter(description = "ID hồ sơ cá nhân của người dùng") @PathVariable UUID profileId,

@@ -7,6 +7,7 @@ import com.fivetuat.fsoftprojectserver.entities.Profile;
 import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.enums.FolderName;
+import com.fivetuat.fsoftprojectserver.enums.PostStatus;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.mappers.ProfileMapper;
 import com.fivetuat.fsoftprojectserver.repositories.CommunityPostRepository;
@@ -93,8 +94,8 @@ public class ProfileServiceImpl implements ProfileService {
             response.setLongestStreak(streak.getLongestStreak());
         });
 
-        // Đếm tổng số bài viết cộng đồng đã đăng
-        long totalPosts = communityPostRepository.countByProfileIdAndIsDeletedFalse(profileId);
+        // Đếm tổng số bài viết cộng đồng đã được duyệt
+        long totalPosts = communityPostRepository.countByProfileIdAndStatusAndIsDeletedFalse(profileId, PostStatus.APPROVED);
         response.setTotalPosts(totalPosts);
 
         // Đếm tổng số bộ thẻ công khai đã chia sẻ

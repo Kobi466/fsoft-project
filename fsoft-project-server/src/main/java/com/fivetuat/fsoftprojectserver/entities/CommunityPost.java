@@ -1,5 +1,6 @@
 package com.fivetuat.fsoftprojectserver.entities;
 
+import com.fivetuat.fsoftprojectserver.enums.PostStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -34,6 +35,21 @@ public class CommunityPost {
 
     @Column(columnDefinition = "TEXT", nullable = false)
     String content;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    @Builder.Default
+    PostStatus status = PostStatus.PENDING;
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    String rejectionReason;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approved_by")
+    Profile approvedBy;
+
+    @Column(name = "approved_at")
+    LocalDateTime approvedAt;
 
     @Column(name = "like_count", nullable = false)
     @Builder.Default

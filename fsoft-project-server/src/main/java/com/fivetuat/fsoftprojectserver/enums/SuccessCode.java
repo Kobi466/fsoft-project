@@ -105,7 +105,8 @@ public enum SuccessCode {
     UNLIKE_POST_SUCCESS(200, "Bỏ thích bài viết thành công", HttpStatus.OK),
     CREATE_COMMENT_SUCCESS(201, "Bình luận thành công", HttpStatus.CREATED),
     GET_COMMENTS_SUCCESS(200, "Lấy danh sách bình luận thành công", HttpStatus.OK),
-    DELETE_COMMENT_SUCCESS(200, "Xóa bình luận thành công", HttpStatus.OK);
+    DELETE_COMMENT_SUCCESS(200, "Xóa bình luận thành công", HttpStatus.OK),
+    MODERATE_COMMUNITY_POST_SUCCESS(200, "Kiểm duyệt bài viết thành công", HttpStatus.OK);
     final int status;
     final String message;
     final HttpStatus httpStatus;

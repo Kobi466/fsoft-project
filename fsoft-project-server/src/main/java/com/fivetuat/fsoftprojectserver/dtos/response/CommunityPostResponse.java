@@ -1,5 +1,6 @@
 package com.fivetuat.fsoftprojectserver.dtos.response;
 
+import com.fivetuat.fsoftprojectserver.enums.PostStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -24,6 +25,10 @@ public class CommunityPostResponse {
     // Nội dung bài viết
     String title;
     String content;
+    PostStatus status;
+    String rejectionReason;
+    LocalDateTime approvedAt;
+
     int likeCount;
     int commentCount;
     boolean likedByCurrentUser;

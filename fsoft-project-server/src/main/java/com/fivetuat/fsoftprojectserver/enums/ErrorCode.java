@@ -72,7 +72,9 @@ public enum ErrorCode {
     ALREADY_LIKED(452, "Bạn đã thích bài viết này rồi", HttpStatus.CONFLICT),
     NOT_LIKED(453, "Bạn chưa thích bài viết này", HttpStatus.BAD_REQUEST),
     COMMUNITY_POST_ACCESS_DENIED(454, "Bạn không có quyền chỉnh sửa hoặc xóa bài viết này", HttpStatus.FORBIDDEN),
-    COMMENT_ACCESS_DENIED(455, "Bạn không có quyền xóa bình luận này", HttpStatus.FORBIDDEN);
+    COMMENT_ACCESS_DENIED(455, "Bạn không có quyền xóa bình luận này", HttpStatus.FORBIDDEN),
+    REJECTION_REASON_REQUIRED(456, "Lý do từ chối không được để trống khi từ chối bài viết", HttpStatus.BAD_REQUEST),
+    POST_NOT_APPROVED(457, "Bài viết chưa được phê duyệt nên không thể tương tác", HttpStatus.FORBIDDEN);
     int status;
     String message;
     HttpStatus httpStatus;
