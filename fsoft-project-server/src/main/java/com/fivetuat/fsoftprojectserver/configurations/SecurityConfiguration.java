@@ -49,11 +49,19 @@ public class SecurityConfiguration {
             "/swagger-ui.html",
             "/v3/api-docs/**",
             "/api-docs/**",
-            "/decks/public",
+            "/decks/public/**",
             "/actuator/health",
             "/api/chat-ai/test",
             "/ws-chat/**",
             "/ws-game/**",
+            "/profiles/{profileId:[0-9a-fA-F\\-]+}",
+            "/community-posts/latest",
+            "/community-posts/popular",
+            "/community-posts/search",
+            "/community-posts/user/**",
+            "/community-posts/{id:[0-9]+}",
+            "/community-posts/{id:[0-9]+}/comments",
+            "/community-posts/comments/{commentId:[0-9]+}/replies",
     };
 
     CustomJwtDecoder customJwtDecoder;
