@@ -1,7 +1,11 @@
 package com.fivetuat.fsoftprojectserver.services.implement;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -18,6 +22,8 @@ import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckUpdateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.ShareDeckRequest;
+import com.fivetuat.fsoftprojectserver.dtos.response.CrammingCardResponse;
+import com.fivetuat.fsoftprojectserver.dtos.response.CrammingQueueResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.DeckResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.DeckShareResponse;
 import com.fivetuat.fsoftprojectserver.entities.Card;
@@ -25,32 +31,27 @@ import com.fivetuat.fsoftprojectserver.entities.Deck;
 import com.fivetuat.fsoftprojectserver.entities.DeckShare;
 import com.fivetuat.fsoftprojectserver.entities.Profile;
 import com.fivetuat.fsoftprojectserver.entities.Tag;
+import com.fivetuat.fsoftprojectserver.entities.UserCardSrs;
 import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.enums.FolderName;
 import com.fivetuat.fsoftprojectserver.enums.SharePermission;
+import com.fivetuat.fsoftprojectserver.enums.SrsStatus;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
+import com.fivetuat.fsoftprojectserver.mappers.CardMapper;
 import com.fivetuat.fsoftprojectserver.mappers.DeckMapper;
 import com.fivetuat.fsoftprojectserver.repositories.CardRepository;
 import com.fivetuat.fsoftprojectserver.repositories.DeckRepository;
 import com.fivetuat.fsoftprojectserver.repositories.DeckShareRepository;
 import com.fivetuat.fsoftprojectserver.repositories.TagRepository;
+import com.fivetuat.fsoftprojectserver.repositories.UserCardSrsRepository;
 import com.fivetuat.fsoftprojectserver.services.AuthService;
 import com.fivetuat.fsoftprojectserver.services.DeckService;
-import com.fivetuat.fsoftprojectserver.services.NotificationService;
+import com.fivetuat.fsoftprojectserver.services.NotificationEmailService;
 import com.fivetuat.fsoftprojectserver.services.ProfileService;
 import com.fivetuat.fsoftprojectserver.services.UploadService;
+import com.fivetuat.fsoftprojectserver.utils.PageUtils;
 import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
-import com.fivetuat.fsoftprojectserver.dtos.response.CrammingCardResponse;
-import com.fivetuat.fsoftprojectserver.dtos.response.CrammingQueueResponse;
-import com.fivetuat.fsoftprojectserver.entities.UserCardSrs;
-import com.fivetuat.fsoftprojectserver.enums.SrsStatus;
-import com.fivetuat.fsoftprojectserver.mappers.CardMapper;
-import com.fivetuat.fsoftprojectserver.repositories.UserCardSrsRepository;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -71,7 +72,7 @@ public class DeckServiceImpl implements DeckService {
     CardRepository cardRepository;
     ProfileService profileService;
     DeckShareRepository deckShareRepository;
-    NotificationService notificationService;
+    NotificationEmailService notificationEmailService;
     UserCardSrsRepository userCardSrsRepository;
     CardMapper cardMapper;
 
@@ -82,6 +83,10 @@ public class DeckServiceImpl implements DeckService {
 
         Deck deck = deckMapper.toDeck(request);
         deck.setProfile(profile);
+
+        if (!SecurityUtils.isCurrentUserInRole("ROLE_ADMIN")) {
+            deck.setOfficial(false);
+        }
 
         if (request.getParentDeckId() != null) {
             Deck parent = this.getExistingDeck(request.getParentDeckId());
@@ -288,12 +293,12 @@ public class DeckServiceImpl implements DeckService {
 
     private void inviteNewUser(String email, String ownerName, String deckTitle){
         log.info("Inviting unregistered user {} to deck '{}' owned by {}", email, deckTitle, ownerName);
-        notificationService.sendDeckInviteEmail(email, ownerName, deckTitle);
+        notificationEmailService.sendDeckInviteEmail(email, ownerName, deckTitle);
     }
 
     private void notificationUserShared(String email, String recipientName, String ownerName, String deckTitle, String permission){
         log.info("Notifying registered user {} ({}) about deck '{}' shared by {}", recipientName, email, deckTitle, ownerName);
-        notificationService.sendDeckSharedEmail(email, recipientName, ownerName, deckTitle, permission);
+        notificationEmailService.sendDeckSharedEmail(email, recipientName, ownerName, deckTitle, permission);
     }
 
     @Override
@@ -396,10 +401,10 @@ public class DeckServiceImpl implements DeckService {
         return deck;
     }
 
-    @Override
-    public void save(Deck deck){
-        deckRepository.save(deck);
-    }
+//    @Override
+//    public void save(Deck deck){
+//        deckRepository.save(deck);
+//    }
 
     @Override
     @Transactional(readOnly = true)
@@ -566,5 +571,19 @@ public class DeckServiceImpl implements DeckService {
                 .totalCards(crammingCards.size())
                 .cards(crammingCards)
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<DeckResponse> getPublicDecksByUserId(UUID profileId, int page, int size) {
+        Pageable pageable = PageUtils.createPageable(page, size);
+        Page<Deck> deckPage = deckRepository.findByProfileIdAndVisibilityAndIsDeletedFalse(profileId, DeckVisibility.PUBLIC, pageable);
+        return PageUtils.toPageResponse(deckPage, deckMapper::toDeckResponse);
+    }
+
+    @Override
+    public List<Long> getAccessibleDeckIds() {
+        Profile currentProfile = authService.getCurrentProfile();
+        return deckRepository.findAllAccessibleDeckIdsByProfileId(currentProfile.getId());
     }
 }

@@ -1,5 +1,13 @@
 package com.fivetuat.fsoftprojectserver.services.implement;
 
+import java.text.Normalizer;
+import java.util.List;
+import java.util.Locale;
+import java.util.regex.Pattern;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.fivetuat.fsoftprojectserver.dtos.request.TagRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.TagResponse;
 import com.fivetuat.fsoftprojectserver.entities.Tag;
@@ -8,17 +16,13 @@ import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.mappers.TagMapper;
 import com.fivetuat.fsoftprojectserver.repositories.TagRepository;
 import com.fivetuat.fsoftprojectserver.services.TagService;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.prepost.PreAuthorize;
 
-import java.text.Normalizer;
-import java.util.List;
-import java.util.Locale;
-import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -60,6 +64,7 @@ public class TagServiceImpl implements TagService {
 
     @Override
     @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
     public TagResponse updateTag(Long id, TagRequest request) {
         log.info("Updating tag ID: {}", id);
         Tag tag = tagRepository.findById(id)
@@ -83,6 +88,7 @@ public class TagServiceImpl implements TagService {
 
     @Override
     @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
     public void deleteTag(Long id) {
         log.info("Deleting tag ID: {}", id);
         if (!tagRepository.existsById(id)) {

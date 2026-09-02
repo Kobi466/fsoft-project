@@ -4,6 +4,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.fivetuat.fsoftprojectserver.repositories.DeckRepository;
+import com.fivetuat.fsoftprojectserver.utils.ExcelExportHelper;
+import com.fivetuat.fsoftprojectserver.utils.PdfExportHelper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -41,7 +44,7 @@ public class CardServiceImpl implements CardService {
     CardMapper cardMapper;
     DeckService deckService;
     UploadService uploadService;
-
+    DeckRepository deckRepository;
     @Override
     @Transactional
     public CardResponse createCard(
@@ -123,7 +126,7 @@ public class CardServiceImpl implements CardService {
 
         if (deck.getTotalCards() > 0) {
             deck.setTotalCards(deck.getTotalCards() - 1);
-            deckService.save(deck);
+            this.deckRepository.save(deck);
         }
     }
 
@@ -141,6 +144,22 @@ public class CardServiceImpl implements CardService {
             }
         }
         this.cardRepository.saveAll(listCard);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportCardsToExcel(Long deckId) {
+        Deck deck = this.deckService.getDeckWithEditPermission(deckId);
+        List<Card> cards = cardRepository.findByDeckIdOrderByPositionAsc(deck.getId());
+        return ExcelExportHelper.exportCardsToExcel(deck, cards);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportCardsToPdf(Long deckId) {
+        Deck deck = this.deckService.getDeckWithEditPermission(deckId);
+        List<Card> cards = cardRepository.findByDeckIdOrderByPositionAsc(deck.getId());
+        return PdfExportHelper.exportCardsToPdf(deck, cards);
     }
 
     private Card getCardWithOwnerCheck(Long cardId){

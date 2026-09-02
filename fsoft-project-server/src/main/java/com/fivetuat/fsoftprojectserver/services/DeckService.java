@@ -4,6 +4,7 @@ import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckUpdateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.ShareDeckRequest;
+import com.fivetuat.fsoftprojectserver.dtos.response.CrammingQueueResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.DeckResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.DeckShareResponse;
 import com.fivetuat.fsoftprojectserver.entities.Deck;
@@ -30,7 +31,6 @@ public interface DeckService {
     PageResponse<DeckResponse> getDecksByStatus(DeckVisibility status, int page, int size);
     Deck getMyDeck(Long id);
     Deck getDeckWithEditPermission(Long id);
-    void save(Deck deck);
 
     PageResponse<DeckShareResponse> getSharedUsers(Long deckId, Pageable pageable);
     void updateSharePermission(Long deckId, UUID profileId, SharePermission permission);
@@ -39,6 +39,8 @@ public interface DeckService {
     DeckResponse toggleShareLink(Long deckId);
     DeckResponse getDeckByShareToken(String shareToken);
     PageResponse<DeckResponse> getSharedWithMeDecks(int page, int size);
+    PageResponse<DeckResponse> getPublicDecksByUserId(UUID profileId, int page, int size);
+    List<Long> getAccessibleDeckIds();
 
-    com.fivetuat.fsoftprojectserver.dtos.response.CrammingQueueResponse getCramCards(Long deckId, Boolean shuffle, String filter, Integer limit);
+    CrammingQueueResponse getCramCards(Long deckId, Boolean shuffle, String filter, Integer limit);
 }

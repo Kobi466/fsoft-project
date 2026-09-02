@@ -22,7 +22,13 @@ public interface DeckRepository extends JpaRepository<Deck, Long> {
 
     Page<Deck> findByVisibilityAndIsDeletedFalse(DeckVisibility visibility, Pageable pageable);
 
+    Page<Deck> findByPendingPublicTrueAndIsDeletedFalse(Pageable pageable);
+
     Page<Deck> findByProfileAndVisibilityAndIsDeletedFalse(Profile profile, DeckVisibility visibility, Pageable pageable);
+    
+    Page<Deck> findByProfileIdAndVisibilityAndIsDeletedFalse(UUID profileId, DeckVisibility visibility, Pageable pageable);
+
+    long countByProfileIdAndVisibilityAndIsDeletedFalse(UUID profileId, DeckVisibility visibility);
 
     @Query("SELECT ds.deck FROM DeckShare ds WHERE ds.profile = :profile AND ds.deck.isDeleted = false")
     Page<Deck> findSharedDecksByProfile(@Param("profile") Profile profile, Pageable pageable);
@@ -52,4 +58,8 @@ public interface DeckRepository extends JpaRepository<Deck, Long> {
            "d.id IN (SELECT ds.deck.id FROM DeckShare ds WHERE ds.profile.id = :currentUserId)" +
            ")")
     List<Long> findAllAccessibleDeckIdsByProfileId(@Param("currentUserId") UUID currentUserId);
+
+    long countByIsOfficialTrueAndIsDeletedFalse();
+    long countByVisibilityAndIsDeletedFalse(DeckVisibility visibility);
 }
+

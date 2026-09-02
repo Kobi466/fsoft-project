@@ -17,3 +17,4 @@ public interface ReviewCardService {
 
 	SrsMasteryResponse getMasteryDashboard(Long deckId);
 }
+
