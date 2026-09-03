@@ -51,7 +51,7 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 		UUID userId = SecurityUtils.getCurrentUserLogin().orElseThrow(
 				() -> new AppException(ErrorCode.AUTHENTICATION_FAILED)
 		);
-		int maxLimit = (limit != null & limit > 0) ? limit : 20;
+		int maxLimit = (limit != null && limit > 0) ? limit : 20;
 		LocalDateTime now = LocalDateTime.now();
 		List<UserCardSrs> dueCards;
 		if (deckId != null) {
