@@ -5,8 +5,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -22,13 +20,11 @@ import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckUpdateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.ShareDeckRequest;
-import com.fivetuat.fsoftprojectserver.dtos.response.CrammingCardResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.CrammingQueueResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.DeckResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.DeckShareResponse;
 import com.fivetuat.fsoftprojectserver.entities.Card;
 import com.fivetuat.fsoftprojectserver.entities.Deck;
-import com.fivetuat.fsoftprojectserver.entities.DeckShare;
 import com.fivetuat.fsoftprojectserver.entities.Profile;
 import com.fivetuat.fsoftprojectserver.entities.Tag;
 import com.fivetuat.fsoftprojectserver.entities.UserCardSrs;
@@ -47,9 +43,10 @@ import com.fivetuat.fsoftprojectserver.repositories.TagRepository;
 import com.fivetuat.fsoftprojectserver.repositories.UserCardSrsRepository;
 import com.fivetuat.fsoftprojectserver.services.AuthService;
 import com.fivetuat.fsoftprojectserver.services.DeckService;
-import com.fivetuat.fsoftprojectserver.services.NotificationEmailService;
-import com.fivetuat.fsoftprojectserver.services.ProfileService;
 import com.fivetuat.fsoftprojectserver.services.UploadService;
+import com.fivetuat.fsoftprojectserver.services.support.DeckCrammingHelper;
+import com.fivetuat.fsoftprojectserver.services.support.DeckShareHelper;
+import com.fivetuat.fsoftprojectserver.services.support.DeckValidator;
 import com.fivetuat.fsoftprojectserver.utils.PageUtils;
 import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
 
@@ -70,79 +67,79 @@ public class DeckServiceImpl implements DeckService {
     DeckMapper deckMapper;
     UploadService uploadService;
     CardRepository cardRepository;
-    ProfileService profileService;
     DeckShareRepository deckShareRepository;
-    NotificationEmailService notificationEmailService;
-    UserCardSrsRepository userCardSrsRepository;
-    CardMapper cardMapper;
+
+    DeckValidator deckValidator;
+    DeckShareHelper deckShareHelper;
+    DeckCrammingHelper deckCrammingHelper;
 
     @Transactional
     @Override
     public DeckResponse createDeck(DeckCreateRequest request, MultipartFile coverImage) {
-        Profile profile = authService.getCurrentProfile();
+        String role = SecurityUtils.isCurrentUserInRole("ROLE_ADMIN")
+                ? "ADMIN"
+                : "USER";
 
+        Profile profile = authService.getCurrentProfile();
         Deck deck = deckMapper.toDeck(request);
         deck.setProfile(profile);
-
-        if (!SecurityUtils.isCurrentUserInRole("ROLE_ADMIN")) {
-            deck.setOfficial(false);
+        switch (role) {
+            case "ADMIN":
+                deck.setOfficial(true);
+                break;
+            case "USER":
+                if (request.getVisibility() == DeckVisibility.PUBLIC) {
+                    throw new AppException(ErrorCode.ACCESS_DENIED);
+                }
+                deck.setOfficial(false);
+                break;
+            default:
+                throw new AppException(ErrorCode.ACCESS_DENIED);
         }
-
-        if (request.getParentDeckId() != null) {
-            Deck parent = this.getExistingDeck(request.getParentDeckId());
-            deck.setParentDeck(parent);
-        }
-
-        if (coverImage != null && !coverImage.isEmpty()) {
-            String imageUrl = uploadService.uploadFile(coverImage, FolderName.DECKS);
-            log.info("image {}", imageUrl);
-            deck.setCoverImageUrl(imageUrl);
-        }
-
+        applyParentDeck(deck, request.getParentDeckId());
+        applyCoverImage(deck, coverImage);
         deck.setTags(processTags(request.getTagIds()));
-
-        deck = deckRepository.save(deck);
-        return deckMapper.toDeckResponse(deck);
+        return deckMapper.toDeckResponse(deckRepository.save(deck));
     }
 
     @Override
     @Transactional(readOnly = true)
     public DeckResponse getDeck(Long id) {
-        Deck deck = this.getExistingDeck(id);
+        Deck deck = getExistingDeck(id);
         if (deck.getVisibility() == DeckVisibility.PRIVATE) {
-            Profile currentProfile = authService.getCurrentProfile();
-            boolean isOwner = deck.getProfile().getId().equals(currentProfile.getId());
-            boolean isShared = deckShareRepository.existsByDeckIdAndProfileId(id, currentProfile.getId());
-
-            if (!isOwner && !isShared) {
-                throw new AppException(ErrorCode.ACCESS_DENIED);
-            }
+            Profile profile = authService.getCurrentProfile();
+            deckValidator.verifyDeckReadPermission(deck, profile.getId());
         }
-
         return deckMapper.toDeckResponse(deck);
     }
 
     @Transactional
     @Override
     public DeckResponse updateDeck(Long id, DeckUpdateRequest request, MultipartFile coverImage) {
-        var deck = this.getMyDeck(id);
+        String role = SecurityUtils.isCurrentUserInRole("ROLE_ADMIN")
+                ? "ADMIN"
+                : "USER";
+
+        Deck deck;
+        switch (role) {
+            case "ADMIN":
+                deck = getExistingDeck(id);
+                break;
+            case "USER":
+                deck = getMyDeck(id);
+                if (request.getVisibility() == DeckVisibility.PUBLIC && !deck.isOfficial()) {
+                    throw new AppException(ErrorCode.ACCESS_DENIED);
+                }
+                break;
+            default:
+                throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
 
         deckMapper.updateDeck(deck, request);
 
-        if (request.getParentDeckId() != null) {
-            Deck parent = this.getExistingDeck(request.getParentDeckId());
-            deck.setParentDeck(parent);
-        } else {
-            deck.setParentDeck(null);
-        }
-
-        if (coverImage != null && !coverImage.isEmpty()) {
-            String imageUrl = uploadService.uploadFile(coverImage, FolderName.DECKS);
-            deck.setCoverImageUrl(imageUrl);
-        }
-
+        applyParentDeck(deck, request.getParentDeckId());
+        applyCoverImage(deck, coverImage);
         deck.setTags(processTags(request.getTagIds()));
-
         deck = deckRepository.save(deck);
         return deckMapper.toDeckResponse(deck);
     }
@@ -150,25 +147,27 @@ public class DeckServiceImpl implements DeckService {
     @Transactional
     @Override
     public void convertDeckVisibility(Long id, DeckVisibility deckVisibility) {
-        Deck deck = deckRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
-        Profile currentProfile = authService.getCurrentProfile();
-
-        if (!deck.getProfile().getId().equals(currentProfile.getId())) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
+        Deck deck = getMyDeck(id);
+        if (deckVisibility == DeckVisibility.PUBLIC) {
+            if (deck.getParentDeck() != null) {
+                throw new AppException(ErrorCode.FORKED_DECK_CANNOT_BE_PUBLIC);
+            }
+            deck.setPendingPublic(true);
+        } else {
+            deck.setVisibility(DeckVisibility.PRIVATE);
+            deck.setPendingPublic(false);
         }
-        deck.setVisibility(deckVisibility);
         deckRepository.save(deck);
     }
 
     @Override
+    @Transactional
     public void deleteDeck(Long id) {
-        Deck deck = this.getExistingDeck(id);
+        Deck deck = getExistingDeck(id);
+        Profile profile = authService.getCurrentProfile();
 
-        Profile currentProfile = authService.getCurrentProfile();
-        if (!deck.getProfile().getId().equals(currentProfile.getId())) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
+        deckValidator.verifyOwner(deck, profile.getId());
+
         deck.setDeleted(true);
         deckRepository.save(deck);
     }
@@ -177,63 +176,26 @@ public class DeckServiceImpl implements DeckService {
     @Transactional(readOnly = true)
     public PageResponse<DeckResponse> getMyDecks(int page, int size) {
         Profile profile = authService.getCurrentProfile();
-        int pageNo = Math.max(1, page);
-        Pageable pageable = PageRequest.of(pageNo - 1, size);
-        Page<Deck> deckPage=deckRepository.findByProfileAndIsDeletedFalse(profile, pageable);
-        List<DeckResponse> content = deckPage.getContent().stream()
-                .map(deckMapper::toDeckResponse)
-                .toList();
-        return PageResponse.<DeckResponse>builder()
-                .pageNo(pageNo)
-                .pageSize(size)
-                .totalPages(deckPage.getTotalPages())
-                .totalElements(deckPage.getTotalElements())
-                .content(content)
-                .last(deckPage.isLast())
-                .build();
+        Pageable pageable = PageUtils.createPageable(page, size);
+        Page<Deck> deckPage = deckRepository.findByProfileAndIsDeletedFalse(profile, pageable);
+        return PageUtils.toPageResponse(deckPage, deckMapper::toDeckResponse);
     }
 
     @Transactional
     @Override
     public DeckResponse fork(Long id) {
         Profile currentProfile = authService.getCurrentProfile();
-        Deck deck = deckRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
+        Deck deck = getExistingDeck(id);
 
-        if (deck.getVisibility() != DeckVisibility.PUBLIC) {
-            throw new AppException(ErrorCode.DECK_NOT_PUBLIC);
-        }
-
-        if (deckRepository.existsByParentDeckIdAndProfileIdAndIsDeletedFalse(id, currentProfile.getId())) {
-            throw new AppException(ErrorCode.DECK_ALREADY_FORKED);
-        }
+        deckValidator.validateForkEligibility(deck, currentProfile.getId());
 
         deck.setForkCount(deck.getForkCount() + 1);
         deckRepository.save(deck);
 
-        Deck newDeck = new Deck(deck);
-        newDeck.setProfile(currentProfile);
-        newDeck.setForkCount(0);
-        newDeck.setParentDeck(deck);
-        newDeck.setVisibility(DeckVisibility.PRIVATE);
-        newDeck.setOfficial(false);
-
-        if (deck.getTags() != null && !deck.getTags().isEmpty()) {
-            newDeck.setTags(new java.util.HashSet<>(deck.getTags()));
-        }
-
+        Deck newDeck = buildForkedDeck(deck, currentProfile);
         Deck savedDeck = deckRepository.save(newDeck);
 
-        List<Card> cards = cardRepository.findByDeckId(deck.getId());
-        if (cards != null && !cards.isEmpty()) {
-            List<Card> copiedCards = cards.stream()
-                    .map(card -> {
-                        Card newCard = new Card(card);
-                        newCard.setDeck(savedDeck);
-                        return newCard;
-                    }).collect(Collectors.toList());
-            cardRepository.saveAll(copiedCards);
-        }
+        copyCardsToForkedDeck(deck.getId(), savedDeck);
 
         return deckMapper.toDeckResponse(savedDeck);
     }
@@ -241,98 +203,28 @@ public class DeckServiceImpl implements DeckService {
     @Transactional
     @Override
     public void share(Long deckId, ShareDeckRequest request) {
-        var owner = this.authService.getCurrentProfile();
-        var deck = this.getExistingDeck(deckId);
-        if (!deck.getProfile().getId().equals(owner.getId())){
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
-
-        String ownerName = (owner.getFullName() != null && !owner.getFullName().isBlank())
-                ? owner.getFullName()
-                : owner.getAuth().getEmail();
-
-        Profile recipient;
-        try {
-            recipient = this.profileService.getProfileByEmail(request.getEmail());
-        } catch (AppException appException) {
-            inviteNewUser(request.getEmail(), ownerName, deck.getTitle());
-            return;
-        }
-
-        if (recipient.getId().equals(owner.getId())){
-            throw new AppException(ErrorCode.CANNOT_SHARE_WITH_YOURSELF);
-        }
-
-        String recipientName = (recipient.getFullName() != null && !recipient.getFullName().isBlank())
-                ? recipient.getFullName()
-                : recipient.getAuth().getEmail();
-
-        String permissionStr = request.getPermission() == SharePermission.EDIT
-                ? "Xem và Chỉnh sửa"
-                : "Xem bài học";
-
-        Optional<DeckShare> deckShareOtp = this.deckShareRepository.findByDeckIdAndProfileId(deckId, recipient.getId());
-        if (deckShareOtp.isPresent()){
-            var deckShare = deckShareOtp.get();
-            if (!deckShare.getPermission().equals(request.getPermission())){
-                deckShare.setPermission(request.getPermission());
-                this.deckShareRepository.save(deckShare);
-                notificationUserShared(request.getEmail(), recipientName, ownerName, deck.getTitle(), permissionStr);
-            }
-            return;
-        }
-
-        var deckShare = DeckShare.builder()
-                .deck(deck)
-                .profile(recipient)
-                .permission(request.getPermission())
-                .build();
-        this.deckShareRepository.save(deckShare);
-        notificationUserShared(request.getEmail(), recipientName, ownerName, deck.getTitle(), permissionStr);
-    }
-
-    private void inviteNewUser(String email, String ownerName, String deckTitle){
-        log.info("Inviting unregistered user {} to deck '{}' owned by {}", email, deckTitle, ownerName);
-        notificationEmailService.sendDeckInviteEmail(email, ownerName, deckTitle);
-    }
-
-    private void notificationUserShared(String email, String recipientName, String ownerName, String deckTitle, String permission){
-        log.info("Notifying registered user {} ({}) about deck '{}' shared by {}", recipientName, email, deckTitle, ownerName);
-        notificationEmailService.sendDeckSharedEmail(email, recipientName, ownerName, deckTitle, permission);
+        Profile owner = authService.getCurrentProfile();
+        Deck deck = getExistingDeck(deckId);
+        deckShareHelper.share(deck, owner, request);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<DeckResponse> getPublicDecks(int page, int size, String keyword, Long tagId, String sourceLang, String targetLang) {
-        int pageNo = Math.max(1, page);
-        Pageable pageable = PageRequest.of(pageNo - 1, size);
+        Pageable pageable = PageUtils.createPageable(page, size);
 
-        String sanitizedKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
-        String sanitizedSourceLang = (sourceLang != null && !sourceLang.trim().isEmpty()) ? sourceLang.trim() : null;
-        String sanitizedTargetLang = (targetLang != null && !targetLang.trim().isEmpty()) ? targetLang.trim() : null;
+        String sanitizedKeyword = sanitizeString(keyword);
+        String sanitizedSourceLang = sanitizeString(sourceLang);
+        String sanitizedTargetLang = sanitizeString(targetLang);
 
         Page<Deck> deckPage = deckRepository.searchPublicDecks(sanitizedKeyword, tagId, sanitizedSourceLang, sanitizedTargetLang, pageable);
-
-        List<DeckResponse> content = deckPage.getContent().stream()
-                .map(deckMapper::toDeckResponse)
-                .toList();
-
-        return PageResponse.<DeckResponse>builder()
-                .pageNo(pageNo)
-                .pageSize(size)
-                .totalPages(deckPage.getTotalPages())
-                .totalElements(deckPage.getTotalElements())
-                .content(content)
-                .last(deckPage.isLast())
-                .build();
+        return PageUtils.toPageResponse(deckPage, deckMapper::toDeckResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<DeckResponse> getDecksByStatus(DeckVisibility status, int page, int size) {
-        int pageNo = Math.max(1, page);
-        Pageable pageable = PageRequest.of(pageNo - 1, size);
-
+        Pageable pageable = PageUtils.createPageable(page, size);
         DeckVisibility targetStatus = (status != null) ? status : DeckVisibility.PUBLIC;
         Page<Deck> deckPage;
 
@@ -341,100 +233,41 @@ public class DeckServiceImpl implements DeckService {
                 Profile profile = authService.getCurrentProfile();
                 deckPage = deckRepository.findByProfileAndVisibilityAndIsDeletedFalse(profile, DeckVisibility.PRIVATE, pageable);
             }
-            default -> {
-                deckPage = deckRepository.findByVisibilityAndIsDeletedFalse(DeckVisibility.PUBLIC, pageable);
-            }
+            default -> deckPage = deckRepository.findByVisibilityAndIsDeletedFalse(DeckVisibility.PUBLIC, pageable);
         }
 
-        List<DeckResponse> content = deckPage.getContent().stream()
-                .map(deckMapper::toDeckResponse)
-                .toList();
-
-        return PageResponse.<DeckResponse>builder()
-                .pageNo(pageNo)
-                .pageSize(size)
-                .totalPages(deckPage.getTotalPages())
-                .totalElements(deckPage.getTotalElements())
-                .content(content)
-                .last(deckPage.isLast())
-                .build();
+        return PageUtils.toPageResponse(deckPage, deckMapper::toDeckResponse);
     }
-
-    private Set<Tag> processTags(Set<Long> tagIds) {
-        if (tagIds == null || tagIds.isEmpty()) {
-            return new HashSet<>();
-        }
-        return tagIds.stream()
-                .map(id -> tagRepository.findById(id)
-                        .orElseThrow(() -> new AppException(ErrorCode.INVALID_KEY)))
-                .collect(Collectors.toSet());
-    }
-
-    private Deck getExistingDeck(Long id) {
-        return deckRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
-    }
-
 
     @Override
     public Deck getMyDeck(Long id) {
-        UUID profileId = SecurityUtils.getCurrentUserLogin()
-                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED));
-        return deckRepository.findByIdAndProfileIdAndIsDeletedFalse(id, profileId)
+        Profile profile = authService.getCurrentProfile();
+        return deckRepository.findByIdAndProfileIdAndIsDeletedFalse(id, profile.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
     }
 
     @Override
     public Deck getDeckWithEditPermission(Long id) {
-        Deck deck = this.getExistingDeck(id);
-        Profile currentProfile = authService.getCurrentProfile();
+        Deck deck = getExistingDeck(id);
+        Profile profile = authService.getCurrentProfile();
 
-        boolean isOwner = deck.getProfile().getId().equals(currentProfile.getId());
-        boolean hasEditPermission = deckShareRepository.findByDeckIdAndProfileId(id, currentProfile.getId())
+        boolean isOwner = deckValidator.isDeckOwner(deck, profile.getId());
+        boolean hasEditPermission = deckShareRepository.findByDeckIdAndProfileId(id, profile.getId())
                 .map(share -> share.getPermission() == SharePermission.EDIT)
                 .orElse(false);
 
         if (!isOwner && !hasEditPermission) {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
-
         return deck;
     }
-
-//    @Override
-//    public void save(Deck deck){
-//        deckRepository.save(deck);
-//    }
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<DeckShareResponse> getSharedUsers(Long deckId, Pageable pageable) {
         Profile owner = authService.getCurrentProfile();
         Deck deck = getExistingDeck(deckId);
-        if (!deck.getProfile().getId().equals(owner.getId())) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
-        Page<DeckShare> shares = deckShareRepository.findByDeckId(
-                deckId, pageable
-        );
-
-        return PageResponse.<DeckShareResponse>builder()
-                .pageNo(pageable.getPageNumber())
-                .pageSize(pageable.getPageSize())
-                .totalPages(shares.getTotalPages())
-                .totalElements(shares.getTotalElements())
-                .content(
-                        shares.stream().map(
-                                share -> DeckShareResponse.builder()
-                                        .profileId(share.getProfile().getId())
-                                        .email(share.getProfile().getAuth().getEmail())
-                                        .fullName(share.getProfile().getFullName())
-                                        .avatar(share.getProfile().getAvatar())
-                                        .permission(share.getPermission())
-                                        .build()
-                        ).collect(Collectors.toList())
-                )
-                .build();
+        return deckShareHelper.getSharedUsers(deck, owner, pageable);
     }
 
     @Override
@@ -442,13 +275,7 @@ public class DeckServiceImpl implements DeckService {
     public void updateSharePermission(Long deckId, UUID profileId, SharePermission permission) {
         Profile owner = authService.getCurrentProfile();
         Deck deck = getExistingDeck(deckId);
-        if (!deck.getProfile().getId().equals(owner.getId())) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
-        DeckShare deckShare = deckShareRepository.findByDeckIdAndProfileId(deckId, profileId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        deckShare.setPermission(permission);
-        deckShareRepository.save(deckShare);
+        deckShareHelper.updateSharePermission(deck, owner, profileId, permission);
     }
 
     @Override
@@ -456,12 +283,7 @@ public class DeckServiceImpl implements DeckService {
     public void revokeShare(Long deckId, UUID profileId) {
         Profile owner = authService.getCurrentProfile();
         Deck deck = getExistingDeck(deckId);
-        if (!deck.getProfile().getId().equals(owner.getId())) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
-        DeckShare deckShare = deckShareRepository.findByDeckIdAndProfileId(deckId, profileId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        deckShareRepository.delete(deckShare);
+        deckShareHelper.revokeShare(deck, owner, profileId);
     }
 
     @Transactional
@@ -469,20 +291,7 @@ public class DeckServiceImpl implements DeckService {
     public DeckResponse toggleShareLink(Long deckId) {
         Profile owner = authService.getCurrentProfile();
         Deck deck = getExistingDeck(deckId);
-
-        if (!deck.getProfile().getId().equals(owner.getId())) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
-
-        boolean newState = !deck.isShareLinkEnabled();
-        deck.setShareLinkEnabled(newState);
-
-        if (newState && deck.getShareToken() == null) {
-            deck.setShareToken(UUID.randomUUID().toString().replace("-", ""));
-        }
-
-        deck = deckRepository.save(deck);
-        return deckMapper.toDeckResponse(deck);
+        return deckShareHelper.toggleShareLink(deck, owner);
     }
 
     @Override
@@ -498,79 +307,78 @@ public class DeckServiceImpl implements DeckService {
     @Transactional(readOnly = true)
     public PageResponse<DeckResponse> getSharedWithMeDecks(int page, int size) {
         Profile profile = authService.getCurrentProfile();
-        int pageNo = Math.max(1, page);
-        Pageable pageable = PageRequest.of(pageNo - 1, size);
-
-        Page<Deck> deckPage = deckRepository.findSharedDecksByProfile(profile, pageable);
-
-        List<DeckResponse> content = deckPage.getContent().stream()
-                .map(deckMapper::toDeckResponse)
-                .toList();
-
-        return PageResponse.<DeckResponse>builder()
-                .pageNo(pageNo)
-                .pageSize(size)
-                .totalPages(deckPage.getTotalPages())
-                .totalElements(deckPage.getTotalElements())
-                .content(content)
-                .last(deckPage.isLast())
-                .build();
+        return deckShareHelper.getSharedWithMeDecks(profile, page, size);
     }
 
     @Override
     @Transactional(readOnly = true)
     public CrammingQueueResponse getCramCards(Long deckId, Boolean shuffle, String filter, Integer limit) {
-        Deck deck = deckRepository.findById(deckId)
+        Deck deck = getExistingDeck(deckId);
+        return deckCrammingHelper.getCramCards(deck, shuffle, filter, limit);
+    }
+
+    private Deck getExistingDeck(Long id) {
+        return deckRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
+    }
 
-        List<Card> allCards = cardRepository.findByDeckIdOrderByPositionAsc(deckId);
-
-        Profile currentProfile = null;
-        try {
-            currentProfile = authService.getCurrentProfile();
-        } catch (Exception e) {
-            log.debug("No authenticated profile found for cramming mode");
+    private void applyParentDeck(Deck deck, Long parentDeckId) {
+        if (parentDeckId != null) {
+            Deck parent = getExistingDeck(parentDeckId);
+            deck.setParentDeck(parent);
+        } else {
+            deck.setParentDeck(null);
         }
+    }
 
-        Map<Long, UserCardSrs> srsMap = new HashMap<>();
-        if (currentProfile != null) {
-            List<UserCardSrs> srsList = userCardSrsRepository.findByProfileIdAndCardDeckId(currentProfile.getId(), deckId);
-            for (UserCardSrs srs : srsList) {
-                srsMap.put(srs.getCard().getId(), srs);
-            }
+    private void applyCoverImage(Deck deck, MultipartFile coverImage) {
+        if (coverImage != null && !coverImage.isEmpty()) {
+            String imageUrl = uploadService.uploadFile(coverImage, FolderName.DECKS);
+            log.info("Uploaded cover image: {}", imageUrl);
+            deck.setCoverImageUrl(imageUrl);
         }
+    }
 
-        List<CrammingCardResponse> crammingCards = new ArrayList<>();
-        for (Card card : allCards) {
-            UserCardSrs srs = srsMap.get(card.getId());
-            boolean isLearned = srs != null && srs.getStatus() != SrsStatus.NEW;
-            SrsStatus status = srs != null ? srs.getStatus() : SrsStatus.NEW;
+    private Deck buildForkedDeck(Deck sourceDeck, Profile newOwner) {
+        Deck newDeck = new Deck(sourceDeck);
+        newDeck.setProfile(newOwner);
+        newDeck.setForkCount(0);
+        newDeck.setParentDeck(sourceDeck);
+        newDeck.setVisibility(DeckVisibility.PRIVATE);
+        newDeck.setOfficial(false);
 
-            if (filter != null) {
-                if ("LEARNED".equalsIgnoreCase(filter) && !isLearned) continue;
-                if ("UNLEARNED".equalsIgnoreCase(filter) && isLearned) continue;
-            }
-
-            crammingCards.add(CrammingCardResponse.builder()
-                    .card(cardMapper.toCardResponse(card))
-                    .srsStatus(status)
-                    .build());
+        if (sourceDeck.getTags() != null && !sourceDeck.getTags().isEmpty()) {
+            newDeck.setTags(new HashSet<>(sourceDeck.getTags()));
         }
+        return newDeck;
+    }
 
-        if (Boolean.TRUE.equals(shuffle)) {
-            Collections.shuffle(crammingCards);
+    private void copyCardsToForkedDeck(Long sourceDeckId, Deck targetDeck) {
+        List<Card> cards = cardRepository.findByDeckId(sourceDeckId);
+        if (cards != null && !cards.isEmpty()) {
+            List<Card> copiedCards = cards.stream()
+                    .map(card -> {
+                        Card newCard = new Card(card);
+                        newCard.setDeck(targetDeck);
+                        return newCard;
+                    })
+                    .collect(Collectors.toList());
+            cardRepository.saveAll(copiedCards);
         }
+    }
 
-        if (limit != null && limit > 0 && crammingCards.size() > limit) {
-            crammingCards = new ArrayList<>(crammingCards.subList(0, limit));
+    private Set<Tag> processTags(Set<Long> tagIds) {
+        if (tagIds == null || tagIds.isEmpty()) {
+            return new HashSet<>();
         }
+        return tagIds.stream()
+                .map(id -> tagRepository.findById(id)
+                        .orElseThrow(() -> new AppException(ErrorCode.INVALID_KEY)))
+                .collect(Collectors.toSet());
+    }
 
-        return CrammingQueueResponse.builder()
-                .deckId(deck.getId())
-                .deckTitle(deck.getTitle())
-                .totalCards(crammingCards.size())
-                .cards(crammingCards)
-                .build();
+    private String sanitizeString(String input) {
+        return (input != null && !input.trim().isEmpty()) ? input.trim() : null;
     }
 
     @Override
