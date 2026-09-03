@@ -8,7 +8,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "user_activities")
+@Table(name = "user_activities", uniqueConstraints = {
+    @UniqueConstraint(name = "uk_user_activities_profile_date", columnNames = {"profile_id", "activity_date"})
+})
 @Getter
 @Setter
 @AllArgsConstructor
@@ -32,6 +34,9 @@ public class UserActivity {
 
     @Column(name = "quizzes_completed_count", nullable = false)
     int quizzesCompletedCount;
+
+    @Column(name = "games_played_count", nullable = false)
+    int gamesPlayedCount;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;

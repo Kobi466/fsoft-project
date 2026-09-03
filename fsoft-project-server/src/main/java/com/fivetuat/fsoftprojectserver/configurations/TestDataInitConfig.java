@@ -4,7 +4,6 @@ import com.fivetuat.fsoftprojectserver.entities.Card;
 import com.fivetuat.fsoftprojectserver.entities.Deck;
 import com.fivetuat.fsoftprojectserver.entities.DeckShare;
 import com.fivetuat.fsoftprojectserver.entities.Profile;
-import com.fivetuat.fsoftprojectserver.entities.QuizDetail;
 import com.fivetuat.fsoftprojectserver.entities.QuizResult;
 import com.fivetuat.fsoftprojectserver.entities.Tag;
 import com.fivetuat.fsoftprojectserver.entities.UserActivity;
@@ -302,8 +301,6 @@ public class TestDataInitConfig implements ApplicationRunner {
     }
 
     private void seedQuizResult(Profile owner, Deck deck) {
-        List<Card> cards = deck.getCards();
-
         QuizResult quizResult = QuizResult.builder()
                 .profile(owner)
                 .scope(QuizScope.DECK)
@@ -314,21 +311,6 @@ public class TestDataInitConfig implements ApplicationRunner {
                 .timeSpentSeconds(180)
                 .build();
 
-        List<QuizDetail> details = new ArrayList<>();
-        for (int i = 0; i < cards.size(); i++) {
-            Card card = cards.get(i);
-            boolean isCorrect = i != 4; // sai câu cuối để khớp correctAnswers = 4
-            details.add(QuizDetail.builder()
-                    .quizResult(quizResult)
-                    .card(card)
-                    .questionType(QuestionType.MULTIPLE_CHOICE)
-                    .userAnswer(isCorrect ? card.getMeaning() : "sai")
-                    .correctAnswer(card.getMeaning())
-                    .isCorrect(isCorrect)
-                    .scoreEarned(isCorrect ? 20f : 0f)
-                    .build());
-        }
-        quizResult.setQuizDetails(details);
         quizResultRepository.save(quizResult);
     }
 

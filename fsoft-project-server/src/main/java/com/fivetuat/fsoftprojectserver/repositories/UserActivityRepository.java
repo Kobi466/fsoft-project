@@ -13,5 +13,7 @@ import java.util.UUID;
 public interface UserActivityRepository extends JpaRepository<UserActivity, Long> {
     List<UserActivity> findByProfileIdAndActivityDateBetween(UUID profileId, LocalDate from, LocalDate to);
 
-	Optional<UserActivity> findByProfileIdAndActivityDate(UUID id, LocalDate activityDate);
+    Optional<UserActivity> findByProfileIdAndActivityDate(UUID profileId, LocalDate activityDate);
+
+    List<UserActivity> findAllByProfileIdAndActivityDate(UUID profileId, LocalDate activityDate);
 }

@@ -10,4 +10,5 @@ import java.util.UUID;
 @Repository
 public interface QuizResultRepository extends JpaRepository<QuizResult, Long> {
     List<QuizResult> findByProfileId(UUID profileId);
+    List<QuizResult> findByProfileIdOrderByCreatedAtDesc(UUID profileId);
 }

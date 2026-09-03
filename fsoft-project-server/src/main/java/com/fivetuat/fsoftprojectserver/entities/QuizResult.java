@@ -6,7 +6,6 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 @Table(name = "quiz_results")
@@ -46,9 +45,6 @@ public class QuizResult {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;
-
-    @OneToMany(mappedBy = "quizResult", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
-    List<QuizDetail> quizDetails;
 
     @PrePersist
     protected void onCreate() {

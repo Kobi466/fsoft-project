@@ -15,4 +15,5 @@ public class UserActivityResponse {
     LocalDate activityDate;
     int cardsReviewedCount;
     int quizzesCompletedCount;
+    int gamesPlayedCount;
 }

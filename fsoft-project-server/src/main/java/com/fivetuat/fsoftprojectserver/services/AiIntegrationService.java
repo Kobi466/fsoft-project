@@ -1,5 +1,14 @@
 package com.fivetuat.fsoftprojectserver.services;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+
 import com.fivetuat.fsoftprojectserver.dtos.https.ai.request.AiChatRequest;
 import com.fivetuat.fsoftprojectserver.dtos.https.ai.request.AiQuizRequest;
 import com.fivetuat.fsoftprojectserver.dtos.https.ai.request.AiSearchRequest;
@@ -9,18 +18,11 @@ import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.AiSearchResponse;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.httpsClients.AiClient;
+import com.fivetuat.fsoftprojectserver.repositories.DeckRepository;
 import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import com.fivetuat.fsoftprojectserver.repositories.DeckRepository;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Collections;
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -46,7 +48,7 @@ public class AiIntegrationService {
         }
 
         log.info("Gửi request tìm kiếm '{}' tới fsoft-ai cho các deck {}", query, allowedDeckIds);
-        
+
         AiSearchRequest request = AiSearchRequest.builder()
                 .query(query)
                 .allowedDeckIds(allowedDeckIds)
@@ -105,7 +107,7 @@ public class AiIntegrationService {
         List<Long> accessibleDeckIds = getAccessibleDeckIds();
 
         if (accessibleDeckIds == null || accessibleDeckIds.isEmpty()) {
-            throw new AppException(ErrorCode.ACCESS_DENIED); 
+            throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
         List<Long> finalAllowed;
@@ -118,7 +120,7 @@ public class AiIntegrationService {
         } else {
             finalAllowed = accessibleDeckIds;
         }
-        
+
         if (request.getCardIds() != null && !request.getCardIds().isEmpty() && request.getCardIds().size() < 4) {
             throw new AppException(ErrorCode.INSUFFICIENT_CARDS);
         }

@@ -6,6 +6,7 @@ import com.fivetuat.fsoftprojectserver.dtos.response.SrsForecastDayResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.SrsMasteryResponse;
 import com.fivetuat.fsoftprojectserver.entities.Card;
 import com.fivetuat.fsoftprojectserver.entities.UserCardSrs;
+import com.fivetuat.fsoftprojectserver.enums.ActivityType;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.enums.SrsStatus;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
@@ -172,8 +173,8 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 				);
 
 		reviewAlgorithmService.applyFsrsAlgorithm(userCardSrs, request.getRating());
-		//ghi nhan activity va steak
-		this.progressService.updateUserActivityAndStreak(profile, LocalDate.now());
+
+		this.progressService.updateUserActivityAndStreak(profile, LocalDate.now(), ActivityType.CARD_REVIEW);
 
 		return this.userCardSrsMapper.toResponse(
 				this.userCardSrsRepository.save(userCardSrs)

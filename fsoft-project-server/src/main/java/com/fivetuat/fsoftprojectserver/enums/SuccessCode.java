@@ -106,7 +106,10 @@ public enum SuccessCode {
     CREATE_COMMENT_SUCCESS(201, "Bình luận thành công", HttpStatus.CREATED),
     GET_COMMENTS_SUCCESS(200, "Lấy danh sách bình luận thành công", HttpStatus.OK),
     DELETE_COMMENT_SUCCESS(200, "Xóa bình luận thành công", HttpStatus.OK),
-    MODERATE_COMMUNITY_POST_SUCCESS(200, "Kiểm duyệt bài viết thành công", HttpStatus.OK);
+    MODERATE_COMMUNITY_POST_SUCCESS(200, "Kiểm duyệt bài viết thành công", HttpStatus.OK),
+    SUBMIT_QUIZ_SUCCESS(201, "Nộp bài kiểm tra Quiz thành công", HttpStatus.CREATED),
+    GET_QUIZ_HISTORY_SUCCESS(200, "Lấy lịch sử kiểm tra Quiz thành công", HttpStatus.OK),
+    GET_QUIZ_RESULT_SUCCESS(200, "Lấy chi tiết kết quả Quiz thành công", HttpStatus.OK);
     final int status;
     final String message;
     final HttpStatus httpStatus;
