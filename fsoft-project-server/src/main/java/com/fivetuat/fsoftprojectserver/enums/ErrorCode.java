@@ -74,7 +74,8 @@ public enum ErrorCode {
     COMMUNITY_POST_ACCESS_DENIED(454, "Bạn không có quyền chỉnh sửa hoặc xóa bài viết này", HttpStatus.FORBIDDEN),
     COMMENT_ACCESS_DENIED(455, "Bạn không có quyền xóa bình luận này", HttpStatus.FORBIDDEN),
     REJECTION_REASON_REQUIRED(456, "Lý do từ chối không được để trống khi từ chối bài viết", HttpStatus.BAD_REQUEST),
-    POST_NOT_APPROVED(457, "Bài viết chưa được phê duyệt nên không thể tương tác", HttpStatus.FORBIDDEN);
+    POST_NOT_APPROVED(457, "Bài viết chưa được phê duyệt nên không thể tương tác", HttpStatus.FORBIDDEN),
+    QUIZ_RESULT_NOT_FOUND(458, "Kết quả bài kiểm tra Quiz không tồn tại", HttpStatus.NOT_FOUND);
     int status;
     String message;
     HttpStatus httpStatus;

@@ -1,6 +1,7 @@
 package com.fivetuat.fsoftprojectserver.repositories;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,6 +18,8 @@ import com.fivetuat.fsoftprojectserver.entities.UserStreak;
 @Repository
 public interface UserStreakRepository extends JpaRepository<UserStreak, Long> {
     Optional<UserStreak> findByProfileId(UUID profileId);
+
+    List<UserStreak> findAllByProfileId(UUID profileId);
 
     @Query("""
         SELECT new com.fivetuat.fsoftprojectserver.dtos.response.ReminderUserResponse(

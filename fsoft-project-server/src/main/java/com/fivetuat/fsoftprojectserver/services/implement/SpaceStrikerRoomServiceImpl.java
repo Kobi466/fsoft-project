@@ -2,6 +2,7 @@ package com.fivetuat.fsoftprojectserver.services.implement;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -19,10 +20,12 @@ import com.fivetuat.fsoftprojectserver.entities.Card;
 import com.fivetuat.fsoftprojectserver.entities.Deck;
 import com.fivetuat.fsoftprojectserver.entities.GameRecord;
 import com.fivetuat.fsoftprojectserver.entities.authentication.Auth;
+import com.fivetuat.fsoftprojectserver.enums.ActivityType;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.enums.RoomStatus;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.repositories.*;
+import com.fivetuat.fsoftprojectserver.services.ProgressService;
 import com.fivetuat.fsoftprojectserver.services.SpaceStrikerRoomService;
 import com.fivetuat.fsoftprojectserver.services.support.MultiplayerRoomHelper;
 import com.fivetuat.fsoftprojectserver.services.support.SpaceStrikerQuestionTimer;
@@ -44,6 +47,7 @@ public class SpaceStrikerRoomServiceImpl implements SpaceStrikerRoomService {
     CardRepository cardRepository;
     AuthRepository authRepository;
     GameRecordRepository gameRecordRepository;
+    ProgressService progressService;
     SpaceStrikerQuestionTimer questionTimer;
     MultiplayerRoomHelper roomHelper;
 
@@ -286,6 +290,10 @@ public class SpaceStrikerRoomServiceImpl implements SpaceStrikerRoomService {
                     .correctAnswers(p.getCorrectCount())
                     .totalQuestions(state.getQuestions().size())
                     .build());
+
+            if (user.getProfile() != null) {
+                progressService.updateUserActivityAndStreak(user.getProfile(), LocalDate.now(), ActivityType.GAME_PLAYED);
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 package com.fivetuat.fsoftprojectserver.services.implement;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.*;
 
 import org.springframework.data.domain.PageRequest;
@@ -20,12 +21,16 @@ import com.fivetuat.fsoftprojectserver.repositories.AuthRepository;
 import com.fivetuat.fsoftprojectserver.repositories.CardRepository;
 import com.fivetuat.fsoftprojectserver.repositories.DeckRepository;
 import com.fivetuat.fsoftprojectserver.repositories.GameRecordRepository;
+import com.fivetuat.fsoftprojectserver.enums.ActivityType;
 import com.fivetuat.fsoftprojectserver.services.AudioReflexGameService;
+import com.fivetuat.fsoftprojectserver.services.ProgressService;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -35,6 +40,7 @@ public class AudioReflexGameServiceImpl implements AudioReflexGameService {
     CardRepository cardRepository;
     GameRecordRepository gameRecordRepository;
     AuthRepository authRepository;
+    ProgressService progressService;
 
     private static final String GAME_TYPE_AUDIO_REFLEX = "AUDIO_REFLEX";
 
@@ -122,6 +128,10 @@ public class AudioReflexGameServiceImpl implements AudioReflexGameService {
                 .build();
 
         GameRecord saved = gameRecordRepository.save(record);
+
+        if (user.getProfile() != null) {
+            progressService.updateUserActivityAndStreak(user.getProfile(), LocalDate.now(), ActivityType.GAME_PLAYED);
+        }
 
         String name = (user.getProfile() != null && user.getProfile().getFullName() != null)
                 ? user.getProfile().getFullName()
