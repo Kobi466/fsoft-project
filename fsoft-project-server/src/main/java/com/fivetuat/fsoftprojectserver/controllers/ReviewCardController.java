@@ -41,9 +41,23 @@ public class ReviewCardController {
 	}
 
 	@Operation(
-			summary = "Chấm điểm (Đánh giá) thẻ bài đã học",
-			description = "Sau khi người dùng học/ôn một thẻ, API này nhận vào độ khó mà người dùng đánh giá (AGAIN, HARD, GOOD, EASY). Hệ thống sẽ tự động tính toán thời điểm ôn tập tiếp theo (next_review) cho thẻ đó."
-	)
+        summary = "Lấy danh sách thẻ đến hạn ôn tập của một Bộ thẻ theo cụm FSRS", 
+        description = "Truy xuất danh sách các thẻ bài đến hạn hoặc sắp đến hạn ôn tập của một Bộ thẻ cụ thể theo cụm thời gian FSRS."
+    )
+    @GetMapping("/deck/{deckId}/due")
+    public ApiResponse<List<ReviewCardResponse>> getDueCardsByDeckId(
+            @Parameter(description = "ID của bộ thẻ cần lấy thẻ đến hạn") @PathVariable Long deckId,
+            @Parameter(description = "Khoảng thời gian tối đa cho phép xem trước cụm tương lai (phút)") @RequestParam(value = "earlyBufferMinutes", required = false, defaultValue = "120") Integer earlyBufferMinutes,
+            @Parameter(description = "Phạm vi cửa sổ thời gian để gom cụm thẻ bài (phút)") @RequestParam(value = "clusterMinutes", required = false, defaultValue = "30") Integer clusterMinutes
+    ) {
+        return ApiResponse.ok(srsService.getFsrsStudyQueue(deckId, earlyBufferMinutes, clusterMinutes), SuccessCode.GET_CARDS_SUCCESS);
+    }
+
+
+	@Operation(
+        summary = "Chấm điểm (Đánh giá) thẻ bài đã học", 
+        description = "Sau khi người dùng học/ôn một thẻ, API này nhận vào độ khó mà người dùng đánh giá (AGAIN, HARD, GOOD, EASY). Hệ thống sẽ tự động tính toán thời điểm ôn tập tiếp theo (next_review) cho thẻ đó."
+    )
 	@PostMapping("/review")
 	public ApiResponse<ReviewCardResponse> reviewCard(
 			@Parameter(description = "Dữ liệu đánh giá (ID thẻ bài và mức độ đánh giá)") @RequestBody @Valid SrsReviewRequest request
