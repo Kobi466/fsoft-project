@@ -18,16 +18,18 @@ import java.util.Set;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Deck {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
+
     public Deck(Deck source) {
         this.title = source.title;
         this.description = source.description;
         this.coverImageUrl = source.coverImageUrl;
         this.sourceLanguage = source.sourceLanguage;
         this.targetLanguage = source.targetLanguage;
-        this.totalCards=source.totalCards;
+        this.totalCards = source.totalCards;
         this.isOfficial = source.isOfficial;
     }
     @ManyToOne(fetch = FetchType.LAZY)
@@ -86,7 +88,7 @@ public class Deck {
 
     @Column(name = "updated_at", nullable = false)
     LocalDateTime updatedAt;
-    
+
     @Column(name = "pending_public", nullable = false, columnDefinition = "boolean default false")
     @Builder.Default
     boolean pendingPublic = false;

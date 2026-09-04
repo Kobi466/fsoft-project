@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,7 @@ public class TagServiceImpl implements TagService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "tags", allEntries = true)
     public TagResponse createTag(TagRequest request) {
         String name = request.getName().trim();
         String slug = toSlug(name);
@@ -55,6 +58,7 @@ public class TagServiceImpl implements TagService {
     }
 
     @Override
+    @Cacheable(value = "tags", key = "'all'")
     public List<TagResponse> getAllTags() {
         log.info("Retrieving all tags");
         return tagRepository.findAll().stream()
@@ -65,6 +69,7 @@ public class TagServiceImpl implements TagService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
+    @CacheEvict(value = "tags", allEntries = true)
     public TagResponse updateTag(Long id, TagRequest request) {
         log.info("Updating tag ID: {}", id);
         Tag tag = tagRepository.findById(id)
@@ -89,6 +94,7 @@ public class TagServiceImpl implements TagService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
+    @CacheEvict(value = "tags", allEntries = true)
     public void deleteTag(Long id) {
         log.info("Deleting tag ID: {}", id);
         if (!tagRepository.existsById(id)) {

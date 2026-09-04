@@ -27,5 +27,11 @@ public interface AiClient {
             @RequestHeader("X-Internal-Token") String token,
             @RequestBody com.fivetuat.fsoftprojectserver.dtos.https.ai.request.AiQuizRequest request
     );
+
+    @PostExchange(value = "/internal/v1/vocab/lookup", contentType = "application/json")
+    com.fivetuat.fsoftprojectserver.dtos.https.ai.response.VocabLookupResponse lookupVocab(
+            @RequestHeader("X-Internal-Token") String token,
+            @RequestBody com.fivetuat.fsoftprojectserver.dtos.https.ai.request.VocabLookupRequest request
+    );
     
 }

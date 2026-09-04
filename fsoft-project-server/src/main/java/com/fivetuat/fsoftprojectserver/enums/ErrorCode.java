@@ -56,6 +56,8 @@ public enum ErrorCode {
     URL_READ_ERROR(433, "Lỗi đọc URL", HttpStatus.INTERNAL_SERVER_ERROR),
     AI_EXTRACTION_ERROR(434, "Lỗi trích xuất AI", HttpStatus.INTERNAL_SERVER_ERROR),
     INSUFFICIENT_CARDS(435, "Không đủ thẻ để tạo bài tập", HttpStatus.BAD_REQUEST),
+    AI_SERVICE_UNAVAILABLE(436, "Hệ thống AI đang khởi động hoặc nạp dữ liệu, vui lòng thử lại sau giây lát", HttpStatus.SERVICE_UNAVAILABLE),
+    AI_LOOKUP_ERROR(437, "Lỗi tra từ vựng bằng AI", HttpStatus.INTERNAL_SERVER_ERROR),
     // --- Word Blast multiplayer room ---
     ROOM_NOT_FOUND(440, "Room not found", HttpStatus.NOT_FOUND),
     ROOM_FULL(441, "Room is full (max 20 players)", HttpStatus.BAD_REQUEST),

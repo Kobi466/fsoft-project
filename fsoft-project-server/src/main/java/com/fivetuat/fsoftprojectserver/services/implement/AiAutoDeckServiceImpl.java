@@ -5,6 +5,7 @@ import com.fivetuat.fsoftprojectserver.dtos.response.AiAutoDeckResponse;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.services.AiAutoDeckService;
+import com.fivetuat.fsoftprojectserver.utils.AiResponseUtils;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -62,7 +63,7 @@ public class AiAutoDeckServiceImpl implements AiAutoDeckService {
                     .call()
                     .content();
 
-            String cleanedResponse = sanitizeJsonResponse(rawResponse);
+            String cleanedResponse = AiResponseUtils.sanitizeJsonResponse(rawResponse);
             AiAutoDeckResponse result = converter.convert(cleanedResponse);
 
             if (result == null) {
@@ -77,19 +78,5 @@ public class AiAutoDeckServiceImpl implements AiAutoDeckService {
             log.error("Lỗi khi gọi AI Auto Deck Generator: {}", e.getMessage(), e);
             throw new AppException(ErrorCode.AI_EXTRACTION_ERROR);
         }
-    }
-
-    private String sanitizeJsonResponse(String rawResponse) {
-        if (rawResponse == null) return "";
-        String cleaned = rawResponse.trim();
-        if (cleaned.startsWith("```json")) {
-            cleaned = cleaned.substring(7);
-        } else if (cleaned.startsWith("```")) {
-            cleaned = cleaned.substring(3);
-        }
-        if (cleaned.endsWith("```")) {
-            cleaned = cleaned.substring(0, cleaned.length() - 3);
-        }
-        return cleaned.trim();
     }
 }

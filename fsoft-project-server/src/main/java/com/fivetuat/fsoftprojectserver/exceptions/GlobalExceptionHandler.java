@@ -127,21 +127,28 @@ public class GlobalExceptionHandler {
 
     // Xử lý lỗi trả về từ fsoft-ai (hoặc các external API)
     @ExceptionHandler(WebClientResponseException.class)
-    public ResponseEntity<Object> handleWebClientResponseException(WebClientResponseException ex) {
+    public ResponseEntity<?> handleWebClientResponseException(WebClientResponseException ex, HttpServletRequest request) {
         try {
             ObjectMapper mapper = new ObjectMapper();
             Object body = mapper.readValue(ex.getResponseBodyAsString(), Object.class);
             
-            // Ẩn mã 401 (lỗi cấu hình token BE-fsoft-ai)
             if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("status", 500, "message", "Internal Server Error: AI service configuration error"));
+                return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi cấu hình kết nối AI service", request);
             }
             
-            // Trả về đúng HTTP status và body của fsoft-ai
-            return ResponseEntity.status(ex.getStatusCode()).body(body);
+            String msg = "Lỗi từ service AI: " + ex.getStatusText();
+            if (ex.getStatusCode() == HttpStatus.SERVICE_UNAVAILABLE) {
+                msg = "Hệ thống AI đang khởi động hoặc nạp dữ liệu, vui lòng thử lại sau vài giây";
+            }
+            
+            ApiResponse<Object> apiResponse = ApiResponse.builder()
+                    .status(ex.getStatusCode().value())
+                    .message(msg)
+                    .data(body)
+                    .build();
+            return ResponseEntity.status(ex.getStatusCode()).body(apiResponse);
         } catch (Exception e) {
-            return ResponseEntity.status(ex.getStatusCode()).body(ex.getResponseBodyAsString());
+            return buildErrorResponse(HttpStatus.valueOf(ex.getStatusCode().value()), "Lỗi service AI: " + ex.getMessage(), request);
         }
     }
 

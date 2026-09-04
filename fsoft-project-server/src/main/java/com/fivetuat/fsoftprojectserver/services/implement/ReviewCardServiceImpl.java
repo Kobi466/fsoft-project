@@ -24,6 +24,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
@@ -153,6 +155,7 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 	 */
 	@Transactional
 	@Override
+	@CacheEvict(value = "srs_mastery", allEntries = true)
 	public ReviewCardResponse reviewCard(SrsReviewRequest request) {
 		var profile = this.authService.getCurrentProfile();
 		var card = this.cardRepository.findById(request.getCardId()).orElseThrow(
@@ -183,12 +186,14 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 
 	@Override
 	@Transactional
+	@CacheEvict(value = "srs_mastery", allEntries = true)
 	public void resetDeckProgress(Long deckId) {
 		var profile = this.authService.getCurrentProfile();
 		this.userCardSrsRepository.deleteByProfileIdAndCardDeckId(profile.getId(), deckId);
 	}
 
 	@Override
+	@Cacheable(value = "srs_mastery", key = "(#deckId != null ? #deckId : 'global') + ':' + @authService.getCurrentProfile().getId()")
 	public SrsMasteryResponse getMasteryDashboard(Long deckId) {
 		if (deckId != null) {
 			this.deckRepository.findById(deckId)

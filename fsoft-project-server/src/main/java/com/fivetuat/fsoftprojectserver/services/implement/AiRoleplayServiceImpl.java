@@ -1,17 +1,12 @@
 package com.fivetuat.fsoftprojectserver.services.implement;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fivetuat.fsoftprojectserver.dtos.request.AiRoleplayRequest;
-import com.fivetuat.fsoftprojectserver.dtos.response.AiRoleplayHistoryResponse;
-import com.fivetuat.fsoftprojectserver.dtos.response.AiRoleplayResponse;
-import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
-import com.fivetuat.fsoftprojectserver.exceptions.AppException;
-import com.fivetuat.fsoftprojectserver.services.AiRoleplayService;
-import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
-import lombok.AccessLevel;
-import lombok.experimental.FieldDefaults;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -26,9 +21,29 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fivetuat.fsoftprojectserver.dtos.request.AiRoleplayRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.CreateAiRoleplaySessionRequest;
+import com.fivetuat.fsoftprojectserver.dtos.response.AiRoleplayHistoryResponse;
+import com.fivetuat.fsoftprojectserver.dtos.response.AiRoleplayResponse;
+import com.fivetuat.fsoftprojectserver.dtos.response.AiRoleplaySessionResponse;
+import com.fivetuat.fsoftprojectserver.entities.AiRoleplaySession;
+import com.fivetuat.fsoftprojectserver.entities.Profile;
+import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
+import com.fivetuat.fsoftprojectserver.exceptions.AppException;
+import com.fivetuat.fsoftprojectserver.mappers.AiRoleplaySessionMapper;
+import com.fivetuat.fsoftprojectserver.repositories.AiRoleplaySessionRepository;
+import com.fivetuat.fsoftprojectserver.repositories.ProfileRepository;
+import com.fivetuat.fsoftprojectserver.services.AiRoleplayService;
+import com.fivetuat.fsoftprojectserver.utils.AiResponseUtils;
+import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
+
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
@@ -39,6 +54,9 @@ public class AiRoleplayServiceImpl implements AiRoleplayService {
     final ChatMemory chatMemory;
     final Resource systemPromptResource;
     final Resource userPromptResource;
+    final AiRoleplaySessionRepository sessionRepository;
+    final ProfileRepository profileRepository;
+    final AiRoleplaySessionMapper sessionMapper;
     final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired(required = false)
@@ -48,11 +66,17 @@ public class AiRoleplayServiceImpl implements AiRoleplayService {
             @Qualifier("groqClient") ChatClient groqClient,
             @Value("classpath:/prompts/roleplay-tutor-system.st") Resource systemPromptResource,
             @Value("classpath:/prompts/roleplay-tutor-user.st") Resource userPromptResource,
-            ChatMemory chatMemory) {
+            ChatMemory chatMemory,
+            AiRoleplaySessionRepository sessionRepository,
+            ProfileRepository profileRepository,
+            AiRoleplaySessionMapper sessionMapper) {
         this.groqClient = groqClient;
         this.systemPromptResource = systemPromptResource;
         this.userPromptResource = userPromptResource;
         this.chatMemory = chatMemory;
+        this.sessionRepository = sessionRepository;
+        this.profileRepository = profileRepository;
+        this.sessionMapper = sessionMapper;
     }
 
     @Override
@@ -98,18 +122,54 @@ public class AiRoleplayServiceImpl implements AiRoleplayService {
                     .call()
                     .content();
 
-            String cleanedResponse = sanitizeJsonResponse(rawResponse);
+            String cleanedResponse = AiResponseUtils.sanitizeJsonResponse(rawResponse);
             AiRoleplayResponse result = converter.convert(cleanedResponse);
 
             if (result == null) {
                 throw new AppException(ErrorCode.AI_EXTRACTION_ERROR);
             }
 
+            saveOrUpdateSession(conversationId, request);
+
             return result;
 
         } catch (Exception e) {
             log.error("Lỗi khi gọi AI Roleplay Tutor: {}", e.getMessage(), e);
             throw new AppException(ErrorCode.AI_EXTRACTION_ERROR);
+        }
+    }
+
+    private void saveOrUpdateSession(String conversationId, AiRoleplayRequest request) {
+        try {
+            UUID profileId = SecurityUtils.getCurrentUserLogin().orElse(null);
+            if (profileId == null) return;
+
+            sessionRepository.findByIdAndProfileId(conversationId, profileId).ifPresentOrElse(session -> {
+                session.setUpdatedAt(LocalDateTime.now());
+                if (request.getScenario() != null && !request.getScenario().isBlank()) {
+                    session.setScenario(request.getScenario());
+                }
+                if (request.getTargetWords() != null && !request.getTargetWords().isEmpty()) {
+                    session.setTargetWords(String.join(", ", request.getTargetWords()));
+                }
+                sessionRepository.save(session);
+            }, () -> {
+                profileRepository.findById(profileId).ifPresent(profile -> {
+                    String title = request.getScenario() != null && !request.getScenario().isBlank()
+                            ? request.getScenario() : "Phiên hội thoại";
+                    String twStr = request.getTargetWords() != null ? String.join(", ", request.getTargetWords()) : "";
+                    AiRoleplaySession newSession = AiRoleplaySession.builder()
+                            .id(conversationId)
+                            .profile(profile)
+                            .title(title)
+                            .scenario(request.getScenario())
+                            .targetWords(twStr)
+                            .build();
+                    sessionRepository.save(newSession);
+                });
+            });
+        } catch (Exception e) {
+            log.warn("Không thể tự động lưu phiên hội thoại vào sessionRepository: {}", e.getMessage());
         }
     }
 
@@ -158,6 +218,47 @@ public class AiRoleplayServiceImpl implements AiRoleplayService {
         }
 
         return result;
+    }
+
+    @Override
+    public List<AiRoleplaySessionResponse> getUserSessions() {
+        UUID profileId = SecurityUtils.getCurrentUserLogin()
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED));
+
+        List<AiRoleplaySession> sessions = sessionRepository.findByProfileIdOrderByUpdatedAtDesc(profileId);
+        return sessionMapper.toResponseList(sessions);
+    }
+
+    @Override
+    public AiRoleplaySessionResponse createSession(CreateAiRoleplaySessionRequest request) {
+        UUID profileId = SecurityUtils.getCurrentUserLogin()
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED));
+
+        Profile profile = profileRepository.findById(profileId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        AiRoleplaySession session = sessionMapper.toEntity(request);
+        session.setId(UUID.randomUUID().toString());
+        session.setProfile(profile);
+
+        if (session.getTitle() == null || session.getTitle().isBlank()) {
+            session.setTitle(request.getScenario() != null && !request.getScenario().isBlank()
+                    ? request.getScenario() : "Phiên hội thoại mới");
+        }
+
+        AiRoleplaySession saved = sessionRepository.save(session);
+        return sessionMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public void deleteSession(String sessionId) {
+        UUID profileId = SecurityUtils.getCurrentUserLogin()
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED));
+
+        sessionRepository.deleteByIdAndProfileId(sessionId, profileId);
+        chatMemory.clear(sessionId);
+        log.info("Đã xóa phiên hội thoại và chatMemory cho sessionId: {}", sessionId);
     }
 
     private List<LocalDateTime> fetchDbTimestamps(String conversationId) {
@@ -218,7 +319,7 @@ public class AiRoleplayServiceImpl implements AiRoleplayService {
 
     private String extractTutorReplyContent(String rawText) {
         try {
-            String cleaned = sanitizeJsonResponse(rawText);
+            String cleaned = AiResponseUtils.sanitizeJsonResponse(rawText);
             JsonNode node = objectMapper.readTree(cleaned);
             if (node.has("tutorReply")) {
                 return node.get("tutorReply").asText();
@@ -239,19 +340,5 @@ public class AiRoleplayServiceImpl implements AiRoleplayService {
             return sub;
         }
         return rawText.trim();
-    }
-
-    private String sanitizeJsonResponse(String rawResponse) {
-        if (rawResponse == null) return "";
-        String cleaned = rawResponse.trim();
-        if (cleaned.startsWith("```json")) {
-            cleaned = cleaned.substring(7);
-        } else if (cleaned.startsWith("```")) {
-            cleaned = cleaned.substring(3);
-        }
-        if (cleaned.endsWith("```")) {
-            cleaned = cleaned.substring(0, cleaned.length() - 3);
-        }
-        return cleaned.trim();
     }
 }

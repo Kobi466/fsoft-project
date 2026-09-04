@@ -14,6 +14,7 @@ import org.springframework.ai.content.Media;
 import org.springframework.ai.converter.BeanOutputConverter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
@@ -29,6 +30,7 @@ import com.fivetuat.fsoftprojectserver.dtos.request.MagicSortRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.CardSuggestionResponse;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
+import com.fivetuat.fsoftprojectserver.utils.AiResponseUtils;
 import com.fivetuat.fsoftprojectserver.services.AiExtractionService;
 
 import lombok.AccessLevel;
@@ -70,7 +72,13 @@ public class AiExtractionServiceImpl implements AiExtractionService {
 
     @Override
     public List<CardCreationRequest> extractedText(String text, String category) {
-        log.info("Bắt đầu trích xuất từ vựng nhóm '{}', chiều dài text: {}", category, text.length());
+        if (text == null || text.trim().isEmpty()) {
+            log.warn("Nội dung text rỗng, bỏ qua trích xuất từ vựng.");
+            return List.of();
+        }
+
+        String safeCategory = (category != null && !category.trim().isEmpty()) ? category : "VOCABULARY";
+        log.info("Bắt đầu trích xuất từ vựng nhóm '{}', chiều dài text: {}", safeCategory, text.length());
 
         BeanOutputConverter<ExtractedCards> converter = new BeanOutputConverter<>(ExtractedCards.class);
         String format = converter.getFormat();
@@ -80,7 +88,7 @@ public class AiExtractionServiceImpl implements AiExtractionService {
 
         PromptTemplate userTemplate = new PromptTemplate(textUserPromptResource);
         String userMessage = userTemplate.render(Map.of(
-                "category", category,
+                "category", safeCategory,
                 "text", text
         ));
 
@@ -91,7 +99,7 @@ public class AiExtractionServiceImpl implements AiExtractionService {
                     .call()
                     .content();
 
-            String cleanedResponse = sanitizeJsonResponse(rawResponse);
+            String cleanedResponse = AiResponseUtils.sanitizeJsonResponse(rawResponse);
             ExtractedCards result = converter.convert(cleanedResponse);
 
             if (result == null || result.cards() == null) {
@@ -118,12 +126,18 @@ public class AiExtractionServiceImpl implements AiExtractionService {
 
     @Override
     public List<CardCreationRequest> extractedUrl(String url, String category) {
+        if (url == null || url.trim().isEmpty()) {
+            log.warn("URL rỗng, không thể trích xuất.");
+            throw new AppException(ErrorCode.URL_READ_ERROR);
+        }
         log.info("Trích xuất từ URL: {}, nhóm: {}", url, category);
         try {
-            Document doc = Jsoup.connect(url).get();
+            Document doc = Jsoup.connect(url.trim())
+                    .timeout(10000)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                    .get();
             log.info("Đã tải xong nội dung từ URL, chiều dài text: {}", doc.text().length());
             String text = doc.text();
-            log.info("Đã trích xuất {} từ URL, chiều dài text: {}", text.length(), text.length());
             return extractedText(text, category);
         } catch (Exception e) {
             log.error("Lỗi đọc URL: {}", e.getMessage(), e);
@@ -155,7 +169,7 @@ public class AiExtractionServiceImpl implements AiExtractionService {
                 .call()
                 .content();
 
-        String cleanedResponse = sanitizeJsonResponse(rawResponse);
+        String cleanedResponse = AiResponseUtils.sanitizeJsonResponse(rawResponse);
         ExtractedCards result = converter.convert(cleanedResponse);
 
         if (result == null || result.cards() == null) {
@@ -232,7 +246,7 @@ public class AiExtractionServiceImpl implements AiExtractionService {
                     .call()
                     .content();
 
-            String cleanedResponse = sanitizeJsonResponse(rawResponse);
+            String cleanedResponse = AiResponseUtils.sanitizeJsonResponse(rawResponse);
             MagicSortCards result = converter.convert(cleanedResponse);
 
             if (result == null || result.results() == null) {
@@ -247,6 +261,11 @@ public class AiExtractionServiceImpl implements AiExtractionService {
         }
     }
 
+    @Cacheable(
+            value = "ai_suggestions",
+            key = "#query.toLowerCase().trim()",
+            unless = "#query == null || #query.trim().length() < 3 || #result == null || #result.termSuggestions == null || #result.termSuggestions.isEmpty()"
+    )
     @Override
     public CardSuggestionResponse getSuggestions(String query) {
         if (query == null || query.trim().isEmpty()) {
@@ -262,20 +281,20 @@ public class AiExtractionServiceImpl implements AiExtractionService {
         BeanOutputConverter<CardSuggestionResponse> converter = new BeanOutputConverter<>(CardSuggestionResponse.class);
         String format = converter.getFormat();
 
-        SystemPromptTemplate systemTemplate = new SystemPromptTemplate(suggestionSystemPromptResource);
-        String systemMessage = systemTemplate.render(Map.of("format", format));
-
-        PromptTemplate userTemplate = new PromptTemplate(suggestionUserPromptResource);
-        String userMessage = userTemplate.render(Map.of("query", query.trim()));
-
         try {
+            SystemPromptTemplate systemTemplate = new SystemPromptTemplate(suggestionSystemPromptResource);
+            String systemMessage = systemTemplate.render(Map.of("format", format));
+
+            PromptTemplate userTemplate = new PromptTemplate(suggestionUserPromptResource);
+            String userMessage = userTemplate.render(Map.of("query", query.trim()));
+
             String rawResponse = groqClient.prompt()
                     .system(systemMessage)
                     .user(userMessage)
                     .call()
                     .content();
 
-            String cleanedResponse = sanitizeJsonResponse(rawResponse);
+            String cleanedResponse = AiResponseUtils.sanitizeJsonResponse(rawResponse);
             CardSuggestionResponse result = converter.convert(cleanedResponse);
 
             if (result == null) {
@@ -298,19 +317,4 @@ public class AiExtractionServiceImpl implements AiExtractionService {
         }
     }
 
-    private String sanitizeJsonResponse(String rawResponse) {
-        if (rawResponse == null) {
-            return "";
-        }
-        String cleaned = rawResponse.trim();
-        if (cleaned.startsWith("```json")) {
-            cleaned = cleaned.substring(7);
-        } else if (cleaned.startsWith("```")) {
-            cleaned = cleaned.substring(3);
-        }
-        if (cleaned.endsWith("```")) {
-            cleaned = cleaned.substring(0, cleaned.length() - 3);
-        }
-        return cleaned.trim();
-    }
 }

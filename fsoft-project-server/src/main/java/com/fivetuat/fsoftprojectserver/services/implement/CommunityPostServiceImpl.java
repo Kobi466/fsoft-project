@@ -26,6 +26,8 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -154,6 +156,7 @@ public class CommunityPostServiceImpl implements CommunityPostService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"community_latest_posts", "community_popular_posts", "community_post_detail"}, allEntries = true)
     public void deletePost(Long postId) {
         Profile currentProfile = authService.getCurrentProfile();
         CommunityPost post = communityPostRepository.findByIdAndIsDeletedFalse(postId)
@@ -172,6 +175,7 @@ public class CommunityPostServiceImpl implements CommunityPostService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "community_latest_posts", key = "#page + ':' + #size")
     public PageResponse<CommunityPostResponse> getLatestPosts(int page, int size) {
         Pageable pageable = PageUtils.createPageable(page, size);
         Page<CommunityPost> postPage = communityPostRepository.findByStatusAndIsDeletedFalseOrderByCreatedAtDesc(PostStatus.APPROVED, pageable);
@@ -180,6 +184,7 @@ public class CommunityPostServiceImpl implements CommunityPostService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "community_popular_posts", key = "#page + ':' + #size")
     public PageResponse<CommunityPostResponse> getPopularPosts(int page, int size) {
         Pageable pageable = PageUtils.createPageable(page, size);
         Page<CommunityPost> postPage = communityPostRepository.findByStatusAndIsDeletedFalseOrderByLikeCountDescCreatedAtDesc(PostStatus.APPROVED, pageable);

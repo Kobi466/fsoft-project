@@ -12,6 +12,8 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -75,6 +77,7 @@ public class DeckServiceImpl implements DeckService {
 
     @Transactional
     @Override
+    @CacheEvict(value = "public_decks", allEntries = true)
     public DeckResponse createDeck(DeckCreateRequest request, MultipartFile coverImage) {
         String role = SecurityUtils.isCurrentUserInRole("ROLE_ADMIN")
                 ? "ADMIN"
@@ -104,6 +107,11 @@ public class DeckServiceImpl implements DeckService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(
+        value = "deck_detail",
+        key = "#id",
+        unless = "#result == null || #result.visibility == T(com.fivetuat.fsoftprojectserver.enums.DeckVisibility).PRIVATE"
+    )
     public DeckResponse getDeck(Long id) {
         Deck deck = getExistingDeck(id);
         if (deck.getVisibility() == DeckVisibility.PRIVATE) {
@@ -115,6 +123,7 @@ public class DeckServiceImpl implements DeckService {
 
     @Transactional
     @Override
+    @CacheEvict(value = {"deck_detail", "public_decks"}, allEntries = true)
     public DeckResponse updateDeck(Long id, DeckUpdateRequest request, MultipartFile coverImage) {
         String role = SecurityUtils.isCurrentUserInRole("ROLE_ADMIN")
                 ? "ADMIN"
@@ -146,6 +155,7 @@ public class DeckServiceImpl implements DeckService {
 
     @Transactional
     @Override
+    @CacheEvict(value = {"deck_detail", "public_decks"}, allEntries = true)
     public void convertDeckVisibility(Long id, DeckVisibility deckVisibility) {
         Deck deck = getMyDeck(id);
         if (deckVisibility == DeckVisibility.PUBLIC) {
@@ -162,6 +172,7 @@ public class DeckServiceImpl implements DeckService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"deck_detail", "public_decks"}, allEntries = true)
     public void deleteDeck(Long id) {
         Deck deck = getExistingDeck(id);
         Profile profile = authService.getCurrentProfile();
@@ -210,6 +221,10 @@ public class DeckServiceImpl implements DeckService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(
+        value = "public_decks",
+        key = "#page + ':' + #size + ':' + (#keyword?:'') + ':' + (#tagId?:'') + ':' + (#sourceLang?:'') + ':' + (#targetLang?:'')"
+    )
     public PageResponse<DeckResponse> getPublicDecks(int page, int size, String keyword, Long tagId, String sourceLang, String targetLang) {
         Pageable pageable = PageUtils.createPageable(page, size);
 

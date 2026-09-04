@@ -7,6 +7,8 @@ import java.util.stream.Collectors;
 import com.fivetuat.fsoftprojectserver.repositories.DeckRepository;
 import com.fivetuat.fsoftprojectserver.utils.ExcelExportHelper;
 import com.fivetuat.fsoftprojectserver.utils.PdfExportHelper;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -47,6 +49,7 @@ public class CardServiceImpl implements CardService {
     DeckRepository deckRepository;
     @Override
     @Transactional
+    @CacheEvict(value = "deck_cards", allEntries = true)
     public CardResponse createCard(
             Long deckId,
             CardCreationRequest request,
@@ -70,6 +73,7 @@ public class CardServiceImpl implements CardService {
     }
 
     @Override
+    @Cacheable(value = "card_detail", key = "#cardId")
     public CardResponse getCardById(Long cardId) {
         Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new AppException(ErrorCode.CARD_NOT_FOUND));
@@ -77,6 +81,7 @@ public class CardServiceImpl implements CardService {
     }
 
     @Override
+    @Cacheable(value = "deck_cards", key = "#deckId + ':' + #pageable.pageNumber + ':' + #pageable.pageSize")
     public PageResponse<CardResponse> getCardsByDeckId(Long deckId, Pageable pageable) {
         var deck = this.deckService.getDeck(deckId);
         Page<Card> cardPage = cardRepository.findByDeckIdOrderByPositionAsc(deck.getId(), pageable);
@@ -91,6 +96,7 @@ public class CardServiceImpl implements CardService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"card_detail", "deck_cards"}, allEntries = true)
     public CardResponse updateCard(Long cardId, CardUpdateRequest request, MultipartFile imageFile, MultipartFile audioFile) {
         log.info("Updating card ID: {}", cardId);
 
@@ -116,6 +122,7 @@ public class CardServiceImpl implements CardService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"card_detail", "deck_cards"}, allEntries = true)
     public void deleteCard(Long cardId) {
         log.info("Deleting card ID: {}", cardId);
 
@@ -132,6 +139,7 @@ public class CardServiceImpl implements CardService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "deck_cards", allEntries = true)
     public void updateCardPositions(Long deckId, List<CardPositionRequest> requests) {
         log.info("Updating card position for deck ID: {}", deckId);
         this.deckService.getDeckWithEditPermission(deckId);

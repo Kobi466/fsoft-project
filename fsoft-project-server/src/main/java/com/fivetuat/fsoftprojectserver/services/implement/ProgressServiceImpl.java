@@ -16,6 +16,8 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +38,7 @@ public class ProgressServiceImpl implements ProgressService {
 
     @Override
     @Transactional
+    @Cacheable(value = "user_streak", key = "@authService.getCurrentProfile().getId()")
     public UserStreakResponse getMyStreak() {
         Profile profile = authService.getCurrentProfile();
         log.info("Getting streak for profile: {}", profile.getId());
@@ -46,6 +49,7 @@ public class ProgressServiceImpl implements ProgressService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "user_activities", key = "@authService.getCurrentProfile().getId() + ':' + #startDate + ':' + #endDate")
     public List<UserActivityResponse> getMyActivities(LocalDate startDate, LocalDate endDate) {
         Profile profile = authService.getCurrentProfile();
         log.info("Getting activities for profile: {} between {} and {}", profile.getId(), startDate, endDate);
@@ -58,6 +62,7 @@ public class ProgressServiceImpl implements ProgressService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"user_streak", "user_activities"}, allEntries = true)
     public void updateUserActivityAndStreak(Profile profile, LocalDate activityDate, ActivityType activityType) {
         if (profile == null) {
             log.warn("Profile is null, skip updating activity and streak.");

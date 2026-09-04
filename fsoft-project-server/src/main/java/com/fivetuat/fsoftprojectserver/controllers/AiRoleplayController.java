@@ -2,8 +2,10 @@ package com.fivetuat.fsoftprojectserver.controllers;
 
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.AiRoleplayRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.CreateAiRoleplaySessionRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.AiRoleplayHistoryResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.AiRoleplayResponse;
+import com.fivetuat.fsoftprojectserver.dtos.response.AiRoleplaySessionResponse;
 import com.fivetuat.fsoftprojectserver.enums.SuccessCode;
 import com.fivetuat.fsoftprojectserver.services.AiRoleplayService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -47,6 +49,25 @@ public class AiRoleplayController {
             @Parameter(description = "ID phiên hội thoại cần xóa") @PathVariable String conversationId
     ) {
         aiRoleplayService.clearRoleplayHistory(conversationId);
+        return ApiResponse.ok(null, SuccessCode.AI_CHAT_SUCCESS);
+    }
+
+    @GetMapping("/sessions")
+    @Operation(summary = "Lấy danh sách tất cả các phiên hội thoại AI Roleplay của người dùng")
+    public ApiResponse<List<AiRoleplaySessionResponse>> getUserSessions() {
+        return ApiResponse.ok(aiRoleplayService.getUserSessions(), SuccessCode.AI_CHAT_SUCCESS);
+    }
+
+    @PostMapping("/sessions")
+    @Operation(summary = "Tạo một phiên hội thoại AI Roleplay mới")
+    public ApiResponse<AiRoleplaySessionResponse> createSession(@Valid @RequestBody CreateAiRoleplaySessionRequest request) {
+        return ApiResponse.ok(aiRoleplayService.createSession(request), SuccessCode.AI_CHAT_SUCCESS);
+    }
+
+    @DeleteMapping("/sessions/{sessionId}")
+    @Operation(summary = "Xóa một phiên hội thoại AI Roleplay")
+    public ApiResponse<Void> deleteSession(@PathVariable String sessionId) {
+        aiRoleplayService.deleteSession(sessionId);
         return ApiResponse.ok(null, SuccessCode.AI_CHAT_SUCCESS);
     }
 }

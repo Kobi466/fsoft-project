@@ -7,6 +7,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -17,6 +18,7 @@ public class DictionaryService {
     
     DictionaryClient dictionaryClient;
     
+    @Cacheable(value = "dictionary", key = "#word.toLowerCase().trim()", unless = "#result == null")
     public Object lookupWord(String word) {
         log.info("Tra từ điển cho từ: {}", word);
         try {

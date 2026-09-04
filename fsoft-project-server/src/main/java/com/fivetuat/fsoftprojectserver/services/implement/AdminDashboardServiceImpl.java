@@ -10,6 +10,7 @@ import com.fivetuat.fsoftprojectserver.services.AdminDashboardService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "admin_dashboard_stats", key = "'stats'")
     public AdminDashboardStatsResponse getDashboardStats() {
         long totalUsers = authRepository.count();
         long totalDecks = deckRepository.count();

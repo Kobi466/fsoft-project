@@ -3,11 +3,14 @@ package com.fivetuat.fsoftprojectserver.controllers;
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
 import com.fivetuat.fsoftprojectserver.dtos.https.ai.request.AiChatRequest;
 import com.fivetuat.fsoftprojectserver.dtos.https.ai.request.AiQuizRequest;
+import com.fivetuat.fsoftprojectserver.dtos.https.ai.request.VocabLookupRequest;
 import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.AiChatResponse;
 import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.AiQuizResponse;
 import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.AiSearchResponse;
+import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.VocabLookupResponse;
 import com.fivetuat.fsoftprojectserver.enums.SuccessCode;
 import com.fivetuat.fsoftprojectserver.services.AiIntegrationService;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -59,5 +62,17 @@ public class AiIntegrationController {
     ) {
         AiQuizResponse response = aiIntegrationService.generateQuiz(request);
         return ApiResponse.ok(response, SuccessCode.GENERATED_QUIZ_SUCCESS);
+    }
+
+    @Operation(
+        summary = "Tra từ vựng bằng AI (Nội bộ / Dùng thử)",
+        description = "Gửi từ vựng (và ngữ cảnh nếu có) tới AI Service để tra nghĩa, phát âm, ví dụ, cờ đã có trong bộ thẻ hay chưa, hoặc gợi ý sửa lỗi chính tả."
+    )
+    @PostMapping("/vocab/lookup")
+    public ApiResponse<VocabLookupResponse> lookupVocab(
+        @Parameter(description = "Thông tin từ vựng cần tra") @Valid @RequestBody VocabLookupRequest request
+    ) {
+        VocabLookupResponse response = aiIntegrationService.lookupVocab(request);
+        return ApiResponse.ok(response, SuccessCode.AI_LOOKUP_SUCCESS);
     }
 }

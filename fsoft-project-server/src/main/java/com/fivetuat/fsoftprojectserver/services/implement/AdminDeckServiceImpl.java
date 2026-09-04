@@ -12,6 +12,7 @@ import com.fivetuat.fsoftprojectserver.mappers.DeckMapper;
 import com.fivetuat.fsoftprojectserver.repositories.DeckRepository;
 import com.fivetuat.fsoftprojectserver.services.AdminDeckService;
 import com.fivetuat.fsoftprojectserver.services.DeckService;
+import org.springframework.cache.annotation.CacheEvict;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -37,6 +38,7 @@ public class AdminDeckServiceImpl implements AdminDeckService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"public_decks", "admin_dashboard_stats"}, allEntries = true)
     public DeckResponse createOfficialDeck(DeckCreateRequest request, MultipartFile coverImage) {
 //        request.setOfficial(true);
 //        request.setVisibility(DeckVisibility.PUBLIC);
@@ -52,6 +54,7 @@ public class AdminDeckServiceImpl implements AdminDeckService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"deck_detail", "public_decks"}, allEntries = true)
     public DeckResponse updateDeckOfficial(Long deckId, AdminUpdateDeckOfficialRequest request) {
         Deck deck = this.getExistingDeck(deckId);
         deck.setOfficial(Boolean.TRUE.equals(request.getIsOfficial()));
@@ -61,6 +64,7 @@ public class AdminDeckServiceImpl implements AdminDeckService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"deck_detail", "public_decks", "deck_cards", "card_detail", "admin_dashboard_stats"}, allEntries = true)
     public void deleteDeck(Long deckId) {
         Deck deck = this.getExistingDeck(deckId);
         deck.setDeleted(true);
@@ -76,6 +80,7 @@ public class AdminDeckServiceImpl implements AdminDeckService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"deck_detail", "public_decks", "admin_dashboard_stats"}, allEntries = true)
     public DeckResponse approvePublicDeck(Long deckId, boolean approved) {
         Deck deck = this.getExistingDeck(deckId);
         if (approved) {
@@ -90,6 +95,7 @@ public class AdminDeckServiceImpl implements AdminDeckService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"deck_detail", "public_decks"}, allEntries = true)
     public DeckResponse convertDeckVisibility(Long deckId, DeckVisibility visibility) {
         Deck deck = this.getExistingDeck(deckId);
         deck.setVisibility(visibility);

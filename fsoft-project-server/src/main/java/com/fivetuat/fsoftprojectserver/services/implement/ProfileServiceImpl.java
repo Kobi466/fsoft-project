@@ -21,6 +21,8 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -49,6 +51,7 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "public_profiles", key = "#result.id")
     public ProfileUpdateResponse updateProfile(ProfileUpdateRequest request) {
         log.info("Updating profile info");
         Profile profile = authService.getCurrentProfile();
@@ -59,6 +62,7 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "public_profiles", key = "#result.id")
     public ProfileUpdateResponse updateAvatar(MultipartFile avatarFile) {
         log.info("Updating avatar");
 
@@ -82,6 +86,7 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "public_profiles", key = "#profileId")
     public PublicProfileResponse getPublicProfileById(UUID profileId) {
         Profile profile = profileRepository.findById(profileId)
                 .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));

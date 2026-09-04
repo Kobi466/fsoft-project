@@ -1,4 +1,5 @@
 package com.fivetuat.fsoftprojectserver.dtos.https.ai.request;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -14,16 +15,29 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AiQuizRequest {
     @JsonProperty("deck_id")
+    @JsonAlias({"deckId", "deck_id"})
     Long deckId;
+
     @io.swagger.v3.oas.annotations.media.Schema(hidden = true)
     @JsonProperty("allowed_deck_ids")
     List<Long> allowedDeckIds;
+
     @JsonProperty("question_count")
+    @JsonAlias({"questionCount", "question_count"})
     Integer questionCount;
+
     @JsonProperty("types")
     List<String> types;
+
     @JsonProperty("card_ids")
+    @JsonAlias({"cardIds", "card_ids"})
     List<Long> cardIds;
+
     @JsonProperty("use_ai_context")
+    @JsonAlias({"useAiContext", "use_ai_context"})
     Boolean useAiContext;
+
+    @JsonProperty("is_srs_only")
+    @JsonAlias({"isSrsOnly", "is_srs_only", "srsOnly"})
+    Boolean isSrsOnly;
 }
