@@ -1,35 +1,44 @@
 package com.fivetuat.fsoftprojectserver.repositories;
 
-import com.fivetuat.fsoftprojectserver.entities.Deck;
-import com.fivetuat.fsoftprojectserver.entities.Profile;
-import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import com.fivetuat.fsoftprojectserver.entities.Deck;
+import com.fivetuat.fsoftprojectserver.entities.Profile;
+import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
 
 @Repository
 public interface DeckRepository extends JpaRepository<Deck, Long> {
     Optional<Deck> findByIdAndIsDeletedFalse(Long id);
 
+    @EntityGraph(attributePaths = {"tags"})
     Page<Deck> findByProfileAndIsDeletedFalse(Profile profile, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"tags"})
     Page<Deck> findByVisibilityAndIsDeletedFalse(DeckVisibility visibility, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"tags"})
     Page<Deck> findByPendingPublicTrueAndIsDeletedFalse(Pageable pageable);
 
+    @EntityGraph(attributePaths = {"tags"})
+    
     Page<Deck> findByProfileAndVisibilityAndIsDeletedFalse(Profile profile, DeckVisibility visibility, Pageable pageable);
     
+    @EntityGraph(attributePaths = {"tags"})
     Page<Deck> findByProfileIdAndVisibilityAndIsDeletedFalse(UUID profileId, DeckVisibility visibility, Pageable pageable);
 
     long countByProfileIdAndVisibilityAndIsDeletedFalse(UUID profileId, DeckVisibility visibility);
 
+    @EntityGraph(attributePaths = {"tags"})
     @Query("SELECT ds.deck FROM DeckShare ds WHERE ds.profile = :profile AND ds.deck.isDeleted = false")
     Page<Deck> findSharedDecksByProfile(@Param("profile") Profile profile, Pageable pageable);
 
@@ -37,6 +46,7 @@ public interface DeckRepository extends JpaRepository<Deck, Long> {
 
     boolean existsByParentDeckIdAndProfileIdAndIsDeletedFalse(Long parentDeckId, UUID profileId);
 
+    @EntityGraph(attributePaths = {"tags"})
     @Query("SELECT d FROM Deck d WHERE d.visibility = com.fivetuat.fsoftprojectserver.enums.DeckVisibility.PUBLIC AND d.isDeleted = false " +
             "AND (CAST(:keyword AS string) IS NULL OR LOWER(d.title) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')) OR LOWER(d.description) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%'))) " +
             "AND (:tagId IS NULL OR EXISTS (SELECT 1 FROM d.tags t WHERE t.id = :tagId)) " +

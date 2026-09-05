@@ -16,7 +16,10 @@ import java.time.Instant;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
-@Table(name = "cards")
+@Table(name = "cards", indexes = {
+    @Index(name = "idx_cards_deck_position", columnList = "deck_id, position"),
+    @Index(name = "idx_cards_word", columnList = "word")
+})
 public class Card {
 
     @Id
