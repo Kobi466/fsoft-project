@@ -40,6 +40,7 @@ public class SecurityConfiguration {
     private static final String[] PUBLIC_URLS = {
             "/auth/register",
             "/auth/login",
+            "/auth/logout",
             "/auth/forgot-password",
             "/auth/reset-password",
             "/auth/refresh-token",

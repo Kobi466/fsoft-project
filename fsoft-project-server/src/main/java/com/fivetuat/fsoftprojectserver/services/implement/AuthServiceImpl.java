@@ -254,13 +254,9 @@ public class AuthServiceImpl implements AuthService {
         if (this.jwtService.validateToken(refreshToken.getToken()) && refreshToken.isRevoked()) {
             throw new AppException(ErrorCode.REFRESH_TOKEN_FAILED);
         }
-        var id = SecurityContextHolder.getContext().getAuthentication().getName();
-        if (id.equals(refreshToken.getAuth().getId().toString())) refreshToken.setRevoked(true);
-        Optional<Auth> optionalAuth = this.authRepository.findById(UUID.fromString(id));
-        if (optionalAuth.isEmpty()) {
-            throw new AppException(ErrorCode.AUTHENTICATION_FAILED);
-        }
-        var auth = optionalAuth.get();
+        refreshToken.setRevoked(true);
+        this.refreshTokenRepository.save(refreshToken);
+        Auth auth = refreshToken.getAuth();
         String newAccessToken = this.jwtService.generateAccessToken(auth);
         String newRefreshToken = this.jwtService.generateRefreshToken(auth);
         var newRefreshTokenEntity = this.refreshTokenRepository.save(RefreshToken.builder()
@@ -290,7 +286,7 @@ public class AuthServiceImpl implements AuthService {
         redisService.blackListAccessToken(logoutRequest.getAccessToken()
                 , this.jwtService.getExpirationTimeFromToken(logoutRequest.getAccessToken())
         );
-        var id = SecurityContextHolder.getContext().getAuthentication().getName();
+        String id = this.jwtService.getIdFromToken(logoutRequest.getAccessToken());
         List<RefreshToken> listRefreshToken = this.refreshTokenRepository.findByAuthId(UUID.fromString(id));
         listRefreshToken.forEach(refreshToken -> refreshToken.setRevoked(true));
         this.refreshTokenRepository.saveAll(listRefreshToken);
