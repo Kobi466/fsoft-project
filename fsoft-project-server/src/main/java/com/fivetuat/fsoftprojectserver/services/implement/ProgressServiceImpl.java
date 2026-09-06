@@ -18,6 +18,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,7 +63,10 @@ public class ProgressServiceImpl implements ProgressService {
 
     @Override
     @Transactional
-    @CacheEvict(value = {"user_streak", "user_activities"}, allEntries = true)
+    @Caching(evict = {
+        @CacheEvict(value = "user_streak", key = "#profile.id"),
+        @CacheEvict(value = "user_activities", allEntries = true)
+    })
     public void updateUserActivityAndStreak(Profile profile, LocalDate activityDate, ActivityType activityType) {
         if (profile == null) {
             log.warn("Profile is null, skip updating activity and streak.");

@@ -17,6 +17,7 @@ import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.ai.converter.BeanOutputConverter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +50,11 @@ public class AiStoryServiceImpl implements AiStoryService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(
+        value = "ai_stories",
+        key = "((#request.words != null && !#request.words.isEmpty()) ? #request.words.toString() : (#request.cardIds != null ? #request.cardIds.toString() : 'default')) + ':' + (#request.contextType != null ? #request.contextType : 'BUSINESS_EMAIL')",
+        unless = "#result == null"
+    )
     public AiStoryResponse generateStory(AiStoryRequest request) {
         List<String> words = new ArrayList<>();
         if (request.getWords() != null && !request.getWords().isEmpty()) {

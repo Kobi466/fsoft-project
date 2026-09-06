@@ -15,6 +15,7 @@ import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.ai.converter.BeanOutputConverter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
@@ -39,6 +40,7 @@ public class SituationalLearningServiceImpl implements SituationalLearningServic
     }
 
     @Override
+    @Cacheable(value = "ai_situational_lessons", key = "#request.context.toLowerCase().trim()", unless = "#result == null")
     public SituationalLearningResponse generateLesson(SituationalLearningRequest request) {
         log.info("Bắt đầu tạo bài học ngữ cảnh (Text-only) cho mô tả: {}", request.getContext());
 

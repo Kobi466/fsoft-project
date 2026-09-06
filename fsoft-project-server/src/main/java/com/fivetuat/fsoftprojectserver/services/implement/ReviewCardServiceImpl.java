@@ -1,5 +1,18 @@
 package com.fivetuat.fsoftprojectserver.services.implement;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+
 import com.fivetuat.fsoftprojectserver.dtos.request.SrsReviewRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.ReviewCardResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.SrsForecastDayResponse;
@@ -20,21 +33,11 @@ import com.fivetuat.fsoftprojectserver.services.ProgressService;
 import com.fivetuat.fsoftprojectserver.services.ReviewAlgorithmService;
 import com.fivetuat.fsoftprojectserver.services.ReviewCardService;
 import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
+
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.stereotype.Service;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 
 @Service
 @Slf4j
@@ -155,7 +158,10 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 	 */
 	@Transactional
 	@Override
-	@CacheEvict(value = "srs_mastery", allEntries = true)
+	@Caching(evict = {
+			@CacheEvict(value = "srs_mastery", key = "'global:' + @authService.getCurrentProfile().getId()"),
+			@CacheEvict(value = "srs_mastery", key = "#request.deckId + ':' + @authService.getCurrentProfile().getId()", condition = "#request.deckId != null")
+	})
 	public ReviewCardResponse reviewCard(SrsReviewRequest request) {
 		var profile = this.authService.getCurrentProfile();
 		var card = this.cardRepository.findById(request.getCardId()).orElseThrow(
@@ -186,7 +192,10 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 
 	@Override
 	@Transactional
-	@CacheEvict(value = "srs_mastery", allEntries = true)
+	@Caching(evict = {
+			@CacheEvict(value = "srs_mastery", key = "'global:' + @authService.getCurrentProfile().getId()"),
+			@CacheEvict(value = "srs_mastery", key = "#deckId + ':' + @authService.getCurrentProfile().getId()")
+	})
 	public void resetDeckProgress(Long deckId) {
 		var profile = this.authService.getCurrentProfile();
 		this.userCardSrsRepository.deleteByProfileIdAndCardDeckId(profile.getId(), deckId);

@@ -1,5 +1,16 @@
 package com.fivetuat.fsoftprojectserver.services.implement;
 
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.fivetuat.fsoftprojectserver.dtos.request.NotificationCreationRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.NotificationResponse;
 import com.fivetuat.fsoftprojectserver.entities.Notification;
@@ -11,20 +22,11 @@ import com.fivetuat.fsoftprojectserver.repositories.NotificationRepository;
 import com.fivetuat.fsoftprojectserver.repositories.ProfileRepository;
 import com.fivetuat.fsoftprojectserver.services.NotificationService;
 import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -39,7 +41,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    @CacheEvict(value = "unread_notifications", allEntries = true)
+    @CacheEvict(value = "unread_notifications", key = "#result.recipient.authEmail")
     public NotificationResponse createNotification(NotificationCreationRequest request) {
         log.info("Creating notification for user ID: {}", request.getRecipientId());
 
@@ -80,7 +82,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    @CacheEvict(value = "unread_notifications", allEntries = true)
+    @CacheEvict(value = "unread_notifications", key = "T(com.fivetuat.fsoftprojectserver.utils.SecurityUtils).getCurrentUserLogin().orElse(null)")
     public NotificationResponse markAsRead(Long notificationId) {
         UUID currentUserId = getCurrentUserId();
         Notification notification = getNotificationWithOwnerCheck(notificationId, currentUserId);
@@ -92,7 +94,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    @CacheEvict(value = "unread_notifications", allEntries = true)
+    @CacheEvict(value = "unread_notifications", key = "T(com.fivetuat.fsoftprojectserver.utils.SecurityUtils).getCurrentUserLogin().orElse(null)")
     public void markAllAsRead() {
         UUID currentUserId = getCurrentUserId();
         List<Notification> unreadNotifications = notificationRepository
@@ -106,7 +108,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    @CacheEvict(value = "unread_notifications", allEntries = true)
+    @CacheEvict(value = "unread_notifications", key = "T(com.fivetuat.fsoftprojectserver.utils.SecurityUtils).getCurrentUserLogin().orElse(null)")
     public void deleteNotification(Long notificationId) {
         UUID currentUserId = getCurrentUserId();
         Notification notification = getNotificationWithOwnerCheck(notificationId, currentUserId);

@@ -238,6 +238,11 @@ public class DeckServiceImpl implements DeckService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(
+        value = "public_decks",
+        key = "'status:' + (#status != null ? #status : 'PUBLIC') + ':' + #page + ':' + #size",
+        unless = "#status == T(com.fivetuat.fsoftprojectserver.enums.DeckVisibility).PRIVATE"
+    )
     public PageResponse<DeckResponse> getDecksByStatus(DeckVisibility status, int page, int size) {
         Pageable pageable = PageUtils.createPageable(page, size);
         DeckVisibility targetStatus = (status != null) ? status : DeckVisibility.PUBLIC;
