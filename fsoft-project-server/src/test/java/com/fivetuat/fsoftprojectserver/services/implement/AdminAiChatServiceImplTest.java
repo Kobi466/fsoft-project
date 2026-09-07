@@ -3,6 +3,8 @@ package com.fivetuat.fsoftprojectserver.services.implement;
 import com.fivetuat.fsoftprojectserver.dtos.request.AdminAiChatRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.AdminAiChatResponse;
 import com.fivetuat.fsoftprojectserver.entities.AdminAiAuditLog;
+import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
+import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.repositories.AdminAiAuditLogRepository;
 import com.fivetuat.fsoftprojectserver.services.AdminDeckService;
 import com.fivetuat.fsoftprojectserver.services.AdminUserService;
@@ -21,6 +23,7 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +67,12 @@ class AdminAiChatServiceImplTest {
         when(callSpec.content()).thenReturn(reply);
     }
 
+    private PendingActionStore.PendingAction pendingAction(String tool, Map<String, Object> params, String summary) {
+        return new PendingActionStore.PendingAction(
+                UUID.randomUUID(), tool, params, adminId, summary,
+                LocalDateTime.now(), LocalDateTime.now().plusMinutes(5));
+    }
+
     @Test
     void chatDerivesConversationIdFromAdminProfile() {
         try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
@@ -77,6 +86,7 @@ class AdminAiChatServiceImplTest {
             assertEquals("admin-ai-" + adminId, response.getConversationId());
             assertEquals("Hiện có 5 bộ bài chờ duyệt", response.getReply());
             assertNull(response.getPendingAction());
+            assertNull(response.getResult());
         }
     }
 
@@ -85,10 +95,8 @@ class AdminAiChatServiceImplTest {
         try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentUserLogin).thenReturn(Optional.of(adminId));
             mockAiReply("Đã soạn hành động từ chối, xin xác nhận");
-            PendingActionStore.PendingAction action = new PendingActionStore.PendingAction(
-                    UUID.randomUUID(), "requestRejectDeck",
-                    Map.of("deckId", 12, "reason", "spam"), adminId,
-                    "Từ chối bộ bài #12", java.time.LocalDateTime.now(), java.time.LocalDateTime.now().plusMinutes(5));
+            PendingActionStore.PendingAction action = pendingAction("requestRejectDeck",
+                    Map.of("deckId", 12, "reason", "spam"), "Từ chối bộ bài #12");
             when(pendingActionStore.findLatestByAdmin(adminId)).thenReturn(Optional.of(action));
 
             AdminAiChatResponse response = impl().chat(
@@ -108,7 +116,7 @@ class AdminAiChatServiceImplTest {
             PendingActionStore.PendingAction action = new PendingActionStore.PendingAction(
                     actionId, "requestRejectDeck",
                     Map.of("deckId", 12, "reason", "spam"), adminId,
-                    "Từ chối bộ bài #12", java.time.LocalDateTime.now(), java.time.LocalDateTime.now().plusMinutes(5));
+                    "Từ chối bộ bài #12", LocalDateTime.now(), LocalDateTime.now().plusMinutes(5));
             when(pendingActionStore.find(actionId.toString())).thenReturn(Optional.of(action));
             when(adminDeckService.approvePublicDeck(12L, false, "spam")).thenReturn(anyDeckResponse());
             when(auditLogRepository.save(any(AdminAiAuditLog.class)))
@@ -117,6 +125,7 @@ class AdminAiChatServiceImplTest {
             AdminAiChatResponse response = impl().confirm(actionId.toString());
 
             assertTrue(response.getReply().contains("Đã thực hiện"));
+            assertEquals(anyDeckResponse().toString(), response.getResult());
             verify(adminDeckService).approvePublicDeck(12L, false, "spam");
             verify(pendingActionStore).delete(actionId.toString());
             verify(pendingActionStore).clearLatestIndex(adminId);
@@ -128,6 +137,96 @@ class AdminAiChatServiceImplTest {
     }
 
     @Test
+    void confirmWritesFailedAuditWhenServiceThrowsAppException() {
+        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+            mocked.when(SecurityUtils::getCurrentUserLogin).thenReturn(Optional.of(adminId));
+            UUID actionId = UUID.randomUUID();
+            PendingActionStore.PendingAction action = new PendingActionStore.PendingAction(
+                    actionId, "requestApproveDeck",
+                    Map.of("deckId", 12), adminId,
+                    "Duyệt bộ bài #12", LocalDateTime.now(), LocalDateTime.now().plusMinutes(5));
+            when(pendingActionStore.find(actionId.toString())).thenReturn(Optional.of(action));
+            when(adminDeckService.approvePublicDeck(12L, true, null))
+                    .thenThrow(new AppException(ErrorCode.DECK_NOT_FOUND));
+            when(auditLogRepository.save(any(AdminAiAuditLog.class)))
+                    .thenAnswer(inv -> inv.getArgument(0));
+
+            assertThrows(AppException.class, () -> impl().confirm(actionId.toString()));
+
+            verify(auditLogRepository).save(argThat(log ->
+                    "APPROVE_DECK".equals(log.getAction())
+                            && "FAILED".equals(log.getStatus())
+                            && "12".equals(log.getReferenceId())));
+            verify(pendingActionStore, never()).delete(anyString());
+        }
+    }
+
+    @Test
+    void confirmWritesFailedAuditWhenServiceThrowsUnexpectedException() {
+        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+            mocked.when(SecurityUtils::getCurrentUserLogin).thenReturn(Optional.of(adminId));
+            UUID actionId = UUID.randomUUID();
+            PendingActionStore.PendingAction action = new PendingActionStore.PendingAction(
+                    actionId, "requestRejectDeck",
+                    Map.of("deckId", "not-a-number", "reason", "spam"), adminId,
+                    "Từ chối bộ bài #not-a-number", LocalDateTime.now(), LocalDateTime.now().plusMinutes(5));
+            when(pendingActionStore.find(actionId.toString())).thenReturn(Optional.of(action));
+            when(auditLogRepository.save(any(AdminAiAuditLog.class)))
+                    .thenAnswer(inv -> inv.getArgument(0));
+
+            assertThrows(NumberFormatException.class, () -> impl().confirm(actionId.toString()));
+
+            verify(auditLogRepository).save(argThat(log ->
+                    "REJECT_DECK".equals(log.getAction())
+                            && "FAILED".equals(log.getStatus())));
+            verify(pendingActionStore, never()).delete(anyString());
+        }
+    }
+
+    @Test
+    void confirmThrowsExpiredAndClearsStaleAction() {
+        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+            mocked.when(SecurityUtils::getCurrentUserLogin).thenReturn(Optional.of(adminId));
+            UUID actionId = UUID.randomUUID();
+            PendingActionStore.PendingAction action = new PendingActionStore.PendingAction(
+                    actionId, "requestApproveDeck",
+                    Map.of("deckId", 12), adminId,
+                    "Duyệt bộ bài #12", LocalDateTime.now().minusMinutes(10),
+                    LocalDateTime.now().minusMinutes(5));
+            when(pendingActionStore.find(actionId.toString())).thenReturn(Optional.of(action));
+
+            AppException ex = assertThrows(AppException.class, () -> impl().confirm(actionId.toString()));
+
+            assertEquals(ErrorCode.PENDING_ACTION_EXPIRED, ex.getErrorCode());
+            verify(adminDeckService, never()).approvePublicDeck(any(), anyBoolean(), any());
+            verify(pendingActionStore).delete(actionId.toString());
+            verify(pendingActionStore).clearLatestIndex(adminId);
+            verify(auditLogRepository, never()).save(any(AdminAiAuditLog.class));
+        }
+    }
+
+    @Test
+    void cancelThrowsExpiredAndClearsStaleAction() {
+        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+            mocked.when(SecurityUtils::getCurrentUserLogin).thenReturn(Optional.of(adminId));
+            UUID actionId = UUID.randomUUID();
+            PendingActionStore.PendingAction action = new PendingActionStore.PendingAction(
+                    actionId, "requestApproveDeck",
+                    Map.of("deckId", 12), adminId,
+                    "Duyệt bộ bài #12", LocalDateTime.now().minusMinutes(10),
+                    LocalDateTime.now().minusMinutes(5));
+            when(pendingActionStore.find(actionId.toString())).thenReturn(Optional.of(action));
+
+            AppException ex = assertThrows(AppException.class, () -> impl().cancel(actionId.toString()));
+
+            assertEquals(ErrorCode.PENDING_ACTION_EXPIRED, ex.getErrorCode());
+            verify(pendingActionStore).delete(actionId.toString());
+            verify(pendingActionStore).clearLatestIndex(adminId);
+            verify(auditLogRepository, never()).save(any(AdminAiAuditLog.class));
+        }
+    }
+
+    @Test
     void confirmRejectsActionOwnedByAnotherAdmin() {
         try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentUserLogin).thenReturn(Optional.of(adminId));
@@ -135,10 +234,10 @@ class AdminAiChatServiceImplTest {
             PendingActionStore.PendingAction action = new PendingActionStore.PendingAction(
                     actionId, "requestDeleteDeck",
                     Map.of("deckId", 12), UUID.randomUUID(),
-                    "Xóa bộ bài #12", java.time.LocalDateTime.now(), java.time.LocalDateTime.now().plusMinutes(5));
+                    "Xóa bộ bài #12", LocalDateTime.now(), LocalDateTime.now().plusMinutes(5));
             when(pendingActionStore.find(actionId.toString())).thenReturn(Optional.of(action));
 
-            assertThrows(com.fivetuat.fsoftprojectserver.exceptions.AppException.class,
+            assertThrows(AppException.class,
                     () -> impl().confirm(actionId.toString()));
 
             verify(adminDeckService, never()).deleteDeck(any());
@@ -151,7 +250,7 @@ class AdminAiChatServiceImplTest {
             mocked.when(SecurityUtils::getCurrentUserLogin).thenReturn(Optional.of(adminId));
             when(pendingActionStore.find(anyString())).thenReturn(Optional.empty());
 
-            assertThrows(com.fivetuat.fsoftprojectserver.exceptions.AppException.class,
+            assertThrows(AppException.class,
                     () -> impl().confirm(UUID.randomUUID().toString()));
         }
     }
@@ -164,7 +263,7 @@ class AdminAiChatServiceImplTest {
             PendingActionStore.PendingAction action = new PendingActionStore.PendingAction(
                     actionId, "requestApproveDeck",
                     Map.of("deckId", 7), adminId,
-                    "Duyệt bộ bài #7", java.time.LocalDateTime.now(), java.time.LocalDateTime.now().plusMinutes(5));
+                    "Duyệt bộ bài #7", LocalDateTime.now(), LocalDateTime.now().plusMinutes(5));
             when(pendingActionStore.find(actionId.toString())).thenReturn(Optional.of(action));
             when(auditLogRepository.save(any(AdminAiAuditLog.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
@@ -172,6 +271,7 @@ class AdminAiChatServiceImplTest {
             AdminAiChatResponse response = impl().cancel(actionId.toString());
 
             assertTrue(response.getReply().contains("Đã hủy"));
+            assertNull(response.getResult());
             verify(auditLogRepository).save(argThat(log -> "CANCELLED".equals(log.getStatus())));
             verify(pendingActionStore).delete(actionId.toString());
         }
@@ -181,12 +281,7 @@ class AdminAiChatServiceImplTest {
     void getHistoryReturnsLatestPageFirst() {
         try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentUserLogin).thenReturn(Optional.of(adminId));
-            List<Message> messages = new ArrayList<>();
-            for (int i = 1; i <= 25; i++) {
-                messages.add(i % 2 == 1
-                        ? new UserMessage("msg-" + i)
-                        : new AssistantMessage("msg-" + i));
-            }
+            List<Message> messages = buildMessages(25);
             when(chatMemory.get("admin-ai-" + adminId)).thenReturn(messages);
 
             List<com.fivetuat.fsoftprojectserver.dtos.response.AdminAiChatHistoryResponse> page1 =
@@ -205,6 +300,54 @@ class AdminAiChatServiceImplTest {
             assertEquals("msg-1", page3.get(0).getContent());
             assertEquals("msg-5", page3.get(4).getContent());
         }
+    }
+
+    @Test
+    void getHistoryClampsPageZeroAndOversizedPage() {
+        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+            mocked.when(SecurityUtils::getCurrentUserLogin).thenReturn(Optional.of(adminId));
+            List<Message> messages = buildMessages(5);
+            when(chatMemory.get("admin-ai-" + adminId)).thenReturn(messages);
+
+            // page 0 and negative pages clamp to the first page (most recent messages)
+            List<com.fivetuat.fsoftprojectserver.dtos.response.AdminAiChatHistoryResponse> clamped =
+                    impl().getHistory(0, 10);
+            assertEquals(5, clamped.size());
+            assertEquals("msg-1", clamped.get(0).getContent());
+            assertEquals("msg-5", clamped.get(4).getContent());
+
+            List<com.fivetuat.fsoftprojectserver.dtos.response.AdminAiChatHistoryResponse> negative =
+                    impl().getHistory(-3, 10);
+            assertEquals(5, negative.size());
+
+            assertEquals(List.of(), impl().getHistory(99, 10));
+
+            List<com.fivetuat.fsoftprojectserver.dtos.response.AdminAiChatHistoryResponse> bigSize =
+                    impl().getHistory(1, 100);
+            assertEquals(5, bigSize.size());
+            assertEquals("msg-1", bigSize.get(0).getContent());
+            assertEquals("msg-5", bigSize.get(4).getContent());
+        }
+    }
+
+    @Test
+    void getHistoryReturnsEmptyWhenMemoryEmpty() {
+        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+            mocked.when(SecurityUtils::getCurrentUserLogin).thenReturn(Optional.of(adminId));
+            when(chatMemory.get("admin-ai-" + adminId)).thenReturn(List.of());
+
+            assertEquals(List.of(), impl().getHistory(1, 10));
+        }
+    }
+
+    private List<Message> buildMessages(int count) {
+        List<Message> messages = new ArrayList<>();
+        for (int i = 1; i <= count; i++) {
+            messages.add(i % 2 == 1
+                    ? new UserMessage("msg-" + i)
+                    : new AssistantMessage("msg-" + i));
+        }
+        return messages;
     }
 
     private com.fivetuat.fsoftprojectserver.dtos.response.DeckResponse anyDeckResponse() {

@@ -21,7 +21,8 @@ public class PendingActionStore {
 
     static final String KEY_PREFIX = "admin-ai:pending:";
     static final String LATEST_KEY_PREFIX = "admin-ai:pending-admin:";
-    static final Duration TTL = Duration.ofMinutes(5);
+    static final Duration ACTION_VALIDITY = Duration.ofMinutes(5);
+    static final Duration REDIS_TTL = Duration.ofMinutes(6);
 
     StringRedisTemplate redisTemplate;
     ObjectMapper objectMapper;
@@ -38,10 +39,12 @@ public class PendingActionStore {
 
     public void save(PendingAction action) {
         try {
+            // TTL hơi dài hơn hạn hiệu lực 5 phút của hành động để confirm() có thể
+            // phân biệt "đã hết hạn" (463) với "không tồn tại" (462) sau khi hết hạn.
             redisTemplate.opsForValue().set(
                     KEY_PREFIX + action.actionId(),
                     objectMapper.writeValueAsString(action),
-                    TTL);
+                    REDIS_TTL);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Cannot serialize pending action", e);
         }
@@ -62,7 +65,7 @@ public class PendingActionStore {
     }
 
     public void indexLatest(UUID adminId, UUID actionId) {
-        redisTemplate.opsForValue().set(LATEST_KEY_PREFIX + adminId, actionId.toString(), TTL);
+        redisTemplate.opsForValue().set(LATEST_KEY_PREFIX + adminId, actionId.toString(), REDIS_TTL);
     }
 
     public Optional<PendingAction> findLatestByAdmin(UUID adminId) {

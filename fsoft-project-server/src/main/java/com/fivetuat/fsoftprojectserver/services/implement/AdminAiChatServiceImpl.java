@@ -12,6 +12,7 @@ import com.fivetuat.fsoftprojectserver.dtos.response.AdminAiChatResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.PendingActionResponse;
 import com.fivetuat.fsoftprojectserver.entities.AdminAiAuditLog;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
+import com.fivetuat.fsoftprojectserver.enums.PendingActionStatus;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.repositories.AdminAiAuditLogRepository;
 import com.fivetuat.fsoftprojectserver.services.AdminAiChatService;
@@ -32,8 +33,8 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -91,7 +92,6 @@ public class AdminAiChatServiceImpl implements AdminAiChatService {
     }
 
     @Override
-    @Transactional
     public AdminAiChatResponse confirm(String actionId) {
         UUID adminId = currentAdminId();
         PendingActionStore.PendingAction action = pendingActionStore.find(actionId)
@@ -101,16 +101,27 @@ public class AdminAiChatServiceImpl implements AdminAiChatService {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
+        if (action.expiresAt().isBefore(LocalDateTime.now())) {
+            pendingActionStore.delete(actionId);
+            pendingActionStore.clearLatestIndex(adminId);
+            throw new AppException(ErrorCode.PENDING_ACTION_EXPIRED);
+        }
+
         ExecutedAction executed;
         try {
             executed = executeAction(action);
         } catch (AppException e) {
             String result = e.getMessage() != null ? e.getMessage() : ("FAILED: " + e.getErrorCode());
-            saveAudit(adminId, action, result, "FAILED", referenceIdFor(action));
+            saveAudit(adminId, action, result, PendingActionStatus.FAILED, referenceIdFor(action));
+            throw e;
+        } catch (Exception e) {
+            log.error("Admin AI confirm action failed unexpectedly: {}", e.getMessage(), e);
+            saveAudit(adminId, action, "FAILED: " + e.getClass().getSimpleName(),
+                    PendingActionStatus.FAILED, referenceIdFor(action));
             throw e;
         }
 
-        saveAudit(adminId, action, executed.resultSummary(), "EXECUTED", executed.referenceId());
+        saveAudit(adminId, action, executed.resultSummary(), PendingActionStatus.EXECUTED, executed.referenceId());
         pendingActionStore.delete(actionId);
         pendingActionStore.clearLatestIndex(adminId);
 
@@ -118,11 +129,11 @@ public class AdminAiChatServiceImpl implements AdminAiChatService {
                 .conversationId(CONVERSATION_PREFIX + adminId)
                 .reply("Đã thực hiện: " + action.summary())
                 .pendingAction(null)
+                .result(executed.resultSummary())
                 .build();
     }
 
     @Override
-    @Transactional
     public AdminAiChatResponse cancel(String actionId) {
         UUID adminId = currentAdminId();
         PendingActionStore.PendingAction action = pendingActionStore.find(actionId)
@@ -132,7 +143,13 @@ public class AdminAiChatServiceImpl implements AdminAiChatService {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
-        saveAudit(adminId, action, "Cancelled by admin", "CANCELLED", referenceIdFor(action));
+        if (action.expiresAt().isBefore(LocalDateTime.now())) {
+            pendingActionStore.delete(actionId);
+            pendingActionStore.clearLatestIndex(adminId);
+            throw new AppException(ErrorCode.PENDING_ACTION_EXPIRED);
+        }
+
+        saveAudit(adminId, action, "Cancelled by admin", PendingActionStatus.CANCELLED, referenceIdFor(action));
         pendingActionStore.delete(actionId);
         pendingActionStore.clearLatestIndex(adminId);
 
@@ -147,7 +164,7 @@ public class AdminAiChatServiceImpl implements AdminAiChatService {
     public List<AdminAiChatHistoryResponse> getHistory(int page, int size) {
         String conversationId = CONVERSATION_PREFIX + currentAdminId();
         List<Message> messages = chatMemory.get(conversationId);
-        int to = Math.max(0, messages.size() - (page - 1) * size);
+        int to = Math.min(messages.size(), Math.max(0, messages.size() - (page - 1) * size));
         int from = Math.max(0, to - size);
         if (to <= from) {
             return List.of();
@@ -253,12 +270,12 @@ public class AdminAiChatServiceImpl implements AdminAiChatService {
     }
 
     private void saveAudit(UUID adminId, PendingActionStore.PendingAction action,
-                           String result, String status, String referenceId) {
+                           String result, PendingActionStatus status, String referenceId) {
         auditLogRepository.save(AdminAiAuditLog.builder()
                 .adminId(adminId)
                 .action(auditActionName(action.tool()))
                 .params(toJson(action.params()))
-                .status(status)
+                .status(status.name())
                 .resultSummary(result != null && result.length() > 500 ? result.substring(0, 500) : result)
                 .referenceId(referenceId)
                 .build());

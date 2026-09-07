@@ -3,7 +3,6 @@ package com.fivetuat.fsoftprojectserver.entities;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

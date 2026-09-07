@@ -42,7 +42,7 @@ class PendingActionStoreTest {
         new PendingActionStore(redisTemplate, mapper).save(action);
 
         verify(valueOperations).set(
-                eq("admin-ai:pending:" + action.actionId()), anyString(), eq(Duration.ofMinutes(5)));
+                eq("admin-ai:pending:" + action.actionId()), anyString(), eq(Duration.ofMinutes(6)));
     }
 
     @Test
@@ -94,6 +94,6 @@ class PendingActionStoreTest {
         verify(valueOperations).set(
                 eq("admin-ai:pending-admin:" + action.adminId()),
                 eq(action.actionId().toString()),
-                eq(Duration.ofMinutes(5)));
+                eq(Duration.ofMinutes(6)));
     }
 }

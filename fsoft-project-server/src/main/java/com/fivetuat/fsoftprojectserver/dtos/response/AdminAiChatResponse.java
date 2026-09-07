@@ -19,4 +19,7 @@ public class AdminAiChatResponse {
 
     @Schema(description = "Hành động đang chờ xác nhận (null nếu không có)")
     PendingActionResponse pendingAction;
+
+    @Schema(description = "Kết quả thực thi hành động (chỉ có trong response của confirm, null nếu không có)")
+    String result;
 }
