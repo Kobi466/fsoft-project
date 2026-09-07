@@ -32,9 +32,11 @@ public class AdminAiChatController {
 
     @PostMapping("/chat")
     @Operation(summary = "Hỏi trợ lý AI quản trị",
-            description = "Admin hỏi bằng ngôn ngữ tự nhiên. Bot trả lời dựa trên dữ liệu thật của hệ thống. "
+            description = "Admin hỏi bằng ngôn ngữ tự nhiên. Bot trả lời dựa trên dữ liệu thật của hệ thống (thống kê, users, decks, tags, game records) "
+                    + "qua function calling trên Groq (qwen/qwen3.8-27b). "
                     + "Khi admin yêu cầu hành động nguy hiểm (duyệt/từ chối/xóa deck, đặt official, đổi roles), "
-                    + "response trả về pendingAction chứa actionId — admin phải gọi /confirm để thực thi thật hoặc /confirm/cancel để hủy.")
+                    + "response trả về pendingAction chứa actionId — admin phải gọi /confirm để thực thi thật hoặc /confirm/cancel để hủy. "
+                    + "Hành động chờ xác nhận có hiệu lực 5 phút. Lịch sử hội thoại bền vững theo từng admin (JDBC chat memory).")
     public ApiResponse<AdminAiChatResponse> chat(@Valid @RequestBody AdminAiChatRequest request) {
         return ApiResponse.ok(adminAiChatService.chat(request), SuccessCode.ADMIN_AI_CHAT_SUCCESS);
     }
@@ -43,7 +45,9 @@ public class AdminAiChatController {
     @Operation(summary = "Xác nhận hành động AI đã soạn (thực thi thật)",
             description = "Thực thi hành động đã soạn. Lỗi 462 nếu actionId không tồn tại hoặc đã xử lý, "
                     + "lỗi 463 nếu đã hết hạn 5 phút. Chỉ admin tạo hành động mới xác nhận được. "
-                    + "Mỗi actionId chỉ dùng được một lần. Mọi lần thực thi đều được ghi vào audit log.")
+                    + "Mỗi actionId chỉ dùng được một lần. Mọi lần thực thi đều được ghi vào audit log "
+                    + "(kể cả FAILED khi hành động vi phạm nghiệp vụ, ví dụ duyệt deck không nằm trong hàng chờ duyệt - lỗi 460). "
+                    + "Response trả về result chứa kết quả thực thi từ service tương ứng.")
     public ApiResponse<AdminAiChatResponse> confirm(@Valid @RequestBody AdminAiConfirmRequest request) {
         return ApiResponse.ok(adminAiChatService.confirm(request.getActionId()), SuccessCode.ADMIN_AI_ACTION_CONFIRMED);
     }
