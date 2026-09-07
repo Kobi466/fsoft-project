@@ -37,7 +37,7 @@ public class AdminAiTools {
     AdminGameService adminGameService;
     PendingActionStore pendingActionStore;
 
-    @Tool(description = "Thống kê tổng quan hệ thống: tổng users, decks, cards, lượt chơi game, official decks, public decks")
+    @Tool(description = "Thống kê tổng quan hệ thống: tổng users, decks, cards, lượt chơi game, official decks, public decks. KHÔNG có tham số — gọi trống, không truyền page/size hay bất kỳ tham số nào.")
     public String dashboardStats() {
         var s = adminDashboardService.getDashboardStats();
         return String.format(
@@ -89,7 +89,7 @@ public class AdminAiTools {
         return sb.toString();
     }
 
-    @Tool(description = "Liệt kê tất cả nhãn (tags) của hệ thống")
+    @Tool(description = "Liệt kê tất cả nhãn (tags) của hệ thống. KHÔNG có tham số — gọi trống, không truyền tham số nào.")
     public String tags() {
         return tagService.getAllTags().stream()
                 .map(t -> t.getId() + ":" + t.getName())
