@@ -30,6 +30,10 @@ public interface DeckMapper {
     @Mapping(target = "coverImageUrl", ignore = true)
     @Mapping(target = "cards", ignore = true)
     @Mapping(target = "tags", ignore = true)
+    @Mapping(target = "official", ignore = true)
+    @Mapping(target = "visibility", ignore = true)
+    @Mapping(target = "pendingPublic", ignore = true)
+    @Mapping(target = "rejectionReason", ignore = true)
     void updateDeck(@MappingTarget Deck deck, DeckUpdateRequest request);
 
     default Set<TagResponse> mapTags(java.util.Set<com.fivetuat.fsoftprojectserver.entities.Tag> tags) {

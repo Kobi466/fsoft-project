@@ -59,7 +59,10 @@ public class DeckController {
         return ApiResponse.ok(deckService.getDeck(id), SuccessCode.GET_DECK_SUCCESS);
     }
 
-    @Operation(summary = "Cập nhật Bộ thẻ", description = "Cập nhật tên, mô tả, ảnh bìa cho một bộ bài đã tạo.")
+    @Operation(summary = "Cập nhật Bộ thẻ", description = "Cập nhật tên, mô tả, ảnh bìa cho một bộ bài đã tạo. " +
+            "Lưu ý về visibility: USER yêu cầu PUBLIC trên bộ bài chưa phải Official sẽ đưa bộ bài vào hàng chờ duyệt của Admin (pendingPublic = true, bộ bài vẫn PRIVATE). " +
+            "Bộ bài Official của USER hoặc bất kỳ thao tác nào của ADMIN sẽ áp dụng visibility trực tiếp. " +
+            "Trường isOfficial trong request bị bỏ qua đối với USER (chỉ ADMIN mới được đặt official).")
     @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(encoding = @Encoding(
                 name = "request",
                 contentType = MediaType.APPLICATION_JSON_VALUE
@@ -133,7 +136,11 @@ public class DeckController {
         );
     }
 
-    @Operation(summary = "Đổi quyền riêng tư của bộ thẻ (Công khai / Riêng tư)", description = "Chuyển một bộ bài từ PRIVATE sang PUBLIC (để chia sẻ cộng đồng) hoặc ngược lại.")
+    @Operation(summary = "Đổi quyền riêng tư của bộ thẻ (Công khai / Riêng tư)", description = "Chuyển một bộ bài từ PRIVATE sang PUBLIC (để chia sẻ cộng đồng) hoặc ngược lại. " +
+            "Khi yêu cầu PUBLIC: bộ bài vào hàng chờ duyệt của Admin (pendingPublic = true), vẫn PRIVATE đến khi được duyệt. " +
+            "Bộ bài fork không thể yêu cầu PUBLIC (FORKED_DECK_CANNOT_BE_PUBLIC). " +
+            "Yêu cầu trùng lặp khi đang chờ duyệt sẽ bị từ chối (DECK_ALREADY_PENDING_PUBLIC). " +
+            "Khi bị Admin từ chối, lý do sẽ được trả về trong trường rejectionReason của DeckResponse.")
     @PutMapping("/{id}/visibility")
     public ApiResponse<Void> convertDeckVisibility(
             @PathVariable Long id,

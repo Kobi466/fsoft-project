@@ -41,7 +41,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    @CacheEvict(value = "unread_notifications", key = "#result.recipient.authEmail")
+    @CacheEvict(value = "unread_notifications", key = "#result.recipientId")
     public NotificationResponse createNotification(NotificationCreationRequest request) {
         log.info("Creating notification for user ID: {}", request.getRecipientId());
 

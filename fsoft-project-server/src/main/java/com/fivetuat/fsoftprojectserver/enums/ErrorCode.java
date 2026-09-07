@@ -78,6 +78,9 @@ public enum ErrorCode {
     REJECTION_REASON_REQUIRED(456, "Lý do từ chối không được để trống khi từ chối bài viết", HttpStatus.BAD_REQUEST),
     POST_NOT_APPROVED(457, "Bài viết chưa được phê duyệt nên không thể tương tác", HttpStatus.FORBIDDEN),
     QUIZ_RESULT_NOT_FOUND(458, "Kết quả bài kiểm tra Quiz không tồn tại", HttpStatus.NOT_FOUND),
+    DECK_REJECTION_REASON_REQUIRED(459, "Lý do từ chối không được để trống khi từ chối bộ bài", HttpStatus.BAD_REQUEST),
+    DECK_NOT_PENDING(460, "Bộ bài không nằm trong hàng chờ duyệt", HttpStatus.BAD_REQUEST),
+    DECK_ALREADY_PENDING_PUBLIC(461, "Bộ bài đang chờ duyệt, vui lòng chờ kết quả kiểm duyệt", HttpStatus.CONFLICT),
     PENDING_ACTION_NOT_FOUND(462, "Không tìm thấy hành động chờ xác nhận hoặc đã được xử lý", HttpStatus.BAD_REQUEST),
     PENDING_ACTION_EXPIRED(463, "Hành động chờ xác nhận đã hết hạn, vui lòng thực hiện lại", HttpStatus.BAD_REQUEST);
     int status;
