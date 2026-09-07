@@ -21,6 +21,11 @@ public class ReasoningSanitizingChatModel implements ChatModel {
     }
 
     @Override
+    public org.springframework.ai.chat.prompt.ChatOptions getDefaultOptions() {
+        return delegate.getDefaultOptions();
+    }
+
+    @Override
     public ChatResponse call(Prompt prompt) {
         List<Message> sanitized = prompt.getInstructions().stream()
                 .map(this::stripReasoningMetadata)
