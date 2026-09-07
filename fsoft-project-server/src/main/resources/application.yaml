@@ -79,4 +79,4 @@ springdoc:
     tags-sorter: alpha
 
 admin-ai:
-  model: ${ADMIN_AI_MODEL:openai/gpt-oss-120b}
+  model: ${ADMIN_AI_MODEL:llama-3.3-70b-versatile}

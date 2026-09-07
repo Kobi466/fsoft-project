@@ -64,7 +64,7 @@ public class MultiAiConfig {
                 .build();
     }
 
-    @Value("${admin-ai.model:openai/gpt-oss-120b}")
+    @Value("${admin-ai.model:llama-3.3-70b-versatile}")
     String adminAiModel;
 
     static final String ADMIN_AI_SYSTEM_PROMPT =
