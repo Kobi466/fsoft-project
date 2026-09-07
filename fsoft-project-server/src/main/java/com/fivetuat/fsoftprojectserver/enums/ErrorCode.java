@@ -77,7 +77,9 @@ public enum ErrorCode {
     COMMENT_ACCESS_DENIED(455, "Bạn không có quyền xóa bình luận này", HttpStatus.FORBIDDEN),
     REJECTION_REASON_REQUIRED(456, "Lý do từ chối không được để trống khi từ chối bài viết", HttpStatus.BAD_REQUEST),
     POST_NOT_APPROVED(457, "Bài viết chưa được phê duyệt nên không thể tương tác", HttpStatus.FORBIDDEN),
-    QUIZ_RESULT_NOT_FOUND(458, "Kết quả bài kiểm tra Quiz không tồn tại", HttpStatus.NOT_FOUND);
+    QUIZ_RESULT_NOT_FOUND(458, "Kết quả bài kiểm tra Quiz không tồn tại", HttpStatus.NOT_FOUND),
+    PENDING_ACTION_NOT_FOUND(462, "Không tìm thấy hành động chờ xác nhận hoặc đã được xử lý", HttpStatus.BAD_REQUEST),
+    PENDING_ACTION_EXPIRED(463, "Hành động chờ xác nhận đã hết hạn, vui lòng thực hiện lại", HttpStatus.BAD_REQUEST);
     int status;
     String message;
     HttpStatus httpStatus;
