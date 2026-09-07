@@ -78,7 +78,8 @@ public class MultiAiConfig {
 
     @Bean(name = "adminAiClient")
     public ChatClient adminAiChatClient(OpenAiChatModel chatModel) {
-        return ChatClient.builder(chatModel)
+        ChatModel sanitizingModel = new ReasoningSanitizingChatModel(chatModel);
+        return ChatClient.builder(sanitizingModel)
                 .defaultOptions(OpenAiChatOptions.builder()
                         .model(adminAiModel)
                         .extraBody(Map.of("include_reasoning", false)))
