@@ -17,7 +17,12 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.UserMessage;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -169,6 +174,36 @@ class AdminAiChatServiceImplTest {
             assertTrue(response.getReply().contains("Đã hủy"));
             verify(auditLogRepository).save(argThat(log -> "CANCELLED".equals(log.getStatus())));
             verify(pendingActionStore).delete(actionId.toString());
+        }
+    }
+
+    @Test
+    void getHistoryReturnsLatestPageFirst() {
+        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+            mocked.when(SecurityUtils::getCurrentUserLogin).thenReturn(Optional.of(adminId));
+            List<Message> messages = new ArrayList<>();
+            for (int i = 1; i <= 25; i++) {
+                messages.add(i % 2 == 1
+                        ? new UserMessage("msg-" + i)
+                        : new AssistantMessage("msg-" + i));
+            }
+            when(chatMemory.get("admin-ai-" + adminId)).thenReturn(messages);
+
+            List<com.fivetuat.fsoftprojectserver.dtos.response.AdminAiChatHistoryResponse> page1 =
+                    impl().getHistory(1, 10);
+
+            assertEquals(10, page1.size());
+            assertEquals("msg-16", page1.get(0).getContent());
+            assertEquals("msg-25", page1.get(9).getContent());
+            assertEquals("assistant", page1.get(0).getRole());
+            assertEquals("user", page1.get(9).getRole());
+
+            List<com.fivetuat.fsoftprojectserver.dtos.response.AdminAiChatHistoryResponse> page3 =
+                    impl().getHistory(3, 10);
+
+            assertEquals(5, page3.size());
+            assertEquals("msg-1", page3.get(0).getContent());
+            assertEquals("msg-5", page3.get(4).getContent());
         }
     }
 

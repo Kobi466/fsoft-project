@@ -34,6 +34,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -104,7 +105,8 @@ public class AdminAiChatServiceImpl implements AdminAiChatService {
         try {
             executed = executeAction(action);
         } catch (AppException e) {
-            saveAudit(adminId, action, e.getMessage(), "FAILED", referenceIdFor(action));
+            String result = e.getMessage() != null ? e.getMessage() : ("FAILED: " + e.getErrorCode());
+            saveAudit(adminId, action, result, "FAILED", referenceIdFor(action));
             throw e;
         }
 
@@ -145,8 +147,11 @@ public class AdminAiChatServiceImpl implements AdminAiChatService {
     public List<AdminAiChatHistoryResponse> getHistory(int page, int size) {
         String conversationId = CONVERSATION_PREFIX + currentAdminId();
         List<Message> messages = chatMemory.get(conversationId);
-        int from = Math.max(0, messages.size() - size * page);
-        int to = Math.min(messages.size(), size * page);
+        int to = Math.max(0, messages.size() - (page - 1) * size);
+        int from = Math.max(0, to - size);
+        if (to <= from) {
+            return List.of();
+        }
         return messages.subList(from, to).stream()
                 .map(m -> AdminAiChatHistoryResponse.builder()
                         .role(m.getMessageType().getValue())
@@ -199,7 +204,7 @@ public class AdminAiChatServiceImpl implements AdminAiChatService {
             }
             case "requestUpdateUserRoles" -> {
                 String userId = String.valueOf(action.params().get("userId"));
-                Set<String> roles = java.util.Arrays.stream(
+                Set<String> roles = Arrays.stream(
                                 String.valueOf(action.params().get("rolesCsv")).split(","))
                         .map(String::trim)
                         .collect(Collectors.toSet());
