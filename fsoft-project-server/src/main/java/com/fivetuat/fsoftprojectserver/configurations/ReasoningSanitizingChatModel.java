@@ -6,7 +6,9 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.chat.prompt.ChatOptions;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -21,19 +23,26 @@ public class ReasoningSanitizingChatModel implements ChatModel {
     }
 
     @Override
-    public org.springframework.ai.chat.prompt.ChatOptions getDefaultOptions() {
+    public ChatOptions getDefaultOptions() {
         return delegate.getDefaultOptions();
     }
 
     @Override
     public ChatResponse call(Prompt prompt) {
-        List<Message> sanitized = prompt.getInstructions().stream()
-                .map(this::stripReasoningMetadata)
-                .toList();
-        if (sanitized == prompt.getInstructions()) {
+        List<Message> instructions = prompt.getInstructions();
+        boolean changed = false;
+        List<Message> sanitized = new ArrayList<>(instructions.size());
+        for (Message message : instructions) {
+            Message stripped = stripReasoningMetadata(message);
+            if (stripped != message) {
+                changed = true;
+            }
+            sanitized.add(stripped);
+        }
+        if (!changed) {
             return delegate.call(prompt);
         }
-        log.info("[ADMIN_AI_DEBUG] sanitizer invoked with {} message(s)", sanitized.size());
+        log.info("[ADMIN_AI_DEBUG] stripped reasoningContent, resending {} sanitized message(s)", sanitized.size());
         return delegate.call(new Prompt(sanitized, prompt.getOptions()));
     }
 
@@ -43,7 +52,6 @@ public class ReasoningSanitizingChatModel implements ChatModel {
                 && assistant.getMetadata().containsKey(REASONING_METADATA_KEY)) {
             var metadata = new java.util.HashMap<>(assistant.getMetadata());
             metadata.remove(REASONING_METADATA_KEY);
-            log.info("[ADMIN_AI_DEBUG] stripped reasoningContent from assistant message");
             return AssistantMessage.builder()
                     .content(assistant.getText())
                     .properties(metadata)
