@@ -55,6 +55,8 @@ public class SecurityConfiguration {
             "/api/chat-ai/test",
             "/ws-chat/**",
             "/ws-game/**",
+            "/ws-notification/**",
+            "/ws-community/**",
             "/profiles/{profileId:[0-9a-fA-F\\-]+}",
             "/community-posts/latest",
             "/community-posts/popular",

@@ -17,6 +17,9 @@ import com.fivetuat.fsoftprojectserver.mappers.CommentMapper;
 import com.fivetuat.fsoftprojectserver.mappers.CommunityPostMapper;
 import com.fivetuat.fsoftprojectserver.repositories.*;
 import com.fivetuat.fsoftprojectserver.services.AuthService;
+import com.fivetuat.fsoftprojectserver.dtos.response.CommentDeleteResponse;
+import com.fivetuat.fsoftprojectserver.dtos.response.CommunityEventPayload;
+import com.fivetuat.fsoftprojectserver.enums.CommunityEventType;
 import com.fivetuat.fsoftprojectserver.services.CommunityPostService;
 import com.fivetuat.fsoftprojectserver.utils.PageUtils;
 import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
@@ -28,6 +31,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,6 +53,7 @@ public class CommunityPostServiceImpl implements CommunityPostService {
     AuthService authService;
     CommunityPostMapper communityPostMapper;
     CommentMapper commentMapper;
+    SimpMessagingTemplate messagingTemplate;
 
     // --- QUẢN LÝ BÀI VIẾT & FEED ---
 
@@ -90,7 +95,17 @@ public class CommunityPostServiceImpl implements CommunityPostService {
 
         CommunityPost savedPost = communityPostRepository.save(post);
         log.info("Created community post ID: {} with status: {}", savedPost.getId(), savedPost.getStatus());
-        return communityPostMapper.toCommunityPostResponse(savedPost);
+        CommunityPostResponse response = communityPostMapper.toCommunityPostResponse(savedPost);
+
+        if (savedPost.getStatus() == PostStatus.APPROVED) {
+            sendCommunityEvent("/topic/community/feed", CommunityEventPayload.<CommunityPostResponse>builder()
+                    .type(CommunityEventType.NEW_POST_APPROVED)
+                    .postId(savedPost.getId())
+                    .data(response)
+                    .build());
+        }
+
+        return response;
     }
 
     @Override
@@ -151,7 +166,19 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         }
 
         CommunityPost updatedPost = communityPostRepository.save(post);
-        return communityPostMapper.toCommunityPostResponse(updatedPost);
+        CommunityPostResponse response = communityPostMapper.toCommunityPostResponse(updatedPost);
+
+        if (updatedPost.getStatus() == PostStatus.APPROVED) {
+            CommunityEventPayload<CommunityPostResponse> updatePayload = CommunityEventPayload.<CommunityPostResponse>builder()
+                    .type(CommunityEventType.POST_UPDATED)
+                    .postId(postId)
+                    .data(response)
+                    .build();
+            sendCommunityEvent("/topic/posts/" + postId, updatePayload);
+            sendCommunityEvent("/topic/community/feed", updatePayload);
+        }
+
+        return response;
     }
 
     @Override
@@ -171,6 +198,14 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         post.setDeleted(true);
         communityPostRepository.save(post);
         log.info("Soft-deleted community post ID: {}", postId);
+
+        CommunityEventPayload<Map<String, Object>> deletePayload = CommunityEventPayload.<Map<String, Object>>builder()
+                .type(CommunityEventType.POST_DELETED)
+                .postId(postId)
+                .data(Map.of("postId", postId))
+                .build();
+        sendCommunityEvent("/topic/posts/" + postId, deletePayload);
+        sendCommunityEvent("/topic/community/feed", deletePayload);
     }
 
     @Override
@@ -251,7 +286,17 @@ public class CommunityPostServiceImpl implements CommunityPostService {
 
         CommunityPost savedPost = communityPostRepository.save(post);
         log.info("Admin {} moderated post ID: {} to status: {}", currentAdmin.getId(), postId, request.getStatus());
-        return communityPostMapper.toCommunityPostResponse(savedPost);
+        CommunityPostResponse response = communityPostMapper.toCommunityPostResponse(savedPost);
+
+        if (savedPost.getStatus() == PostStatus.APPROVED) {
+            sendCommunityEvent("/topic/community/feed", CommunityEventPayload.<CommunityPostResponse>builder()
+                    .type(CommunityEventType.NEW_POST_APPROVED)
+                    .postId(postId)
+                    .data(response)
+                    .build());
+        }
+
+        return response;
     }
 
     // --- TƯƠNG TÁC THẢ TIM (TOGGLE LIKE: BẬT / TẮT THÍCH) ---
@@ -293,11 +338,22 @@ public class CommunityPostServiceImpl implements CommunityPostService {
 
         CommunityPost savedPost = communityPostRepository.save(post);
 
-        return PostLikeToggleResponse.builder()
+        PostLikeToggleResponse toggleResponse = PostLikeToggleResponse.builder()
                 .postId(postId)
                 .liked(isLiked)
                 .likeCount(savedPost.getLikeCount())
                 .build();
+
+        CommunityEventPayload<PostLikeToggleResponse> likePayload = CommunityEventPayload.<PostLikeToggleResponse>builder()
+                .type(CommunityEventType.LIKE_COUNT_CHANGED)
+                .postId(postId)
+                .data(toggleResponse)
+                .build();
+
+        sendCommunityEvent("/topic/posts/" + postId, likePayload);
+        sendCommunityEvent("/topic/community/feed", likePayload);
+
+        return toggleResponse;
     }
 
     // --- BÌNH LUẬN (COMMENTS) ---
@@ -336,7 +392,16 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         communityPostRepository.save(post);
         log.info("Profile {} commented on post ID: {}", currentProfile.getId(), postId);
 
-        return commentMapper.toCommentResponse(savedComment);
+        CommentResponse response = commentMapper.toCommentResponse(savedComment);
+        response.setReplyCount(0);
+
+        sendCommunityEvent("/topic/posts/" + postId, CommunityEventPayload.<CommentResponse>builder()
+                .type(CommunityEventType.COMMENT_CREATED)
+                .postId(postId)
+                .data(response)
+                .build());
+
+        return response;
     }
 
     @Override
@@ -413,6 +478,20 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         communityPostRepository.save(post);
 
         log.info("Soft-deleted comment ID: {} and {} replies on post ID: {}", commentId, childReplies.size(), post.getId());
+
+        Long parentCommentId = comment.getParentComment() != null ? comment.getParentComment().getId() : null;
+        Long postId = post.getId();
+
+        CommentDeleteResponse deleteData = CommentDeleteResponse.builder()
+                .commentId(commentId)
+                .parentCommentId(parentCommentId)
+                .build();
+
+        sendCommunityEvent("/topic/posts/" + postId, CommunityEventPayload.<CommentDeleteResponse>builder()
+                .type(CommunityEventType.COMMENT_DELETED)
+                .postId(postId)
+                .data(deleteData)
+                .build());
     }
 
     // --- HELPER FUNCTION ---
@@ -433,5 +512,16 @@ public class CommunityPostServiceImpl implements CommunityPostService {
             response.setLikedByCurrentUser(likedPostIds.contains(post.getId()));
             return response;
         });
+    }
+
+    // --- WEBSOCKET REALTIME HELPER ---
+
+    private void sendCommunityEvent(String destination, CommunityEventPayload<?> payload) {
+        try {
+            messagingTemplate.convertAndSend(destination, payload);
+            log.info("Broadcast community event [{}] to topic: {}", payload.getType(), destination);
+        } catch (Exception e) {
+            log.error("Failed to broadcast community event to {}: {}", destination, e.getMessage());
+        }
     }
 }
