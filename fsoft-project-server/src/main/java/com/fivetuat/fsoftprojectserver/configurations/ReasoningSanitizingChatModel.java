@@ -1,5 +1,6 @@
 package com.fivetuat.fsoftprojectserver.configurations;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.model.ChatModel;
@@ -8,6 +9,7 @@ import org.springframework.ai.chat.prompt.Prompt;
 
 import java.util.List;
 
+@Slf4j
 public class ReasoningSanitizingChatModel implements ChatModel {
 
     private static final String REASONING_METADATA_KEY = "reasoningContent";
@@ -23,6 +25,7 @@ public class ReasoningSanitizingChatModel implements ChatModel {
         List<Message> sanitized = prompt.getInstructions().stream()
                 .map(this::stripReasoningMetadata)
                 .toList();
+        log.info("[ADMIN_AI_DEBUG] sanitizer invoked with {} message(s)", sanitized.size());
         return delegate.call(new Prompt(sanitized, prompt.getOptions()));
     }
 
@@ -32,6 +35,7 @@ public class ReasoningSanitizingChatModel implements ChatModel {
                 && assistant.getMetadata().containsKey(REASONING_METADATA_KEY)) {
             var metadata = new java.util.HashMap<>(assistant.getMetadata());
             metadata.remove(REASONING_METADATA_KEY);
+            log.info("[ADMIN_AI_DEBUG] stripped reasoningContent from assistant message");
             return AssistantMessage.builder()
                     .content(assistant.getText())
                     .properties(metadata)
