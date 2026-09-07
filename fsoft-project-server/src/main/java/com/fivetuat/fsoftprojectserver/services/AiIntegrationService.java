@@ -8,6 +8,10 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
@@ -19,15 +23,20 @@ import com.fivetuat.fsoftprojectserver.dtos.https.ai.request.VocabLookupRequest;
 import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.AiChatResponse;
 import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.AiQuizResponse;
 import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.AiSearchResponse;
+import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.AiSearchResultItem;
+import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.VocabCandidate;
 import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.VocabLookupResponse;
+import com.fivetuat.fsoftprojectserver.entities.Card;
 import com.fivetuat.fsoftprojectserver.entities.UserCardSrs;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.httpsClients.AiClient;
+import com.fivetuat.fsoftprojectserver.repositories.CardRepository;
 import com.fivetuat.fsoftprojectserver.repositories.DeckRepository;
 import com.fivetuat.fsoftprojectserver.repositories.UserCardSrsRepository;
 import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
 
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -38,7 +47,9 @@ public class AiIntegrationService {
 
     private final AiClient aiClient;
     private final DeckRepository deckRepository;
+    private final CardRepository cardRepository;
     private final UserCardSrsRepository userCardSrsRepository;
+    private final CacheManager cacheManager;
 
     @Value("${fsoft-ai.internal-token}")
     private String internalTokenA;
@@ -49,6 +60,12 @@ public class AiIntegrationService {
         return deckRepository.findAllAccessibleDeckIdsByProfileId(currentUserId);
     }
 
+    @Cacheable(
+            value = "ai_card_searches",
+            key = "#query.toLowerCase().trim()",
+            unless = "#result == null || #result.results == null || #result.results.isEmpty() || (#result.results.size() > 0 && 'LOCAL_DB_MATCH'.equals(#result.results.get(0).getMatchType()))"
+    )
+    @Retry(name = "aiRetry", fallbackMethod = "searchCardsFallback")
     public AiSearchResponse searchCards(String query) {
         List<Long> allowedDeckIds = getAccessibleDeckIds();
         if (allowedDeckIds == null || allowedDeckIds.isEmpty()) {
@@ -76,6 +93,48 @@ public class AiIntegrationService {
         }
     }
 
+    public AiSearchResponse searchCardsFallback(String query, Throwable t) {
+        log.warn("Resilience4j Retry thất bại khi gọi fsoft-ai search cho từ khóa '{}'. Tự động chuyển sang Local Database Fallback. Lỗi: {}", query, t.getMessage());
+        String cacheKey = query != null ? query.toLowerCase().trim() : "";
+        
+        try {
+            Cache fallbackCache = cacheManager != null ? cacheManager.getCache("fallback_card_searches") : null;
+            if (fallbackCache != null && !cacheKey.isBlank()) {
+                AiSearchResponse cachedResponse = fallbackCache.get(cacheKey, AiSearchResponse.class);
+                if (cachedResponse != null) {
+                    log.info("HIT 3-minute Fallback Cache cho search query '{}'", cacheKey);
+                    return cachedResponse;
+                }
+            }
+
+            List<Long> allowedDeckIds = getAccessibleDeckIds();
+            if (allowedDeckIds == null || allowedDeckIds.isEmpty()) {
+                return new AiSearchResponse(Collections.emptyList(), 0, 0);
+            }
+            List<Card> localCards = cardRepository.searchByQueryAndDeckIds(query, allowedDeckIds, PageRequest.of(0, 5));
+            List<AiSearchResultItem> items = localCards.stream().map(c -> new AiSearchResultItem(
+                    c.getId(),
+                    c.getWord(),
+                    c.getMeaning(),
+                    c.getDeck() != null ? c.getDeck().getId() : null,
+                    c.getDeck() != null ? c.getDeck().getTitle() : "",
+                    0.85,
+                    "LOCAL_DB_MATCH"
+            )).toList();
+            AiSearchResponse fallbackResponse = new AiSearchResponse(items, 1, items.size());
+
+            if (fallbackCache != null && !cacheKey.isBlank() && !items.isEmpty()) {
+                log.info("Lưu kết quả search Local DB vào 3-minute Fallback Cache cho từ '{}'", cacheKey);
+                fallbackCache.put(cacheKey, fallbackResponse);
+            }
+            return fallbackResponse;
+        } catch (Exception e) {
+            log.error("Cả fsoft-ai và Local Database Fallback đều gặp sự cố khi search: {}", e.getMessage());
+            return new AiSearchResponse(Collections.emptyList(), 0, 0);
+        }
+    }
+
+    @Retry(name = "aiRetry", fallbackMethod = "chatFallback")
     public AiChatResponse chat(AiChatRequest request) {
         log.info("Nhận request chat từ người dùng: {}", request);
         List<Long> accessibleDeckIds = getAccessibleDeckIds();
@@ -144,6 +203,16 @@ public class AiIntegrationService {
         }
     }
 
+    public AiChatResponse chatFallback(AiChatRequest request, Throwable t) {
+        log.error("Resilience4j Retry thất bại khi gọi fsoft-ai chat. Lỗi: {}", t.getMessage());
+        return AiChatResponse.builder()
+                .answer("Hệ thống trợ lý AI hiện tại tạm thời chưa phản hồi. Vui lòng thử lại sau ít phút nhé!")
+                .answerSource("SERVICE_UNAVAILABLE")
+                .citations(Collections.emptyList())
+                .build();
+    }
+
+    @Retry(name = "aiRetry", fallbackMethod = "generateQuizFallback")
     public AiQuizResponse generateQuiz(AiQuizRequest request) {
         log.info("Nhận request sinh quiz từ người dùng: {}", request);
         List<Long> accessibleDeckIds = getAccessibleDeckIds();
@@ -234,10 +303,21 @@ public class AiIntegrationService {
         }
     }
 
+    public AiQuizResponse generateQuizFallback(AiQuizRequest request, Throwable t) {
+        log.error("Resilience4j Retry thất bại khi gọi fsoft-ai generateQuiz. Lỗi: {}", t.getMessage());
+        return AiQuizResponse.builder()
+                .questions(Collections.emptyList())
+                .build();
+    }
+
+    @Cacheable(
+            value = "vocab_lookups",
+            key = "#request.word.toLowerCase().trim()",
+            unless = "#result == null || #result.found == false"
+    )
+    @Retry(name = "aiRetry", fallbackMethod = "lookupVocabFallback")
     public VocabLookupResponse lookupVocab(VocabLookupRequest request) {
         log.info("Nhận request tra từ vựng AI (Global lookup) cho từ: {}", request.getWord());
-
-//        request.setAllowedDeckIds();
 
         log.info("Gửi request lookupVocab từ '{}' tới fsoft-ai (Global)", request);
 
@@ -259,32 +339,83 @@ public class AiIntegrationService {
         }
     }
 
-    private String sanitizeAiAnswer(String rawAnswer) {
-        if (rawAnswer == null || rawAnswer.trim().isEmpty()) {
-            return rawAnswer;
-        }
-        String text = rawAnswer.trim();
-        String[] lines = text.split("\r?\n");
-        if (lines.length > 1) {
-            String lastLine = lines[lines.length - 1].trim();
-            int boldCount = 0;
-            int idx = 0;
-            while ((idx = lastLine.indexOf("**", idx)) != -1) {
-                boldCount++;
-                idx += 2;
-            }
-            boolean isUnclosedBold = (boldCount % 2 != 0);
-            boolean isUnfinishedBullet = (lastLine.startsWith("- ") || lastLine.startsWith("* "))
-                    && !lastLine.endsWith(".") && !lastLine.endsWith("!") && !lastLine.endsWith("?") && !lastLine.endsWith(")") && !lastLine.endsWith(":");
+    public VocabLookupResponse lookupVocabFallback(VocabLookupRequest request, Throwable t) {
+        log.warn("fsoft-ai lookupVocab gián đoạn cho từ '{}'. Thử nghiệm Local DB Fallback...", request.getWord());
+        String cacheKey = request.getWord() != null ? request.getWord().toLowerCase().trim() : "";
 
-            if (isUnclosedBold || isUnfinishedBullet) {
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < lines.length - 1; i++) {
-                    sb.append(lines[i]).append("\n");
+        try {
+            Cache fallbackCache = cacheManager != null ? cacheManager.getCache("fallback_vocab_lookups") : null;
+            if (fallbackCache != null && !cacheKey.isBlank()) {
+                VocabLookupResponse cachedResponse = fallbackCache.get(cacheKey, VocabLookupResponse.class);
+                if (cachedResponse != null) {
+                    log.info("HIT 3-minute Fallback Cache cho lookup word '{}'", cacheKey);
+                    return cachedResponse;
                 }
-                text = sb.toString().trim();
             }
+
+            var cardOpt = cardRepository.findFirstByWordIgnoreCase(request.getWord());
+            if (cardOpt.isPresent()) {
+                Card c = cardOpt.get();
+                log.info("Tìm thấy từ '{}' trong Local Database!", c.getWord());
+                VocabCandidate candidate = VocabCandidate.builder()
+                        .word(c.getWord())
+                        .phonetic(c.getPhonetic() != null ? c.getPhonetic() : "")
+                        .partOfSpeech(c.getPartOfSpeech() != null ? c.getPartOfSpeech() : "noun")
+                        .meaning(c.getMeaning())
+                        .definitionEn(c.getDefinitionEn() != null ? c.getDefinitionEn() : "")
+                        .exampleSentence(c.getExampleSentence() != null ? c.getExampleSentence() : "")
+                        .exampleMeaning(c.getExampleMeaning() != null ? c.getExampleMeaning() : "")
+                        .alreadyInDeck(true)
+                        .existingCardId(c.getId())
+                        .build();
+
+                VocabLookupResponse fallbackResponse = VocabLookupResponse.builder()
+                        .found(true)
+                        .source("LOCAL_DATABASE")
+                        .card(candidate)
+                        .build();
+
+                if (fallbackCache != null && !cacheKey.isBlank()) {
+                    log.info("Lưu kết quả lookup Local DB vào 3-minute Fallback Cache cho từ '{}'", cacheKey);
+                    fallbackCache.put(cacheKey, fallbackResponse);
+                }
+
+                return fallbackResponse;
+            }
+        } catch (Exception e) {
+            log.warn("Không thể tra từ từ Local DB: {}", e.getMessage());
         }
-        return text;
+
+        log.error("Resilience4j Retry thất bại khi gọi fsoft-ai lookupVocab cho từ '{}'. Lỗi: {}", request.getWord(), t.getMessage());
+        throw new AppException(ErrorCode.AI_SERVICE_UNAVAILABLE);
     }
+
+//    private String sanitizeAiAnswer(String rawAnswer) {
+//        if (rawAnswer == null || rawAnswer.trim().isEmpty()) {
+//            return rawAnswer;
+//        }
+//        String text = rawAnswer.trim();
+//        String[] lines = text.split("\r?\n");
+//        if (lines.length > 1) {
+//            String lastLine = lines[lines.length - 1].trim();
+//            int boldCount = 0;
+//            int idx = 0;
+//            while ((idx = lastLine.indexOf("**", idx)) != -1) {
+//                boldCount++;
+//                idx += 2;
+//            }
+//            boolean isUnclosedBold = (boldCount % 2 != 0);
+//            boolean isUnfinishedBullet = (lastLine.startsWith("- ") || lastLine.startsWith("* "))
+//                    && !lastLine.endsWith(".") && !lastLine.endsWith("!") && !lastLine.endsWith("?") && !lastLine.endsWith(")") && !lastLine.endsWith(":");
+//
+//            if (isUnclosedBold || isUnfinishedBullet) {
+//                StringBuilder sb = new StringBuilder();
+//                for (int i = 0; i < lines.length - 1; i++) {
+//                    sb.append(lines[i]).append("\n");
+//                }
+//                text = sb.toString().trim();
+//            }
+//        }
+//        return text;
+//    }
 }

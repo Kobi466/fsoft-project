@@ -33,4 +33,9 @@ public interface CardRepository extends JpaRepository<Card, Long> {
 
     @Query("SELECT c.id FROM Card c ORDER BY c.id ASC")
     Page<Long> findAllCardIds(Pageable pageable);
+
+    @Query("SELECT c FROM Card c WHERE c.deck.id IN :deckIds AND (LOWER(c.word) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(c.meaning) LIKE LOWER(CONCAT('%', :query, '%')))")
+    List<Card> searchByQueryAndDeckIds(@Param("query") String query, @Param("deckIds") List<Long> deckIds, Pageable pageable);
+
+    Optional<Card> findFirstByWordIgnoreCase(String word);
 }

@@ -14,25 +14,21 @@ import org.springframework.ai.content.Media;
 import org.springframework.ai.converter.BeanOutputConverter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.MagicSortCards;
-import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.MagicSortResult;
 import com.fivetuat.fsoftprojectserver.dtos.request.CardCreationRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.ExtractedCards;
-import com.fivetuat.fsoftprojectserver.dtos.request.MagicSortRequest;
-import com.fivetuat.fsoftprojectserver.dtos.response.CardSuggestionResponse;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
-import com.fivetuat.fsoftprojectserver.utils.AiResponseUtils;
 import com.fivetuat.fsoftprojectserver.services.AiExtractionService;
+import com.fivetuat.fsoftprojectserver.utils.AiFallbackExecutor;
+import com.fivetuat.fsoftprojectserver.utils.AiResponseUtils;
 
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -44,33 +40,31 @@ public class AiExtractionServiceImpl implements AiExtractionService {
 
     ChatClient groqClient;
     ChatClient geminiClient;
+    AiFallbackExecutor aiFallbackExecutor;
     Resource textSystemPromptResource;
     Resource textUserPromptResource;
     Resource multimodalSystemPromptResource;
     Resource multimodalUserPromptResource;
-    Resource suggestionSystemPromptResource;
-    Resource suggestionUserPromptResource;
 
     public AiExtractionServiceImpl(
             @Qualifier("groqClient") ChatClient groqClient,
             @Qualifier("geminiVisionClient") ChatClient geminiClient,
+            AiFallbackExecutor aiFallbackExecutor,
             @Value("classpath:/prompts/extraction-system.st") Resource textSystemPromptResource,
             @Value("classpath:/prompts/extraction-user.st") Resource textUserPromptResource,
             @Value("classpath:/prompts/extraction-system.st") Resource multimodalSystemPromptResource,
-            @Value("classpath:/prompts/extraction-multimodal-user.st") Resource multimodalUserPromptResource,
-            @Value("classpath:/prompts/card-suggestion-system.st") Resource suggestionSystemPromptResource,
-            @Value("classpath:/prompts/card-suggestion-user.st") Resource suggestionUserPromptResource) {
+            @Value("classpath:/prompts/extraction-multimodal-user.st") Resource multimodalUserPromptResource) {
         this.groqClient = groqClient;
         this.geminiClient = geminiClient;
+        this.aiFallbackExecutor = aiFallbackExecutor;
         this.textSystemPromptResource = textSystemPromptResource;
         this.textUserPromptResource = textUserPromptResource;
         this.multimodalSystemPromptResource = multimodalSystemPromptResource;
         this.multimodalUserPromptResource = multimodalUserPromptResource;
-        this.suggestionSystemPromptResource = suggestionSystemPromptResource;
-        this.suggestionUserPromptResource = suggestionUserPromptResource;
     }
 
     @Override
+    @Retry(name = "aiRetry", fallbackMethod = "handleExtractedTextRetryFallback")
     public List<CardCreationRequest> extractedText(String text, String category) {
         if (text == null || text.trim().isEmpty()) {
             log.warn("Nội dung text rỗng, bỏ qua trích xuất từ vựng.");
@@ -119,7 +113,7 @@ public class AiExtractionServiceImpl implements AiExtractionService {
             return validCards;
 
         } catch (Exception e) {
-            log.error("Lỗi khi gọi AI trích xuất: {}", e.getMessage(), e);
+            log.error("Lỗi khi gọi AI (Groq) bóc tách Text: {}", e.getMessage(), e);
             throw new AppException(ErrorCode.AI_EXTRACTION_ERROR);
         }
     }
@@ -160,9 +154,9 @@ public class AiExtractionServiceImpl implements AiExtractionService {
         byte[] bytes = file.getBytes();
         Resource imageResource = new ByteArrayResource(bytes);
         Media media = new Media(
-                MimeTypeUtils.parseMimeType(file.getContentType()), imageResource
+                MimeTypeUtils.parseMimeType(file.getContentType()),
+                imageResource
         );
-
         String rawResponse = geminiClient.prompt()
                 .system(systemMessage)
                 .user(promptUserSpec -> promptUserSpec.text(userMessage).media(media))
@@ -190,7 +184,12 @@ public class AiExtractionServiceImpl implements AiExtractionService {
     }
 
     @Override
+    @Retry(name = "aiRetry", fallbackMethod = "handleExtractedFileRetryFallback")
     public List<CardCreationRequest> extractedFile(MultipartFile file, String category) {
+        if (file == null || file.isEmpty()) {
+            return List.of();
+        }
+
         log.info("Trích xuất từ File: {}, nhóm: {}", file.getOriginalFilename(), category);
         try {
             String mimeType = file.getContentType();
@@ -213,108 +212,33 @@ public class AiExtractionServiceImpl implements AiExtractionService {
         }
     }
 
-    @Override
-    public List<MagicSortResult> magicSort(MagicSortRequest request) {
-        log.info("Bắt đầu Magic Sort cho {} từ vựng", request.words().size());
+    public List<CardCreationRequest> handleExtractedTextRetryFallback(String text, String category, Throwable t) {
+        String safeCategory = (category != null && !category.trim().isEmpty()) ? category : "VOCABULARY";
 
-        BeanOutputConverter<MagicSortCards> converter = new BeanOutputConverter<>(MagicSortCards.class);
-        String format = converter.getFormat();
+        ExtractedCards result = aiFallbackExecutor.executeGeminiFallback(
+                textSystemPromptResource,
+                null,
+                textUserPromptResource,
+                Map.of("category", safeCategory, "text", text),
+                ExtractedCards.class,
+                t
+        );
 
-        StringBuilder decksInfoBuilder = new StringBuilder();
-        if (request.decks() != null) {
-            request.decks().forEach((id, name)
-                    -> decksInfoBuilder.append("- ID: ").append(id).append(", Tên: ").append(name).append("\n")
-            );
-        }
-        String decksInfo = decksInfoBuilder.toString();
-
-        String wordsStr = String.join(", ", request.words());
-
-        SystemPromptTemplate systemTemplate = new SystemPromptTemplate(new ClassPathResource("/prompts/magic-sort-system.st"));
-        String systemMessage = systemTemplate.render(Map.of("format", format));
-
-        PromptTemplate userTemplate = new PromptTemplate(new ClassPathResource("/prompts/magic-sort-user.st"));
-        String userMessage = userTemplate.render(Map.of(
-                "words", wordsStr,
-                "decksInfo", decksInfo
-        ));
-
-        try {
-            String rawResponse = groqClient.prompt()
-                    .system(systemMessage)
-                    .user(userMessage)
-                    .call()
-                    .content();
-
-            String cleanedResponse = AiResponseUtils.sanitizeJsonResponse(rawResponse);
-            MagicSortCards result = converter.convert(cleanedResponse);
-
-            if (result == null || result.results() == null) {
-                return List.of();
+        if (result != null && result.cards() != null) {
+            List<CardCreationRequest> validCards = new ArrayList<>();
+            for (CardCreationRequest card : result.cards()) {
+                if (card.getWord() != null && !card.getWord().isBlank()) {
+                    if (card.getMeaning() == null) card.setMeaning(card.getWord());
+                    validCards.add(card);
+                }
             }
-
-            return result.results();
-
-        } catch (Exception e) {
-            log.error("Lỗi khi gọi AI Magic Sort: {}", e.getMessage(), e);
-            throw new AppException(ErrorCode.AI_EXTRACTION_ERROR);
+            return validCards;
         }
+        return List.of();
     }
 
-    @Cacheable(
-            value = "ai_suggestions",
-            key = "#query.toLowerCase().trim()",
-            unless = "#query == null || #query.trim().length() < 3 || #result == null || #result.termSuggestions == null || #result.termSuggestions.isEmpty()"
-    )
-    @Override
-    public CardSuggestionResponse getSuggestions(String query) {
-        if (query == null || query.trim().isEmpty()) {
-            return CardSuggestionResponse.builder()
-                    .query("")
-                    .termSuggestions(List.of())
-                    .definitionSuggestions(List.of())
-                    .build();
-        }
-
-        log.info("Bắt đầu AI Autocomplete Suggestion cho từ vựng: '{}'", query);
-
-        BeanOutputConverter<CardSuggestionResponse> converter = new BeanOutputConverter<>(CardSuggestionResponse.class);
-        String format = converter.getFormat();
-
-        try {
-            SystemPromptTemplate systemTemplate = new SystemPromptTemplate(suggestionSystemPromptResource);
-            String systemMessage = systemTemplate.render(Map.of("format", format));
-
-            PromptTemplate userTemplate = new PromptTemplate(suggestionUserPromptResource);
-            String userMessage = userTemplate.render(Map.of("query", query.trim()));
-
-            String rawResponse = groqClient.prompt()
-                    .system(systemMessage)
-                    .user(userMessage)
-                    .call()
-                    .content();
-
-            String cleanedResponse = AiResponseUtils.sanitizeJsonResponse(rawResponse);
-            CardSuggestionResponse result = converter.convert(cleanedResponse);
-
-            if (result == null) {
-                return CardSuggestionResponse.builder()
-                        .query(query)
-                        .termSuggestions(List.of(query))
-                        .definitionSuggestions(List.of())
-                        .build();
-            }
-
-            return result;
-
-        } catch (Exception e) {
-            log.error("Lỗi khi gọi AI Autocomplete Suggestion: {}", e.getMessage(), e);
-            return CardSuggestionResponse.builder()
-                    .query(query)
-                    .termSuggestions(List.of(query))
-                    .definitionSuggestions(List.of())
-                    .build();
-        }
+    public List<CardCreationRequest> handleExtractedFileRetryFallback(MultipartFile file, String category, Throwable t) {
+        log.error("Retry thất bại khi trích xuất file AI. Lỗi: {}", t != null ? t.getMessage() : "N/A");
+        return List.of();
     }
-
 }

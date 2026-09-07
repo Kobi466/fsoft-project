@@ -42,7 +42,7 @@ public class MultiAiConfig {
                 .build();
     }
 
-    @Bean(name = "geminiVisionClient")
+    @Bean(name = {"geminiClient", "geminiVisionClient"})
     public ChatClient geminiChatClient(GoogleGenAiChatModel chatModel) {
         return ChatClient.builder(chatModel)
                 .defaultOptions(GoogleGenAiChatOptions.builder()
@@ -52,6 +52,9 @@ public class MultiAiConfig {
                         new AvailableToolsLoggingAdvisor(),
                         new TokenCounterAdvisor()
                 )
+                .defaultSystem("Bạn là một chuyên gia ngôn ngữ học AI từ Google. Nhiệm vụ của bạn là đọc hiểu văn bản, "
+                        + "xử lý yêu cầu và trả về kết quả chuẩn định dạng JSON. "
+                        + "Tuyệt đối KHÔNG bao bọc dữ liệu bằng ký tự markdown hay trả lời thêm câu văn tự nhiên ngoài chuỗi JSON.")
                 .build();
     }
 

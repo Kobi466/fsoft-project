@@ -137,6 +137,11 @@ public class RedisConfig implements CachingConfigurer {
 
                 .withCacheConfiguration("ai_situational_lessons", defaultConfig.entryTtl(Duration.ofDays(7)))
                 .withCacheConfiguration("ai_stories", defaultConfig.entryTtl(Duration.ofDays(7)))
+
+
+                .withCacheConfiguration("fallback_vocab_lookups", defaultConfig.entryTtl(Duration.ofMinutes(3)))
+                .withCacheConfiguration("fallback_card_searches", defaultConfig.entryTtl(Duration.ofMinutes(3)))
+
                 .build();
     }
 
