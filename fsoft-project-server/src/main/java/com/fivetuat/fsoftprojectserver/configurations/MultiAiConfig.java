@@ -11,6 +11,7 @@ import org.springframework.ai.google.genai.GoogleGenAiChatModel;
 import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -60,6 +61,25 @@ public class MultiAiConfig {
         return MessageWindowChatMemory.builder()
                 .chatMemoryRepository(repository)
                 .maxMessages(30)
+                .build();
+    }
+
+    @Value("${admin-ai.model:gemini-2.5-flash}")
+    String adminAiModel;
+
+    static final String ADMIN_AI_SYSTEM_PROMPT =
+            "Bạn là trợ lý AI dành riêng cho quản trị viên của hệ thống FSoft Flashcards. "
+                    + "Bạn có thể tra cứu dữ liệu hệ thống qua các tool được cung cấp và thực hiện các hành động quản trị. "
+                    + "Với các hành động nguy hiểm (duyệt/từ chối/xóa bộ bài, đặt official, đổi roles user), "
+                    + "bạn phải gọi tool soạn hành động tương ứng, rồi báo cho admin biết actionId và yêu cầu admin xác nhận. "
+                    + "KHÔNG được bịa dữ liệu không có trong kết quả tool. Trả lời bằng ngôn ngữ admin đang dùng.";
+
+    @Bean(name = "adminAiClient")
+    public ChatClient adminAiChatClient(GoogleGenAiChatModel chatModel) {
+        return ChatClient.builder(chatModel)
+                .defaultOptions(GoogleGenAiChatOptions.builder()
+                        .model(adminAiModel))
+                .defaultSystem(ADMIN_AI_SYSTEM_PROMPT)
                 .build();
     }
 }
