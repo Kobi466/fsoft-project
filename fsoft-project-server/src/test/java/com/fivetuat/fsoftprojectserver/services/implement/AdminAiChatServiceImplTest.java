@@ -83,7 +83,7 @@ class AdminAiChatServiceImplTest {
             AdminAiChatResponse response = impl().chat(
                     new AdminAiChatRequest("Có bao nhiêu bộ bài đang chờ duyệt?", null));
 
-            assertEquals("admin-ai-" + adminId, response.getConversationId());
+            assertEquals(adminId.toString(), response.getConversationId());
             assertEquals("Hiện có 5 bộ bài chờ duyệt", response.getReply());
             assertNull(response.getPendingAction());
             assertNull(response.getResult());
@@ -282,7 +282,7 @@ class AdminAiChatServiceImplTest {
         try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentUserLogin).thenReturn(Optional.of(adminId));
             List<Message> messages = buildMessages(25);
-            when(chatMemory.get("admin-ai-" + adminId)).thenReturn(messages);
+            when(chatMemory.get(adminId.toString())).thenReturn(messages);
 
             List<com.fivetuat.fsoftprojectserver.dtos.response.AdminAiChatHistoryResponse> page1 =
                     impl().getHistory(1, 10);
@@ -307,7 +307,7 @@ class AdminAiChatServiceImplTest {
         try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentUserLogin).thenReturn(Optional.of(adminId));
             List<Message> messages = buildMessages(5);
-            when(chatMemory.get("admin-ai-" + adminId)).thenReturn(messages);
+            when(chatMemory.get(adminId.toString())).thenReturn(messages);
 
             // page 0 and negative pages clamp to the first page (most recent messages)
             List<com.fivetuat.fsoftprojectserver.dtos.response.AdminAiChatHistoryResponse> clamped =
@@ -334,7 +334,7 @@ class AdminAiChatServiceImplTest {
     void getHistoryReturnsEmptyWhenMemoryEmpty() {
         try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentUserLogin).thenReturn(Optional.of(adminId));
-            when(chatMemory.get("admin-ai-" + adminId)).thenReturn(List.of());
+            when(chatMemory.get(adminId.toString())).thenReturn(List.of());
 
             assertEquals(List.of(), impl().getHistory(1, 10));
         }

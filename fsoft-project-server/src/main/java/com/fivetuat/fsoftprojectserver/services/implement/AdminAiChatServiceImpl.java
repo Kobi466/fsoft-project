@@ -48,8 +48,6 @@ import java.util.stream.Collectors;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AdminAiChatServiceImpl implements AdminAiChatService {
 
-    static final String CONVERSATION_PREFIX = "admin-ai-";
-
     ChatClient adminAiClient;
     ChatMemory chatMemory;
     AdminAiTools adminAiTools;
@@ -62,7 +60,7 @@ public class AdminAiChatServiceImpl implements AdminAiChatService {
     @Override
     public AdminAiChatResponse chat(AdminAiChatRequest request) {
         UUID adminId = currentAdminId();
-        String conversationId = CONVERSATION_PREFIX + adminId;
+        String conversationId = adminId.toString();
 
         String reply;
         try {
@@ -126,7 +124,7 @@ public class AdminAiChatServiceImpl implements AdminAiChatService {
         pendingActionStore.clearLatestIndex(adminId);
 
         return AdminAiChatResponse.builder()
-                .conversationId(CONVERSATION_PREFIX + adminId)
+                .conversationId(adminId.toString())
                 .reply("Đã thực hiện: " + action.summary())
                 .pendingAction(null)
                 .result(executed.resultSummary())
@@ -154,7 +152,7 @@ public class AdminAiChatServiceImpl implements AdminAiChatService {
         pendingActionStore.clearLatestIndex(adminId);
 
         return AdminAiChatResponse.builder()
-                .conversationId(CONVERSATION_PREFIX + adminId)
+                .conversationId(adminId.toString())
                 .reply("Đã hủy hành động: " + action.summary())
                 .pendingAction(null)
                 .build();
@@ -162,7 +160,7 @@ public class AdminAiChatServiceImpl implements AdminAiChatService {
 
     @Override
     public List<AdminAiChatHistoryResponse> getHistory(int page, int size) {
-        String conversationId = CONVERSATION_PREFIX + currentAdminId();
+        String conversationId = currentAdminId().toString();
         List<Message> messages = chatMemory.get(conversationId);
         int to = Math.min(messages.size(), Math.max(0, messages.size() - (page - 1) * size));
         int from = Math.max(0, to - size);
@@ -179,7 +177,7 @@ public class AdminAiChatServiceImpl implements AdminAiChatService {
 
     @Override
     public void clearHistory() {
-        chatMemory.clear(CONVERSATION_PREFIX + currentAdminId());
+        chatMemory.clear(currentAdminId().toString());
     }
 
     @Override
