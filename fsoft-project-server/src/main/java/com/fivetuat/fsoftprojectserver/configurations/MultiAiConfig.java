@@ -64,7 +64,7 @@ public class MultiAiConfig {
                 .build();
     }
 
-    @Value("${admin-ai.model:gemini-2.5-flash}")
+    @Value("${admin-ai.model:openai/gpt-oss-120b}")
     String adminAiModel;
 
     static final String ADMIN_AI_SYSTEM_PROMPT =
@@ -75,9 +75,9 @@ public class MultiAiConfig {
                     + "KHÔNG được bịa dữ liệu không có trong kết quả tool. Trả lời bằng ngôn ngữ admin đang dùng.";
 
     @Bean(name = "adminAiClient")
-    public ChatClient adminAiChatClient(GoogleGenAiChatModel chatModel) {
+    public ChatClient adminAiChatClient(OpenAiChatModel chatModel) {
         return ChatClient.builder(chatModel)
-                .defaultOptions(GoogleGenAiChatOptions.builder()
+                .defaultOptions(OpenAiChatOptions.builder()
                         .model(adminAiModel))
                 .defaultSystem(ADMIN_AI_SYSTEM_PROMPT)
                 .build();
