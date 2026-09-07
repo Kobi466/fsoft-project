@@ -1,43 +1,59 @@
 package com.fivetuat.fsoftprojectserver.services.implement;
 
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.CommentCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.CommunityPostCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.CommunityPostUpdateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.PostModerateRequest;
+import com.fivetuat.fsoftprojectserver.dtos.response.CommentDeleteResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.CommentResponse;
+import com.fivetuat.fsoftprojectserver.dtos.response.CommunityEventPayload;
 import com.fivetuat.fsoftprojectserver.dtos.response.CommunityPostResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.PostLikeToggleResponse;
-import com.fivetuat.fsoftprojectserver.entities.*;
+import com.fivetuat.fsoftprojectserver.entities.Comment;
+import com.fivetuat.fsoftprojectserver.entities.CommunityPost;
+import com.fivetuat.fsoftprojectserver.entities.Deck;
+import com.fivetuat.fsoftprojectserver.entities.PostLike;
+import com.fivetuat.fsoftprojectserver.entities.Profile;
+import com.fivetuat.fsoftprojectserver.entities.Tag;
+import com.fivetuat.fsoftprojectserver.enums.CommunityEventType;
 import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 import com.fivetuat.fsoftprojectserver.enums.PostStatus;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.mappers.CommentMapper;
 import com.fivetuat.fsoftprojectserver.mappers.CommunityPostMapper;
-import com.fivetuat.fsoftprojectserver.repositories.*;
+import com.fivetuat.fsoftprojectserver.repositories.CommentRepository;
+import com.fivetuat.fsoftprojectserver.repositories.CommunityPostRepository;
+import com.fivetuat.fsoftprojectserver.repositories.DeckRepository;
+import com.fivetuat.fsoftprojectserver.repositories.PostLikeRepository;
+import com.fivetuat.fsoftprojectserver.repositories.TagRepository;
 import com.fivetuat.fsoftprojectserver.services.AuthService;
-import com.fivetuat.fsoftprojectserver.dtos.response.CommentDeleteResponse;
-import com.fivetuat.fsoftprojectserver.dtos.response.CommunityEventPayload;
-import com.fivetuat.fsoftprojectserver.enums.CommunityEventType;
 import com.fivetuat.fsoftprojectserver.services.CommunityPostService;
 import com.fivetuat.fsoftprojectserver.utils.PageUtils;
 import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -55,7 +71,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
     CommentMapper commentMapper;
     SimpMessagingTemplate messagingTemplate;
 
-    // --- QUẢN LÝ BÀI VIẾT & FEED ---
 
     @Override
     @Transactional
@@ -65,7 +80,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         CommunityPost post = communityPostMapper.toCommunityPost(request);
         post.setProfile(currentProfile);
 
-        // Nếu là ADMIN đăng bài -> Tự động duyệt luôn; Nếu là USER -> Chờ duyệt (PENDING)
         boolean isAdmin = SecurityUtils.isCurrentUserInRole("ROLE_ADMIN");
         if (isAdmin) {
             post.setStatus(PostStatus.APPROVED);
@@ -75,19 +89,16 @@ public class CommunityPostServiceImpl implements CommunityPostService {
             post.setStatus(PostStatus.PENDING);
         }
 
-        // Đính kèm bộ thẻ (nếu có)
         if (request.getDeckId() != null) {
             Deck deck = deckRepository.findByIdAndIsDeletedFalse(request.getDeckId())
                     .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
 
-            // Chỉ cho phép đính kèm bộ thẻ PUBLIC hoặc do chính người dùng sở hữu
             if (deck.getVisibility() != DeckVisibility.PUBLIC && !deck.getProfile().getId().equals(currentProfile.getId())) {
                 throw new AppException(ErrorCode.DECK_NOT_PUBLIC);
             }
             post.setDeck(deck);
         }
 
-        // Gắn nhãn (nếu có)
         if (request.getTagIds() != null && !request.getTagIds().isEmpty()) {
             Set<Tag> tags = new HashSet<>(tagRepository.findAllById(request.getTagIds()));
             post.setTags(tags);
@@ -114,7 +125,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         CommunityPost post = communityPostRepository.findByIdAndIsDeletedFalse(postId)
                 .orElseThrow(() -> new AppException(ErrorCode.COMMUNITY_POST_NOT_FOUND));
 
-        // Nếu bài viết chưa được duyệt, chỉ tác giả bài viết hoặc ADMIN mới có quyền xem
         if (post.getStatus() != PostStatus.APPROVED) {
             UUID currentUserId = SecurityUtils.getCurrentUserLogin().orElse(null);
             boolean isAuthor = currentUserId != null && post.getProfile().getId().equals(currentUserId);
@@ -126,7 +136,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
 
         CommunityPostResponse response = communityPostMapper.toCommunityPostResponse(post);
 
-        // Kiểm tra xem người dùng hiện tại đã thả tim bài viết này chưa
         SecurityUtils.getCurrentUserLogin().ifPresent(currentUserId -> {
             boolean liked = postLikeRepository.existsByCommunityPostIdAndProfileId(postId, currentUserId);
             response.setLikedByCurrentUser(liked);
@@ -142,14 +151,12 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         CommunityPost post = communityPostRepository.findByIdAndIsDeletedFalse(postId)
                 .orElseThrow(() -> new AppException(ErrorCode.COMMUNITY_POST_NOT_FOUND));
 
-        // Kiểm tra quyền tác giả
         if (!post.getProfile().getId().equals(currentProfile.getId())) {
             throw new AppException(ErrorCode.COMMUNITY_POST_ACCESS_DENIED);
         }
 
         communityPostMapper.updateCommunityPost(post, request);
 
-        // Cập nhật bộ thẻ đính kèm
         if (request.getDeckId() != null) {
             Deck deck = deckRepository.findByIdAndIsDeletedFalse(request.getDeckId())
                     .orElseThrow(() -> new AppException(ErrorCode.DECK_NOT_FOUND));
@@ -159,7 +166,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
             post.setDeck(deck);
         }
 
-        // Cập nhật nhãn
         if (request.getTagIds() != null) {
             Set<Tag> tags = new HashSet<>(tagRepository.findAllById(request.getTagIds()));
             post.setTags(tags);
@@ -189,7 +195,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         CommunityPost post = communityPostRepository.findByIdAndIsDeletedFalse(postId)
                 .orElseThrow(() -> new AppException(ErrorCode.COMMUNITY_POST_NOT_FOUND));
 
-        // Cho phép tác giả hoặc ADMIN xóa
         boolean isAdmin = SecurityUtils.isCurrentUserInRole("ROLE_ADMIN");
         if (!post.getProfile().getId().equals(currentProfile.getId()) && !isAdmin) {
             throw new AppException(ErrorCode.COMMUNITY_POST_ACCESS_DENIED);
@@ -251,7 +256,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         return mapToPageResponseWithLikedFlag(postPage);
     }
 
-    // --- KIỂM DUYỆT BÀI VIẾT (ADMIN MODERATION) ---
 
     @Override
     @Transactional(readOnly = true)
@@ -299,7 +303,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         return response;
     }
 
-    // --- TƯƠNG TÁC THẢ TIM (TOGGLE LIKE: BẬT / TẮT THÍCH) ---
 
     @Override
     @Transactional
@@ -308,7 +311,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         CommunityPost post = communityPostRepository.findByIdAndIsDeletedFalse(postId)
                 .orElseThrow(() -> new AppException(ErrorCode.COMMUNITY_POST_NOT_FOUND));
 
-        // Chỉ cho phép like bài viết đã được duyệt (APPROVED)
         if (post.getStatus() != PostStatus.APPROVED) {
             throw new AppException(ErrorCode.POST_NOT_APPROVED);
         }
@@ -317,7 +319,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
 
         boolean isLiked;
         if (existingLike.isPresent()) {
-            // Đã like rồi -> Bỏ like (Unlike)
             postLikeRepository.delete(existingLike.get());
             if (post.getLikeCount() > 0) {
                 post.setLikeCount(post.getLikeCount() - 1);
@@ -325,7 +326,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
             isLiked = false;
             log.info("Profile {} unliked post ID: {}", currentProfile.getId(), postId);
         } else {
-            // Chưa like -> Thêm like
             PostLike postLike = PostLike.builder()
                     .communityPost(post)
                     .profile(currentProfile)
@@ -356,8 +356,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         return toggleResponse;
     }
 
-    // --- BÌNH LUẬN (COMMENTS) ---
-
     @Override
     @Transactional
     public CommentResponse createComment(Long postId, CommentCreateRequest request) {
@@ -365,7 +363,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         CommunityPost post = communityPostRepository.findByIdAndIsDeletedFalse(postId)
                 .orElseThrow(() -> new AppException(ErrorCode.COMMUNITY_POST_NOT_FOUND));
 
-        // Chỉ cho phép bình luận bài viết đã được duyệt (APPROVED)
         if (post.getStatus() != PostStatus.APPROVED) {
             throw new AppException(ErrorCode.POST_NOT_APPROVED);
         }
@@ -374,7 +371,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         comment.setCommunityPost(post);
         comment.setProfile(currentProfile);
 
-        // Nếu là trả lời (Reply) một bình luận khác
         if (request.getParentCommentId() != null) {
             Comment parentComment = commentRepository.findByIdAndIsDeletedFalse(request.getParentCommentId())
                     .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_FOUND));
@@ -387,7 +383,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
 
         Comment savedComment = commentRepository.save(comment);
 
-        // Tăng số lượng comment của bài viết
         post.setCommentCount(post.getCommentCount() + 1);
         communityPostRepository.save(post);
         log.info("Profile {} commented on post ID: {}", currentProfile.getId(), postId);
@@ -407,7 +402,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<CommentResponse> getCommentsByPostId(Long postId, int page, int size) {
-        // Kiểm tra bài viết có tồn tại không
         communityPostRepository.findByIdAndIsDeletedFalse(postId)
                 .orElseThrow(() -> new AppException(ErrorCode.COMMUNITY_POST_NOT_FOUND));
 
@@ -425,7 +419,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<CommentResponse> getRepliesByCommentId(Long commentId, int page, int size) {
-        // Kiểm tra bình luận cha có tồn tại không
         commentRepository.findByIdAndIsDeletedFalse(commentId)
                 .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_FOUND));
 
@@ -447,7 +440,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         Comment comment = commentRepository.findByIdAndIsDeletedFalse(commentId)
                 .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_FOUND));
 
-        // Kiểm tra quyền: Người viết comment HOẶC Chủ bài viết HOẶC ADMIN có quyền xóa
         boolean isCommentAuthor = comment.getProfile().getId().equals(currentProfile.getId());
         boolean isPostAuthor = comment.getCommunityPost().getProfile().getId().equals(currentProfile.getId());
         boolean isAdmin = SecurityUtils.isCurrentUserInRole("ROLE_ADMIN");
@@ -456,11 +448,9 @@ public class CommunityPostServiceImpl implements CommunityPostService {
             throw new AppException(ErrorCode.COMMENT_ACCESS_DENIED);
         }
 
-        // Soft delete bình luận này
         comment.setDeleted(true);
         commentRepository.save(comment);
 
-        // Cascade xóa tất cả các bình luận con (Replies) bên dưới nó
         List<Comment> childReplies = commentRepository.findAllActiveRepliesByParentId(commentId);
         int totalDeletedComments = 1;
         if (!childReplies.isEmpty()) {
@@ -471,7 +461,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
             totalDeletedComments += childReplies.size();
         }
 
-        // Cập nhật lại commentCount trên bài viết
         CommunityPost post = comment.getCommunityPost();
         int newCommentCount = Math.max(0, post.getCommentCount() - totalDeletedComments);
         post.setCommentCount(newCommentCount);
@@ -494,7 +483,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
                 .build());
     }
 
-    // --- HELPER FUNCTION ---
 
     private PageResponse<CommunityPostResponse> mapToPageResponseWithLikedFlag(Page<CommunityPost> postPage) {
         List<Long> postIds = postPage.getContent().stream()
@@ -513,8 +501,6 @@ public class CommunityPostServiceImpl implements CommunityPostService {
             return response;
         });
     }
-
-    // --- WEBSOCKET REALTIME HELPER ---
 
     private void sendCommunityEvent(String destination, CommunityEventPayload<?> payload) {
         try {
