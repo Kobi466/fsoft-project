@@ -88,6 +88,7 @@ public class SpaceStrikerRoomServiceImpl implements SpaceStrikerRoomService {
                 .currentQuestionIndex(-1)
                 .players(new LinkedHashMap<>(Map.of(hostUserId, hostPlayer)))
                 .questionResolved(false)
+                .answeredUserIds(new HashSet<>())
                 .build();
 
         save(state);
@@ -168,6 +169,7 @@ public class SpaceStrikerRoomServiceImpl implements SpaceStrikerRoomService {
             state.setStartedAt(Instant.now().toEpochMilli());
             state.setCurrentQuestionStartedAt(Instant.now().toEpochMilli());
             state.setQuestionResolved(false);
+            ensureAnsweredSet(state).clear();
             save(state);
             broadcast(state, "ROOM_STARTED");
             scheduleNextTimerIfNeeded(state);
@@ -178,6 +180,13 @@ public class SpaceStrikerRoomServiceImpl implements SpaceStrikerRoomService {
     /**
      * Luật riêng Space Striker: chỉ người BẮN TRÚNG ĐẦU TIÊN mới được điểm và làm chuyển câu ngay.
      * Bắn trượt: không có gì thay đổi. Bắn trúng nhưng câu đã bị "hạ gục" trước đó: bị bỏ qua (chậm chân).
+     *
+     * FIX: client hiện gửi mỗi phát bắn qua HAI kênh (STOMP + REST dự phòng), và có thể gửi lại khi
+     * mất kết nối / bấm nhanh nhiều lần. Nếu không chặn, request thứ 2 của MỘT phát bắn trúng có thể
+     * tới sau khi câu đã chuyển sang câu KẾ TIẾP (vì request đầu đã làm advance) -> cardId cũ (đúng ở
+     * câu trước) bị đem so với đáp án của câu MỚI -> gần như luôn sai -> trừ oan 1 tim dù người chơi
+     * bắn trúng. Cách chặn: đánh dấu userId đã được xử lý cho currentQuestionIndex hiện tại NGAY khi
+     * xác định xong đúng/sai, trước khi có thể advance câu; set này được xoá mỗi khi sang câu mới.
      */
     @Override
     public SpaceStrikerRoomState submitAnswer(String roomCode, String userId, Long cardId) {
@@ -187,11 +196,21 @@ public class SpaceStrikerRoomServiceImpl implements SpaceStrikerRoomService {
             PlayerState player = state.getPlayers().get(userId);
             if (player == null) throw new AppException(ErrorCode.PLAYER_NOT_IN_ROOM);
             if (player.getLives() <= 0) return state; // đã hết máu, không còn được bắn
+
+            // Chặn xử lý trùng: người này đã có phát bắn được ghi nhận cho ĐÚNG câu hiện tại rồi
+            // (dù kết quả trúng hay trượt) -> mọi request trùng lặp sau đó bị bỏ qua an toàn.
+            Set<String> answeredUserIds = ensureAnsweredSet(state);
+            if (answeredUserIds.contains(userId)) return state;
+
             if (state.isQuestionResolved()) return state;
 
             AudioQuestionItem question = state.getQuestions().get(state.getCurrentQuestionIndex());
             boolean correct = cardId != null && question.getCorrectOptionId() != null
                     && question.getCorrectOptionId().longValue() == cardId.longValue();
+
+            // Đánh dấu NGAY tại đây, trước khi advanceQuestionOrFinish có thể đổi currentQuestionIndex,
+            // để request trùng đến sau (dù trước hay sau khi câu đổi) đều bị chặn ở check phía trên.
+            answeredUserIds.add(userId);
 
             if (!correct) {
                 player.setLives(Math.max(0, player.getLives() - 1));
@@ -220,7 +239,17 @@ public class SpaceStrikerRoomServiceImpl implements SpaceStrikerRoomService {
             return state;
         }
     }
+
+    /** Trả về set answeredUserIds của state, tự khởi tạo nếu state cũ (được nạp từ Redis) chưa có field này. */
+    private Set<String> ensureAnsweredSet(SpaceStrikerRoomState state) {
+        if (state.getAnsweredUserIds() == null) {
+            state.setAnsweredUserIds(new HashSet<>());
+        }
+        return state.getAnsweredUserIds();
+    }
+
     private boolean advanceQuestionOrFinish(SpaceStrikerRoomState state) {
+        ensureAnsweredSet(state).clear(); // sang câu mới -> mọi người được bắn lại từ đầu
         int next = state.getCurrentQuestionIndex() + 1;
         if (next >= state.getQuestions().size()) {
             state.setStatus(RoomStatus.FINISHED);

@@ -2,6 +2,7 @@ package com.fivetuat.fsoftprojectserver.dtos.game;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.fivetuat.fsoftprojectserver.enums.RoomStatus;
 import com.fivetuat.fsoftprojectserver.dtos.response.AudioReflexGameResponse.AudioQuestionItem;
@@ -21,7 +22,8 @@ public class SpaceStrikerRoomState {
     long startedAt;
     long currentQuestionStartedAt;
     Map<String, PlayerState> players;
-
     /** true khi đã có người bắn trúng câu hiện tại -> phát bắn sau đó (dù trúng) không còn được tính điểm. */
     boolean questionResolved;
+    @Builder.Default
+    Set<String> answeredUserIds = new java.util.HashSet<>();
 }
