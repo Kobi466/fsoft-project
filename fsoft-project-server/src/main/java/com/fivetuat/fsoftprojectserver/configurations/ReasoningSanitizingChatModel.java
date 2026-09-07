@@ -10,7 +10,7 @@ import java.util.List;
 
 public class ReasoningSanitizingChatModel implements ChatModel {
 
-    private static final String REASONING_METADATA_KEY = "reasoning_content";
+    private static final String REASONING_METADATA_KEY = "reasoningContent";
 
     private final ChatModel delegate;
 
