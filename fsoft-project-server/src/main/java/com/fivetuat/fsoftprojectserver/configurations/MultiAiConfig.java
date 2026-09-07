@@ -16,6 +16,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
+import java.util.Map;
+
 @Configuration
 public class MultiAiConfig {
 
@@ -78,7 +80,8 @@ public class MultiAiConfig {
     public ChatClient adminAiChatClient(OpenAiChatModel chatModel) {
         return ChatClient.builder(chatModel)
                 .defaultOptions(OpenAiChatOptions.builder()
-                        .model(adminAiModel))
+                        .model(adminAiModel)
+                        .extraBody(Map.of("include_reasoning", false)))
                 .defaultSystem(ADMIN_AI_SYSTEM_PROMPT)
                 .build();
     }
