@@ -55,6 +55,8 @@ public class SecurityConfiguration {
             "/api/chat-ai/test",
             "/ws-chat/**",
             "/ws-game/**",
+            "/ws-notification/**",
+            "/ws-community/**",
             "/profiles/{profileId:[0-9a-fA-F\\-]+}",
             "/community-posts/latest",
             "/community-posts/popular",
@@ -147,7 +149,7 @@ public class SecurityConfiguration {
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration); // Áp dụng cho tất cả các đường dẫn
+        source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 }

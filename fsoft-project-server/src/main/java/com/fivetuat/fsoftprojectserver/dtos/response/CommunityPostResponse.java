@@ -1,12 +1,17 @@
 package com.fivetuat.fsoftprojectserver.dtos.response;
 
-import com.fivetuat.fsoftprojectserver.enums.PostStatus;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
-
 import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
+
+import com.fivetuat.fsoftprojectserver.enums.PostStatus;
+
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.experimental.FieldDefaults;
 
 @Data
 @Builder
@@ -17,12 +22,10 @@ public class CommunityPostResponse {
 
     Long id;
 
-    // Tác giả
     UUID profileId;
     String profileName;
     String profileAvatar;
 
-    // Nội dung bài viết
     String title;
     String content;
     PostStatus status;
@@ -33,14 +36,12 @@ public class CommunityPostResponse {
     int commentCount;
     boolean likedByCurrentUser;
 
-    // Deck đính kèm (nếu có)
     Long deckId;
     String deckTitle;
     String deckDescription;
     String deckCoverImageUrl;
     int deckTotalCards;
 
-    // Danh sách nhãn
     Set<TagResponse> tags;
 
     LocalDateTime createdAt;

@@ -19,6 +19,7 @@ spring:
       memory:
         repository:
           jdbc:
+            platform: postgresql
             initialize-schema: ALWAYS
     openai:
       api-key: ${OPENAI_API_KEY}
