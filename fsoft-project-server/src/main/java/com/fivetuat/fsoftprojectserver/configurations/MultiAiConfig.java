@@ -66,7 +66,7 @@ public class MultiAiConfig {
                 .build();
     }
 
-    @Value("${admin-ai.model:llama-3.3-70b-versatile}")
+    @Value("${admin-ai.model:qwen/qwen3.8-27b}")
     String adminAiModel;
 
     static final String ADMIN_AI_SYSTEM_PROMPT =
