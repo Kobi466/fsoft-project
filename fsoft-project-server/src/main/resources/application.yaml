@@ -4,29 +4,16 @@ server:
   forward-headers-strategy: framework
   servlet:
     context-path: /fsoft
+
 spring:
+  application:
+    name: fsoft-project
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   devtools:
     restart:
       enabled: false
-  profiles:
-    active: dev
-  application:
-    name: fsoft-project
-  datasource:
-    url: ${DB_URL:jdbc:postgresql://${POSTGRES_HOST:postgres.railway.internal}:${POSTGRES_PORT:5432}/${POSTGRES_DB:railway}}
-    username: ${POSTGRES_USER:postgres}
-    password: ${POSTGRES_PASSWORD:MJnNgSbBNFiOeqhHgqDBhkqdAcEpXsre}
-    driver-class-name: org.postgresql.Driver
-  jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+
   ai:
     chat:
       memory:
@@ -40,17 +27,22 @@ spring:
       genai:
         api-key: ${GOOGLE_GENAI_API_KEY}
 
-
-aws:
-    region: ${AWS_REGION}
-    access-key: ${AWS_ACCESS_KEY}
-    secret-key: ${AWS_SECRET_KEY}
-    s3:
-      bucket-name: ${AWS_S3_BUCKET}
+resilience4j:
+  retry:
+    instances:
+      aiRetry:
+        max-attempts: 3
+        wait-duration: 1000
+        retry-exceptions:
+          - org.springframework.web.client.RestClientException
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 3
+        ignore-exceptions:
+          - com.fivetuat.fsoftprojectserver.exceptions.AppException
 jwt:
   secret-key: ${SECRET_KEY}
-  access-token-expiration: ${ACCESS_TOKEN_EX}
-  refresh-token-expiration: ${REFRESH_TOKEN_EX}
+  access-token-expiration: ${ACCESS_TOKEN_EX:259200000}
+  refresh-token-expiration: ${REFRESH_TOKEN_EX:604800000}
 
 google:
   client-id: ${GOOGLE_CLIENT_ID}
@@ -66,9 +58,18 @@ notification:
       name: ${NOTIFICATION_EMAIL_SENDER_NAME:FSoft Flashcards}
       email: ${NOTIFICATION_EMAIL_SENDER_EMAIL}
 
-logging:
-  level:
-    root: INFO
+aws:
+  region: ${AWS_REGION:us-east-1}
+  access-key: ${AWS_ACCESS_KEY}
+  secret-key: ${AWS_SECRET_KEY}
+  s3:
+    bucket-name: ${AWS_S3_BUCKET:fsoft-project}
+
+fsoft-ai:
+  url: ${FSOFT_AI_URL}
+  internal-token: ${FSOFT_AI_INTERNAL_TOKEN}
+  backend-token: ${FSOFT_AI_BACKEND_TOKEN}
+
 springdoc:
   api-docs:
     path: /v3/api-docs
@@ -76,8 +77,3 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: alpha
     tags-sorter: alpha
-
-fsoft-ai:
-  url: ${FSOFT_AI_URL}
-  internal-token: ${FSOFT_AI_INTERNAL_TOKEN}
-  backend-token: ${FSOFT_AI_BACKEND_TOKEN}
