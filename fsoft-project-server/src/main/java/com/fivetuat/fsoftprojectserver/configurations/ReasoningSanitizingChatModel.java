@@ -25,6 +25,9 @@ public class ReasoningSanitizingChatModel implements ChatModel {
         List<Message> sanitized = prompt.getInstructions().stream()
                 .map(this::stripReasoningMetadata)
                 .toList();
+        if (sanitized == prompt.getInstructions()) {
+            return delegate.call(prompt);
+        }
         log.info("[ADMIN_AI_DEBUG] sanitizer invoked with {} message(s)", sanitized.size());
         return delegate.call(new Prompt(sanitized, prompt.getOptions()));
     }
