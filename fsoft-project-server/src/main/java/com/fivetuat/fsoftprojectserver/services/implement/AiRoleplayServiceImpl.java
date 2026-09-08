@@ -38,8 +38,11 @@ import com.fivetuat.fsoftprojectserver.mappers.AiRoleplaySessionMapper;
 import com.fivetuat.fsoftprojectserver.repositories.AiRoleplaySessionRepository;
 import com.fivetuat.fsoftprojectserver.repositories.ProfileRepository;
 import com.fivetuat.fsoftprojectserver.services.AiRoleplayService;
+import com.fivetuat.fsoftprojectserver.utils.AiFallbackExecutor;
 import com.fivetuat.fsoftprojectserver.utils.AiResponseUtils;
 import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
+
+import io.github.resilience4j.retry.annotation.Retry;
 
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
@@ -51,6 +54,7 @@ import lombok.extern.slf4j.Slf4j;
 public class AiRoleplayServiceImpl implements AiRoleplayService {
 
     final ChatClient groqClient;
+    final AiFallbackExecutor aiFallbackExecutor;
     final ChatMemory chatMemory;
     final Resource systemPromptResource;
     final Resource userPromptResource;
@@ -64,6 +68,7 @@ public class AiRoleplayServiceImpl implements AiRoleplayService {
 
     public AiRoleplayServiceImpl(
             @Qualifier("groqClient") ChatClient groqClient,
+            AiFallbackExecutor aiFallbackExecutor,
             @Value("classpath:/prompts/roleplay-tutor-system.st") Resource systemPromptResource,
             @Value("classpath:/prompts/roleplay-tutor-user.st") Resource userPromptResource,
             ChatMemory chatMemory,
@@ -71,6 +76,7 @@ public class AiRoleplayServiceImpl implements AiRoleplayService {
             ProfileRepository profileRepository,
             AiRoleplaySessionMapper sessionMapper) {
         this.groqClient = groqClient;
+        this.aiFallbackExecutor = aiFallbackExecutor;
         this.systemPromptResource = systemPromptResource;
         this.userPromptResource = userPromptResource;
         this.chatMemory = chatMemory;
@@ -80,6 +86,7 @@ public class AiRoleplayServiceImpl implements AiRoleplayService {
     }
 
     @Override
+    @Retry(name = "aiRetry", fallbackMethod = "handleProcessRoleplayRetryFallback")
     public AiRoleplayResponse processRoleplay(AiRoleplayRequest request) {
         log.info("Bắt đầu AI Roleplay Tutor kịch bản: {}", request.getScenario());
 
@@ -134,9 +141,48 @@ public class AiRoleplayServiceImpl implements AiRoleplayService {
             return result;
 
         } catch (Exception e) {
-            log.error("Lỗi khi gọi AI Roleplay Tutor: {}", e.getMessage(), e);
+            log.error("Lỗi khi gọi AI Roleplay Tutor (Groq): {}", e.getMessage(), e);
             throw new AppException(ErrorCode.AI_EXTRACTION_ERROR);
         }
+    }
+
+    public AiRoleplayResponse handleProcessRoleplayRetryFallback(AiRoleplayRequest request, Throwable t) {
+        String rawConvId = request.getConversationId();
+        if (rawConvId == null || rawConvId.isBlank()) {
+            rawConvId = SecurityUtils.getCurrentUserLogin().map(UUID::toString).orElse("default-session-000000000000000000");
+        }
+        if (rawConvId.length() > 36) {
+            rawConvId = rawConvId.substring(0, 36);
+        }
+        final String conversationId = rawConvId;
+
+        String targetWordsStr = request.getTargetWords() != null ? String.join(", ", request.getTargetWords()) : "Không yêu cầu";
+
+        AiRoleplayResponse result = aiFallbackExecutor.executeGeminiFallback(
+                systemPromptResource,
+                Map.of(
+                        "scenario", request.getScenario() != null ? request.getScenario() : "JOB_INTERVIEW",
+                        "targetWords", targetWordsStr
+                ),
+                userPromptResource,
+                Map.of(
+                        "userMessage", request.getUserMessage()
+                ),
+                AiRoleplayResponse.class,
+                t
+        );
+
+        if (result != null) {
+            saveOrUpdateSession(conversationId, request);
+            return result;
+        }
+
+        return AiRoleplayResponse.builder()
+                .tutorReply("Hệ thống Gia Sư AI tạm thời bị gián đoạn kết nối. Vui lòng gửi lại tin nhắn sau ít phút.")
+                .score(0)
+                .wordsUsed(List.of())
+                .suggestions(List.of("Dịch vụ AI đang quá tải hoặc gặp sự cố mạng. Vui lòng thử lại sau ít phút."))
+                .build();
     }
 
     private void saveOrUpdateSession(String conversationId, AiRoleplayRequest request) {

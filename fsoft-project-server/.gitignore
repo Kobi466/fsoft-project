@@ -38,7 +38,9 @@ Dockerfile
 
 ### Spring ###
 src/main/resources/application-dev.properties
-src/main/resources/application-prod.yml
+src/main/resources/application-dev.yaml
+!src/main/resources/application-prod.yaml
+!src/main/resources/application-dev.yaml.example
 
 .env
 openapi.yaml

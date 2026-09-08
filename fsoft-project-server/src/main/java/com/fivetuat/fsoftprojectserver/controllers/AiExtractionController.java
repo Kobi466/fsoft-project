@@ -1,26 +1,32 @@
 package com.fivetuat.fsoftprojectserver.controllers;
 
+import java.util.List;
+
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
-import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.MagicSortResult;
 import com.fivetuat.fsoftprojectserver.dtos.request.CardCreationRequest;
-import com.fivetuat.fsoftprojectserver.dtos.request.MagicSortRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.TextExtractionRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.UrlExtractionRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.CardSuggestionResponse;
 import com.fivetuat.fsoftprojectserver.enums.SuccessCode;
 import com.fivetuat.fsoftprojectserver.services.AiExtractionService;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
-import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
+import com.fivetuat.fsoftprojectserver.services.AiSuggestionService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 
 @RestController
 @RequestMapping("/api/ai/extract")
@@ -30,6 +36,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class AiExtractionController {
 
     AiExtractionService aiExtractionService;
+    AiSuggestionService aiSuggestionService;
 
     @Operation(summary = "Bóc tách từ vựng từ Text", description = "AI sẽ đọc một đoạn văn bản và tự động lấy ra danh sách các từ vựng/thuật ngữ quan trọng. Trả về JSON (Không tự động lưu vào Deck).")
     @PostMapping("/text")
@@ -56,13 +63,6 @@ public class AiExtractionController {
         return ApiResponse.ok(result, SuccessCode.AI_EXTRACTION_SUCCESS);
     }
 
-    @Operation(summary = "Magic Sort (Phân loại thông minh)", description = "Gửi danh sách từ vựng và danh sách Decks của user. AI sẽ tự động phân từng từ vào Deck phù hợp, hoặc gợi ý tên Deck mới nếu từ đó không thuộc Deck nào.")
-    @PostMapping("/magic-sort")
-    public ApiResponse<List<MagicSortResult>> magicSortCards(@RequestBody MagicSortRequest request) {
-        List<MagicSortResult> result = aiExtractionService.magicSort(request);
-        return ApiResponse.ok(result, SuccessCode.AI_EXTRACTION_SUCCESS);
-    }
-
     @Operation(
         summary = "⚡ Real-time Card Autocomplete & Definition Suggestions (Giống Quizlet)", 
         description = "Khi người dùng vừa gõ từ vựng vào ô TERM (ví dụ: 'meet'), AI sẽ tự động sinh danh sách gợi ý hoàn thiện từ vựng (meet, meeting, meet, met, met) và các gợi ý nghĩa Tiếng Việt (gặp, đáp ứng, gặp gỡ) cùng thông tin auto-fill đầy đủ."
@@ -72,7 +72,7 @@ public class AiExtractionController {
             @Parameter(description = "Từ vựng hoặc chuỗi ký tự người dùng đang gõ", example = "meet")
             @RequestParam("query") String query
     ) {
-        CardSuggestionResponse result = aiExtractionService.getSuggestions(query);
+        CardSuggestionResponse result = aiSuggestionService.getSuggestions(query);
         return ApiResponse.ok(result, SuccessCode.AI_EXTRACTION_SUCCESS);
     }
 }

@@ -130,15 +130,26 @@ public class DeckServiceImpl implements DeckService {
                 : "USER";
 
         Deck deck;
+        boolean pendingModeration = false;
         switch (role) {
             case "ADMIN":
                 deck = getExistingDeck(id);
+                deck.setVisibility(request.getVisibility());
                 break;
             case "USER":
                 deck = getMyDeck(id);
                 if (request.getVisibility() == DeckVisibility.PUBLIC && !deck.isOfficial()) {
-                    throw new AppException(ErrorCode.ACCESS_DENIED);
+                    if (deck.getParentDeck() != null) {
+                        throw new AppException(ErrorCode.FORKED_DECK_CANNOT_BE_PUBLIC);
+                    }
+                    if (deck.isPendingPublic()) {
+                        throw new AppException(ErrorCode.DECK_ALREADY_PENDING_PUBLIC);
+                    }
+                    pendingModeration = true;
+                } else {
+                    deck.setVisibility(request.getVisibility());
                 }
+                request.setOfficial(deck.isOfficial());
                 break;
             default:
                 throw new AppException(ErrorCode.ACCESS_DENIED);
@@ -149,6 +160,18 @@ public class DeckServiceImpl implements DeckService {
         applyParentDeck(deck, request.getParentDeckId());
         applyCoverImage(deck, coverImage);
         deck.setTags(processTags(request.getTagIds()));
+
+        if (pendingModeration) {
+            deck.setVisibility(DeckVisibility.PRIVATE);
+            deck.setPendingPublic(true);
+            deck.setRejectionReason(null);
+        } else if (deck.getVisibility() == DeckVisibility.PUBLIC) {
+            deck.setPendingPublic(false);
+            deck.setRejectionReason(null);
+        } else {
+            deck.setPendingPublic(false);
+        }
+
         deck = deckRepository.save(deck);
         return deckMapper.toDeckResponse(deck);
     }
@@ -162,7 +185,11 @@ public class DeckServiceImpl implements DeckService {
             if (deck.getParentDeck() != null) {
                 throw new AppException(ErrorCode.FORKED_DECK_CANNOT_BE_PUBLIC);
             }
+            if (deck.isPendingPublic()) {
+                throw new AppException(ErrorCode.DECK_ALREADY_PENDING_PUBLIC);
+            }
             deck.setPendingPublic(true);
+            deck.setRejectionReason(null);
         } else {
             deck.setVisibility(DeckVisibility.PRIVATE);
             deck.setPendingPublic(false);

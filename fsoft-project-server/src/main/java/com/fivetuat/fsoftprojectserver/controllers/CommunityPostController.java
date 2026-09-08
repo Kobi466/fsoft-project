@@ -1,5 +1,18 @@
 package com.fivetuat.fsoftprojectserver.controllers;
 
+import java.util.UUID;
+
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
 import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.CommentCreateRequest;
@@ -11,6 +24,7 @@ import com.fivetuat.fsoftprojectserver.dtos.response.CommunityPostResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.PostLikeToggleResponse;
 import com.fivetuat.fsoftprojectserver.enums.SuccessCode;
 import com.fivetuat.fsoftprojectserver.services.CommunityPostService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,10 +32,6 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/community-posts")
@@ -32,7 +42,6 @@ public class CommunityPostController {
 
     CommunityPostService communityPostService;
 
-    // --- QUẢN LÝ BÀI VIẾT ---
 
     @PostMapping
     @Operation(
@@ -92,7 +101,6 @@ public class CommunityPostController {
         return ApiResponse.ok(null, SuccessCode.DELETE_COMMUNITY_POST_SUCCESS);
     }
 
-    // --- KIỂM DUYỆT BÀI VIẾT (ADMIN MODERATION) ---
 
     @GetMapping("/admin/pending")
     @PreAuthorize("hasRole('ADMIN')")
@@ -120,7 +128,6 @@ public class CommunityPostController {
         return ApiResponse.ok(communityPostService.moderatePost(id, request), SuccessCode.MODERATE_COMMUNITY_POST_SUCCESS);
     }
 
-    // --- BẢNG TIN & TÌM KIẾM ---
 
     @GetMapping("/latest")
     @Operation(
@@ -173,7 +180,6 @@ public class CommunityPostController {
         return ApiResponse.ok(communityPostService.getPostsByUser(profileId, page, size), SuccessCode.GET_COMMUNITY_POSTS_SUCCESS);
     }
 
-    // --- TƯƠNG TÁC THẢ TIM (TOGGLE LIKE) ---
 
     @PostMapping("/{id}/like")
     @Operation(
@@ -186,7 +192,6 @@ public class CommunityPostController {
         return ApiResponse.ok(communityPostService.toggleLike(id), SuccessCode.LIKE_POST_SUCCESS);
     }
 
-    // --- BÌNH LUẬN (COMMENTS) ---
 
     @PostMapping("/{id}/comments")
     @Operation(

@@ -1,14 +1,9 @@
 package com.fivetuat.fsoftprojectserver.services.implement;
 
-import com.fivetuat.fsoftprojectserver.dtos.https.ai.request.SituationalLearningRequest;
-import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.SituationalLearningResponse;
-import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
-import com.fivetuat.fsoftprojectserver.exceptions.AppException;
-import com.fivetuat.fsoftprojectserver.services.SituationalLearningService;
-import com.fivetuat.fsoftprojectserver.utils.AiResponseUtils;
-import lombok.AccessLevel;
-import lombok.experimental.FieldDefaults;
-import lombok.extern.slf4j.Slf4j;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
@@ -19,7 +14,19 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
+import com.fivetuat.fsoftprojectserver.dtos.https.ai.request.SituationalLearningRequest;
+import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.SentenceOption;
+import com.fivetuat.fsoftprojectserver.dtos.https.ai.response.SituationalLearningResponse;
+import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
+import com.fivetuat.fsoftprojectserver.exceptions.AppException;
+import com.fivetuat.fsoftprojectserver.services.SituationalLearningService;
+import com.fivetuat.fsoftprojectserver.utils.AiFallbackExecutor;
+import com.fivetuat.fsoftprojectserver.utils.AiResponseUtils;
+
+import io.github.resilience4j.retry.annotation.Retry;
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
@@ -27,20 +34,24 @@ import java.util.Map;
 public class SituationalLearningServiceImpl implements SituationalLearningService {
 
     ChatClient groqClient;
+    AiFallbackExecutor aiFallbackExecutor;
     Resource systemPromptResource;
     Resource userPromptResource;
 
     public SituationalLearningServiceImpl(
             @Qualifier("groqClient") ChatClient groqClient,
+            AiFallbackExecutor aiFallbackExecutor,
             @Value("classpath:/prompts/situational-learning-system.st") Resource systemPromptResource,
             @Value("classpath:/prompts/situational-learning-user.st") Resource userPromptResource) {
         this.groqClient = groqClient;
+        this.aiFallbackExecutor = aiFallbackExecutor;
         this.systemPromptResource = systemPromptResource;
         this.userPromptResource = userPromptResource;
     }
 
     @Override
     @Cacheable(value = "ai_situational_lessons", key = "#request.context.toLowerCase().trim()", unless = "#result == null")
+    @Retry(name = "aiRetry", fallbackMethod = "handleAiRetryFallback")
     public SituationalLearningResponse generateLesson(SituationalLearningRequest request) {
         log.info("Bắt đầu tạo bài học ngữ cảnh (Text-only) cho mô tả: {}", request.getContext());
 
@@ -73,8 +84,42 @@ public class SituationalLearningServiceImpl implements SituationalLearningServic
 
             return result;
         } catch (Exception e) {
-            log.error("Lỗi khi gọi AI tạo bài học ngữ cảnh: {}", e.getMessage(), e);
+            log.error("Lỗi khi gọi AI (Groq) tạo bài học ngữ cảnh: {}", e.getMessage(), e);
             throw new AppException(ErrorCode.AI_EXTRACTION_ERROR);
         }
+    }
+
+    public SituationalLearningResponse handleAiRetryFallback(SituationalLearningRequest request, Throwable t) {
+        SituationalLearningResponse geminiResult = aiFallbackExecutor.executeGeminiFallback(
+                systemPromptResource,
+                null,
+                userPromptResource,
+                Map.of(
+                        "context", request.getContext(),
+                        "currentTime", request.getCurrentTime() != null ? request.getCurrentTime() : "Không cung cấp",
+                        "location", request.getLocation() != null ? request.getLocation() : "Không cung cấp"
+                ),
+                SituationalLearningResponse.class,
+                t
+        );
+
+        if (geminiResult != null) {
+            return geminiResult;
+        }
+
+        SentenceOption fallbackNotice = SentenceOption.builder()
+                .english("AI service is currently unavailable. Please try again later.")
+                .vietnamese("Dịch vụ AI hiện tại chưa phản hồi. Vui lòng thử lại sau ít phút.")
+                .build();
+        return SituationalLearningResponse.builder()
+                .mainActions(List.of(fallbackNotice))
+                .interactions(List.of(fallbackNotice))
+                .emotions(List.of(fallbackNotice))
+                .shortCaptions(List.of(SentenceOption.builder()
+                        .english("System Maintenance")
+                        .vietnamese("Bảo trì hệ thống")
+                        .build()))
+                .vocabularies(Collections.emptyList())
+                .build();
     }
 }

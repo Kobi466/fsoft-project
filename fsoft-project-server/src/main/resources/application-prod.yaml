@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://${POSTGRES_HOST:postgres.railway.internal}:${POSTGRES_PORT:5432}/${POSTGRES_DB:railway}}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false # Tắt log SQL trên Prod để tối ưu tốc độ và dung lượng log
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+logging:
+  level:
+    root: WARN
+    "com.fivetuat.fsoftprojectserver": INFO
