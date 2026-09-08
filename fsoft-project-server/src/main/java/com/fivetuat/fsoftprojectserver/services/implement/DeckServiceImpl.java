@@ -380,6 +380,9 @@ public class DeckServiceImpl implements DeckService {
 
     private void applyCoverImage(Deck deck, MultipartFile coverImage) {
         if (coverImage != null && !coverImage.isEmpty()) {
+            if (deck.getCoverImageUrl() != null && !deck.getCoverImageUrl().isBlank()) {
+                uploadService.deleteFile(deck.getCoverImageUrl());
+            }
             String imageUrl = uploadService.uploadFile(coverImage, FolderName.DECKS);
             log.info("Uploaded cover image: {}", imageUrl);
             deck.setCoverImageUrl(imageUrl);
