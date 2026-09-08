@@ -82,7 +82,8 @@ public enum ErrorCode {
     DECK_NOT_PENDING(460, "Bộ bài không nằm trong hàng chờ duyệt", HttpStatus.BAD_REQUEST),
     DECK_ALREADY_PENDING_PUBLIC(461, "Bộ bài đang chờ duyệt, vui lòng chờ kết quả kiểm duyệt", HttpStatus.CONFLICT),
     PENDING_ACTION_NOT_FOUND(462, "Không tìm thấy hành động chờ xác nhận hoặc đã được xử lý", HttpStatus.BAD_REQUEST),
-    PENDING_ACTION_EXPIRED(463, "Hành động chờ xác nhận đã hết hạn, vui lòng thực hiện lại", HttpStatus.BAD_REQUEST);
+    PENDING_ACTION_EXPIRED(463, "Hành động chờ xác nhận đã hết hạn, vui lòng thực hiện lại", HttpStatus.BAD_REQUEST),
+    TOO_MANY_REQUESTS(429, "Bạn đã vượt quá số lượng truy cập cho phép, vui lòng thử lại sau giây lát", HttpStatus.TOO_MANY_REQUESTS);
     int status;
     String message;
     HttpStatus httpStatus;

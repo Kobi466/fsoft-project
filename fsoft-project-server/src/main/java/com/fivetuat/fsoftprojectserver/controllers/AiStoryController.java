@@ -13,11 +13,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.web.bind.annotation.*;
 
+import com.fivetuat.fsoftprojectserver.annotations.RateLimit;
+import com.fivetuat.fsoftprojectserver.enums.RateLimitKeyType;
+
 @RestController
 @RequestMapping("/api/ai/story")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "AI Story Controller", description = "Tạo đoạn văn/email ngữ cảnh thực tế từ các từ vựng đang học")
+@RateLimit(limit = 15, period = 60, keyType = RateLimitKeyType.USER_OR_IP, name = "ai_story")
 public class AiStoryController {
 
     AiStoryService aiStoryService;

@@ -20,12 +20,16 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import com.fivetuat.fsoftprojectserver.annotations.RateLimit;
+import com.fivetuat.fsoftprojectserver.enums.RateLimitKeyType;
+
 @RestController
 @RequestMapping("/admin/ai")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @PreAuthorize("hasAuthority('ROLE_ADMIN')")
 @Tag(name = "Admin AI Chat Controller", description = "Trợ lý AI cho quản trị viên (tra cứu + hành động)")
+@RateLimit(limit = 30, period = 60, keyType = RateLimitKeyType.USER_OR_IP, name = "admin_ai_chat")
 public class AdminAiChatController {
 
     AdminAiChatService adminAiChatService;

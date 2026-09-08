@@ -33,6 +33,9 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
+import com.fivetuat.fsoftprojectserver.annotations.RateLimit;
+import com.fivetuat.fsoftprojectserver.enums.RateLimitKeyType;
+
 @RestController
 @RequestMapping("/community-posts")
 @RequiredArgsConstructor
@@ -44,6 +47,7 @@ public class CommunityPostController {
 
 
     @PostMapping
+    @RateLimit(limit = 10, period = 60, keyType = RateLimitKeyType.USER_OR_IP, name = "community_create_post")
     @Operation(
             summary = "Tạo bài viết mới trong cộng đồng",
             description = "Tạo một bài viết mới với nội dung (Markdown), có thể đính kèm một bộ thẻ Deck công khai (tùy chọn) và gắn nhiều nhãn Tags (tùy chọn). Bài viết của USER sẽ ở trạng thái PENDING chờ ADMIN duyệt."
