@@ -1,5 +1,6 @@
 package com.fivetuat.fsoftprojectserver.repositories;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,6 +17,10 @@ import com.fivetuat.fsoftprojectserver.entities.Comment;
 public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     Optional<Comment> findByIdAndIsDeletedFalse(Long id);
+
+    List<Comment> findByIsDeletedTrueAndUpdatedAtBefore(LocalDateTime cutoffTime);
+
+    List<Comment> findAllByCommunityPostId(Long communityPostId);
 
     @Query("SELECT c FROM Comment c WHERE c.communityPost.id = :postId AND c.parentComment IS NULL AND c.isDeleted = false ORDER BY c.createdAt ASC")
     Page<Comment> findRootCommentsByPostId(@Param("postId") Long postId, Pageable pageable);

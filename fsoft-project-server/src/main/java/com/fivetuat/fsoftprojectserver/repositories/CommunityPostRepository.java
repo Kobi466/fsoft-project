@@ -1,5 +1,7 @@
 package com.fivetuat.fsoftprojectserver.repositories;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,6 +19,9 @@ import com.fivetuat.fsoftprojectserver.enums.PostStatus;
 public interface CommunityPostRepository extends JpaRepository<CommunityPost, Long> {
 
     Optional<CommunityPost> findByIdAndIsDeletedFalse(Long id);
+
+    List<CommunityPost> findByIsDeletedTrueAndUpdatedAtBefore(LocalDateTime cutoffTime);
+
     Page<CommunityPost> findByStatusAndIsDeletedFalseOrderByCreatedAtDesc(PostStatus status, Pageable pageable);
 
     Page<CommunityPost> findByStatusAndIsDeletedFalseOrderByLikeCountDescCreatedAtDesc(PostStatus status, Pageable pageable);

@@ -52,4 +52,6 @@ public interface CommunityPostService {
     PageResponse<CommentResponse> getRepliesByCommentId(Long commentId, int page, int size);
 
     void deleteComment(Long commentId);
+ 
+    void purgeSoftDeletedPostsAndComments();
 }
