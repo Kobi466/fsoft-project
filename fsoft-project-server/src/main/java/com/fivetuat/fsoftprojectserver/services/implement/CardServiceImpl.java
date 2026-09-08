@@ -111,10 +111,16 @@ public class CardServiceImpl implements CardService {
 
     private void checkExistingFile(MultipartFile imageFile, MultipartFile audioFile, Card card) {
         if (imageFile != null && !imageFile.isEmpty()){
+            if (card.getImageUrl() != null && !card.getImageUrl().isBlank()) {
+                uploadService.deleteFile(card.getImageUrl());
+            }
             String imageUrl = uploadService.uploadFile(imageFile, FolderName.Card);
             card.setImageUrl(imageUrl);
         }
         if (audioFile != null && !audioFile.isEmpty()){
+            if (card.getAudioUrl() != null && !card.getAudioUrl().isBlank()) {
+                uploadService.deleteFile(card.getAudioUrl());
+            }
             String audioUrl = uploadService.uploadFile(audioFile, FolderName.Card);
             card.setAudioUrl(audioUrl);
         }
@@ -128,6 +134,13 @@ public class CardServiceImpl implements CardService {
 
         Card card = getCardWithOwnerCheck(cardId);
         Deck deck = this.deckService.getDeckWithEditPermission(card.getDeck().getId());
+
+        if (card.getImageUrl() != null && !card.getImageUrl().isBlank()) {
+            uploadService.deleteFile(card.getImageUrl());
+        }
+        if (card.getAudioUrl() != null && !card.getAudioUrl().isBlank()) {
+            uploadService.deleteFile(card.getAudioUrl());
+        }
 
         cardRepository.delete(card);
 

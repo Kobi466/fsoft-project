@@ -211,6 +211,18 @@ public class DeckServiceImpl implements DeckService {
     }
 
     @Override
+    @Transactional
+    @CacheEvict(value = {"deck_detail", "public_decks"}, allEntries = true)
+    public void purgeSoftDeletedDecks() {
+        List<Deck> deletedDecks = deckRepository.findByIsDeletedTrue();
+        if (!deletedDecks.isEmpty()) {
+            log.info("Bắt đầu dọn dẹp vĩnh viễn {} bộ bài đã đánh dấu soft delete...", deletedDecks.size());
+            deckRepository.deleteAll(deletedDecks);
+            log.info("Đã xóa vĩnh viễn {} bộ bài soft delete thành công.", deletedDecks.size());
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public PageResponse<DeckResponse> getMyDecks(int page, int size) {
         Profile profile = authService.getCurrentProfile();
@@ -380,6 +392,9 @@ public class DeckServiceImpl implements DeckService {
 
     private void applyCoverImage(Deck deck, MultipartFile coverImage) {
         if (coverImage != null && !coverImage.isEmpty()) {
+            if (deck.getCoverImageUrl() != null && !deck.getCoverImageUrl().isBlank()) {
+                uploadService.deleteFile(deck.getCoverImageUrl());
+            }
             String imageUrl = uploadService.uploadFile(coverImage, FolderName.DECKS);
             log.info("Uploaded cover image: {}", imageUrl);
             deck.setCoverImageUrl(imageUrl);

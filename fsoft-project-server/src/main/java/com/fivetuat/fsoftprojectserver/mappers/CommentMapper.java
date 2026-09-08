@@ -14,6 +14,8 @@ public interface CommentMapper {
     @Mapping(target = "profile", ignore = true)
     @Mapping(target = "parentComment", ignore = true)
     @Mapping(target = "replies", ignore = true)
+    @Mapping(target = "attachmentUrl", ignore = true)
+    @Mapping(target = "attachmentName", ignore = true)
     Comment toComment(CommentCreateRequest request);
 
     @Mapping(target = "communityPostId", source = "communityPost.id")

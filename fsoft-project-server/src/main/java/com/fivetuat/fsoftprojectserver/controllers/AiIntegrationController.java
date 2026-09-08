@@ -19,11 +19,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.web.bind.annotation.*;
 
+import com.fivetuat.fsoftprojectserver.annotations.RateLimit;
+import com.fivetuat.fsoftprojectserver.enums.RateLimitKeyType;
+
 @RestController
 @RequestMapping("/api/ai")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "AI Integration Controller", description = "Các API ứng dụng Trí tuệ nhân tạo (AI) giúp tối ưu hóa việc học tập của người dùng")
+@RateLimit(limit = 30, period = 60, keyType = RateLimitKeyType.USER_OR_IP, name = "ai_integration")
 public class AiIntegrationController {
 
     AiIntegrationService aiIntegrationService;

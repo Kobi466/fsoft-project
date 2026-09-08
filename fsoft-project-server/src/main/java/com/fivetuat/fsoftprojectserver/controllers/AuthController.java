@@ -17,6 +17,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.web.bind.annotation.*;
 
+import com.fivetuat.fsoftprojectserver.annotations.RateLimit;
+import com.fivetuat.fsoftprojectserver.enums.RateLimitKeyType;
+
 @RequiredArgsConstructor
 @RestController
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -29,6 +32,7 @@ public class AuthController {
         summary = "Đăng ký tài khoản mới", 
         description = "Tạo một tài khoản người dùng mới vào hệ thống. Yêu cầu truyền lên email hợp lệ, mật khẩu (đủ độ mạnh) và họ tên người dùng. Trả về thông tin người dùng vừa được tạo nếu thành công."
     )
+    @RateLimit(limit = 10, period = 60, keyType = RateLimitKeyType.IP, name = "auth_register")
     @PostMapping("/register")
     ApiResponse<UserResponse> createUser(@Valid @RequestBody UserCreateRequest userCreateRequest) {
         return ApiResponse.ok(this.authService.createUser(userCreateRequest), SuccessCode.CREATED_USER_SUCCESS);
@@ -38,6 +42,7 @@ public class AuthController {
         summary = "Đăng nhập hệ thống", 
         description = "Xác thực người dùng dựa trên email và mật khẩu. Nếu hợp lệ, hệ thống sẽ trả về Access Token (dùng để gọi các API khác) và Refresh Token (dùng để cấp lại Access Token khi hết hạn)."
     )
+    @RateLimit(limit = 10, period = 60, keyType = RateLimitKeyType.IP, name = "auth_login")
     @PostMapping("/login")
     ApiResponse<AuthenticatedResponse> authenticated(@Valid @RequestBody AuthenticatedRequest authenticatedRequest) {
         return ApiResponse.ok(this.authService.authenticated(authenticatedRequest), SuccessCode.AUTHENTICATED_SUCCESS);

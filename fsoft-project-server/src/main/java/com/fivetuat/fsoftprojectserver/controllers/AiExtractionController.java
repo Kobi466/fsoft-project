@@ -21,6 +21,9 @@ import com.fivetuat.fsoftprojectserver.enums.SuccessCode;
 import com.fivetuat.fsoftprojectserver.services.AiExtractionService;
 import com.fivetuat.fsoftprojectserver.services.AiSuggestionService;
 
+import com.fivetuat.fsoftprojectserver.annotations.RateLimit;
+import com.fivetuat.fsoftprojectserver.enums.RateLimitKeyType;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -33,6 +36,7 @@ import lombok.experimental.FieldDefaults;
 @RequiredArgsConstructor
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "AI Extraction", description = "Các API dùng AI để bóc tách từ vựng từ đoạn văn, URL, file và Gợi ý Autocomplete thời gian thực")
+@RateLimit(limit = 20, period = 60, keyType = RateLimitKeyType.USER_OR_IP, name = "ai_extraction")
 public class AiExtractionController {
 
     AiExtractionService aiExtractionService;

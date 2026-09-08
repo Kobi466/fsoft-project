@@ -24,6 +24,7 @@ public interface DeckService {
     DeckResponse updateDeck(Long id, DeckUpdateRequest request, MultipartFile coverImage);
     void convertDeckVisibility(Long id, DeckVisibility deckVisibility);
     void deleteDeck(Long id);
+    void purgeSoftDeletedDecks();
     PageResponse<DeckResponse> getMyDecks(int page, int size);
     DeckResponse fork(Long id);
     void share(Long deckId, ShareDeckRequest request);

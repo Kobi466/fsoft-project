@@ -3,7 +3,6 @@ package com.fivetuat.fsoftprojectserver.jobs;
 import java.time.LocalDate;
 import java.util.concurrent.TimeUnit;
 
-import com.fivetuat.fsoftprojectserver.services.NotificationEmailService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -13,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import com.fivetuat.fsoftprojectserver.dtos.response.ReminderUserResponse;
 import com.fivetuat.fsoftprojectserver.repositories.UserStreakRepository;
+import com.fivetuat.fsoftprojectserver.services.NotificationEmailService;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;

@@ -52,7 +52,8 @@ public class AdminDeckServiceImpl implements AdminDeckService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<DeckResponse> getAllDecks(String keyword, Boolean isOfficial, DeckVisibility visibility, Pageable pageable) {
-        Page<Deck> deckPage = deckRepository.findAll(pageable);
+        String sanitizedKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
+        Page<Deck> deckPage = deckRepository.findAllAdminDecks(sanitizedKeyword, isOfficial, visibility, pageable);
         return PageUtils.toPageResponse(deckPage, deckMapper::toDeckResponse);
     }
 

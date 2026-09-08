@@ -11,13 +11,19 @@ import com.fivetuat.fsoftprojectserver.dtos.response.CommentResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.CommunityPostResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.PostLikeToggleResponse;
 
+import org.springframework.web.multipart.MultipartFile;
+
 public interface CommunityPostService {
 
     CommunityPostResponse createPost(CommunityPostCreateRequest request);
 
+    CommunityPostResponse createPost(CommunityPostCreateRequest request, MultipartFile file);
+
     CommunityPostResponse getPostById(Long postId);
 
     CommunityPostResponse updatePost(Long postId, CommunityPostUpdateRequest request);
+
+    CommunityPostResponse updatePost(Long postId, CommunityPostUpdateRequest request, MultipartFile file);
 
     void deletePost(Long postId);
 
@@ -39,9 +45,13 @@ public interface CommunityPostService {
 
     CommentResponse createComment(Long postId, CommentCreateRequest request);
 
+    CommentResponse createComment(Long postId, CommentCreateRequest request, MultipartFile file);
+
     PageResponse<CommentResponse> getCommentsByPostId(Long postId, int page, int size);
 
     PageResponse<CommentResponse> getRepliesByCommentId(Long commentId, int page, int size);
 
     void deleteComment(Long commentId);
+ 
+    void purgeSoftDeletedPostsAndComments();
 }

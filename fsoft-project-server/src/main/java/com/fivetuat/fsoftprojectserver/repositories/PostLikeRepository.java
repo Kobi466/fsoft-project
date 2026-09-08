@@ -20,6 +20,10 @@ public interface PostLikeRepository extends JpaRepository<PostLike, Long> {
 
     void deleteByCommunityPostIdAndProfileId(Long communityPostId, UUID profileId);
 
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM PostLike pl WHERE pl.communityPost.id = :communityPostId")
+    void deleteByCommunityPostId(@Param("communityPostId") Long communityPostId);
+
     long countByCommunityPostId(Long communityPostId);
 
     @Query("SELECT pl.communityPost.id FROM PostLike pl WHERE pl.profile.id = :profileId AND pl.communityPost.id IN :postIds")

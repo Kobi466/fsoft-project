@@ -19,11 +19,15 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import com.fivetuat.fsoftprojectserver.annotations.RateLimit;
+import com.fivetuat.fsoftprojectserver.enums.RateLimitKeyType;
+
 @RestController
 @RequestMapping("/api/ai/roleplay")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "AI Roleplay Controller", description = "Gia sư AI đóng vai đối thoại tương tác ép dùng từ vựng vừa học")
+@RateLimit(limit = 20, period = 60, keyType = RateLimitKeyType.USER_OR_IP, name = "ai_roleplay")
 public class AiRoleplayController {
 
     AiRoleplayService aiRoleplayService;

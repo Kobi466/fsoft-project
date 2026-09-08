@@ -1,7 +1,6 @@
 package com.fivetuat.fsoftprojectserver.configurations;
 
 import java.util.Arrays;
-import java.util.List;
 
 import com.fivetuat.fsoftprojectserver.filters.InternalTokenFilter;
 import org.springframework.context.annotation.Bean;
@@ -28,6 +27,7 @@ import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import com.fivetuat.fsoftprojectserver.filters.GlobalRateLimitingFilter;
 import lombok.experimental.FieldDefaults;
 
 @Configuration
@@ -81,9 +81,11 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, GlobalRateLimitingFilter globalRateLimitingFilter) throws Exception {
         http.cors(httpSecurityCorsConfigurer -> httpSecurityCorsConfigurer.configurationSource(corsConfigurationSource()));
         http.csrf(AbstractHttpConfigurer::disable);
+
+        http.addFilterBefore(globalRateLimitingFilter, UsernamePasswordAuthenticationFilter.class);
 
         http.authorizeHttpRequests(requests -> requests
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()

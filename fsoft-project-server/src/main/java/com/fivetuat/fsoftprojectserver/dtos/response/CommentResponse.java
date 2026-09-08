@@ -33,6 +33,9 @@ public class CommentResponse {
 
     List<CommentResponse> replies;
 
+    String attachmentUrl;
+    String attachmentName;
+
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
 }

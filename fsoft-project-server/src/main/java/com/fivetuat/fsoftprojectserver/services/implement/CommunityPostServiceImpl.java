@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.CommentCreateRequest;
@@ -36,6 +37,7 @@ import com.fivetuat.fsoftprojectserver.entities.Tag;
 import com.fivetuat.fsoftprojectserver.enums.CommunityEventType;
 import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
+import com.fivetuat.fsoftprojectserver.enums.FolderName;
 import com.fivetuat.fsoftprojectserver.enums.PostStatus;
 import com.fivetuat.fsoftprojectserver.exceptions.AppException;
 import com.fivetuat.fsoftprojectserver.mappers.CommentMapper;
@@ -47,6 +49,7 @@ import com.fivetuat.fsoftprojectserver.repositories.PostLikeRepository;
 import com.fivetuat.fsoftprojectserver.repositories.TagRepository;
 import com.fivetuat.fsoftprojectserver.services.AuthService;
 import com.fivetuat.fsoftprojectserver.services.CommunityPostService;
+import com.fivetuat.fsoftprojectserver.services.UploadService;
 import com.fivetuat.fsoftprojectserver.utils.PageUtils;
 import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
 
@@ -67,6 +70,7 @@ public class CommunityPostServiceImpl implements CommunityPostService {
     DeckRepository deckRepository;
     TagRepository tagRepository;
     AuthService authService;
+    UploadService uploadService;
     CommunityPostMapper communityPostMapper;
     CommentMapper commentMapper;
     SimpMessagingTemplate messagingTemplate;
@@ -75,10 +79,22 @@ public class CommunityPostServiceImpl implements CommunityPostService {
     @Override
     @Transactional
     public CommunityPostResponse createPost(CommunityPostCreateRequest request) {
+        return createPost(request, null);
+    }
+
+    @Override
+    @Transactional
+    public CommunityPostResponse createPost(CommunityPostCreateRequest request, MultipartFile file) {
         Profile currentProfile = authService.getCurrentProfile();
 
         CommunityPost post = communityPostMapper.toCommunityPost(request);
         post.setProfile(currentProfile);
+
+        if (file != null && !file.isEmpty()) {
+            String attachmentUrl = uploadService.uploadFile(file, FolderName.ATTACHMENTS);
+            post.setAttachmentUrl(attachmentUrl);
+            post.setAttachmentName(file.getOriginalFilename());
+        }
 
         boolean isAdmin = SecurityUtils.isCurrentUserInRole("ROLE_ADMIN");
         if (isAdmin) {
@@ -147,6 +163,12 @@ public class CommunityPostServiceImpl implements CommunityPostService {
     @Override
     @Transactional
     public CommunityPostResponse updatePost(Long postId, CommunityPostUpdateRequest request) {
+        return updatePost(postId, request, null);
+    }
+
+    @Override
+    @Transactional
+    public CommunityPostResponse updatePost(Long postId, CommunityPostUpdateRequest request, MultipartFile file) {
         Profile currentProfile = authService.getCurrentProfile();
         CommunityPost post = communityPostRepository.findByIdAndIsDeletedFalse(postId)
                 .orElseThrow(() -> new AppException(ErrorCode.COMMUNITY_POST_NOT_FOUND));
@@ -156,6 +178,12 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         }
 
         communityPostMapper.updateCommunityPost(post, request);
+
+        if (file != null && !file.isEmpty()) {
+            String attachmentUrl = uploadService.uploadFile(file, FolderName.ATTACHMENTS);
+            post.setAttachmentUrl(attachmentUrl);
+            post.setAttachmentName(file.getOriginalFilename());
+        }
 
         if (request.getDeckId() != null) {
             Deck deck = deckRepository.findByIdAndIsDeletedFalse(request.getDeckId())
@@ -202,6 +230,16 @@ public class CommunityPostServiceImpl implements CommunityPostService {
 
         post.setDeleted(true);
         communityPostRepository.save(post);
+
+        List<Comment> postComments = commentRepository.findAllByCommunityPostId(postId);
+        if (!postComments.isEmpty()) {
+            for (Comment c : postComments) {
+                c.setDeleted(true);
+            }
+            commentRepository.saveAll(postComments);
+            log.info("Soft-deleted {} comments of post ID: {}", postComments.size(), postId);
+        }
+
         log.info("Soft-deleted community post ID: {}", postId);
 
         CommunityEventPayload<Map<String, Object>> deletePayload = CommunityEventPayload.<Map<String, Object>>builder()
@@ -359,6 +397,12 @@ public class CommunityPostServiceImpl implements CommunityPostService {
     @Override
     @Transactional
     public CommentResponse createComment(Long postId, CommentCreateRequest request) {
+        return createComment(postId, request, null);
+    }
+
+    @Override
+    @Transactional
+    public CommentResponse createComment(Long postId, CommentCreateRequest request, MultipartFile file) {
         Profile currentProfile = authService.getCurrentProfile();
         CommunityPost post = communityPostRepository.findByIdAndIsDeletedFalse(postId)
                 .orElseThrow(() -> new AppException(ErrorCode.COMMUNITY_POST_NOT_FOUND));
@@ -370,6 +414,12 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         Comment comment = commentMapper.toComment(request);
         comment.setCommunityPost(post);
         comment.setProfile(currentProfile);
+
+        if (file != null && !file.isEmpty()) {
+            String attachmentUrl = uploadService.uploadFile(file, FolderName.ATTACHMENTS);
+            comment.setAttachmentUrl(attachmentUrl);
+            comment.setAttachmentName(file.getOriginalFilename());
+        }
 
         if (request.getParentCommentId() != null) {
             Comment parentComment = commentRepository.findByIdAndIsDeletedFalse(request.getParentCommentId())
@@ -500,6 +550,78 @@ public class CommunityPostServiceImpl implements CommunityPostService {
             response.setLikedByCurrentUser(likedPostIds.contains(post.getId()));
             return response;
         });
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = {"community_latest_posts", "community_popular_posts", "community_post_detail"}, allEntries = true)
+    public void purgeSoftDeletedPostsAndComments() {
+        LocalDateTime cutoffTime = LocalDateTime.now().minusDays(30);
+        log.info("Bắt đầu thực hiện purge soft-deleted community posts và comments trước thời điểm: {}", cutoffTime);
+
+        List<CommunityPost> expiredPosts = communityPostRepository.findByIsDeletedTrueAndUpdatedAtBefore(cutoffTime);
+        if (!expiredPosts.isEmpty()) {
+            log.info("Tìm thấy {} bài viết soft-deleted cần xóa vĩnh viễn.", expiredPosts.size());
+            for (CommunityPost post : expiredPosts) {
+                if (post.getAttachmentUrl() != null && !post.getAttachmentUrl().isBlank()) {
+                    try {
+                        uploadService.deleteFile(post.getAttachmentUrl());
+                        log.info("Đã xóa file S3 của post ID {}: {}", post.getId(), post.getAttachmentUrl());
+                    } catch (Exception e) {
+                        log.error("Lỗi khi xóa file S3 của post ID {}: {}", post.getId(), e.getMessage());
+                    }
+                }
+
+                List<Comment> postComments = commentRepository.findAllByCommunityPostId(post.getId());
+                if (!postComments.isEmpty()) {
+                    for (Comment comment : postComments) {
+                        if (comment.getAttachmentUrl() != null && !comment.getAttachmentUrl().isBlank()) {
+                            try {
+                                uploadService.deleteFile(comment.getAttachmentUrl());
+                                log.info("Đã xóa file S3 của comment ID {}: {}", comment.getId(), comment.getAttachmentUrl());
+                            } catch (Exception e) {
+                                log.error("Lỗi khi xóa file S3 của comment ID {}: {}", comment.getId(), e.getMessage());
+                            }
+                        }
+                        comment.setParentComment(null);
+                    }
+                    commentRepository.saveAll(postComments);
+                    commentRepository.deleteAll(postComments);
+                    log.info("Đã xóa {} comments thuộc post ID {}", postComments.size(), post.getId());
+                }
+
+                postLikeRepository.deleteByCommunityPostId(post.getId());
+
+                if (post.getTags() != null) {
+                    post.getTags().clear();
+                    communityPostRepository.save(post);
+                }
+
+                communityPostRepository.delete(post);
+                log.info("Đã xóa vĩnh viễn post ID {}", post.getId());
+            }
+        }
+
+        List<Comment> standaloneExpiredComments = commentRepository.findByIsDeletedTrueAndUpdatedAtBefore(cutoffTime);
+        if (!standaloneExpiredComments.isEmpty()) {
+            log.info("Tìm thấy {} comments lẻ tẻ soft-deleted cần xóa vĩnh viễn.", standaloneExpiredComments.size());
+            for (Comment comment : standaloneExpiredComments) {
+                if (comment.getAttachmentUrl() != null && !comment.getAttachmentUrl().isBlank()) {
+                    try {
+                        uploadService.deleteFile(comment.getAttachmentUrl());
+                        log.info("Đã xóa file S3 của standalone comment ID {}: {}", comment.getId(), comment.getAttachmentUrl());
+                    } catch (Exception e) {
+                        log.error("Lỗi khi xóa file S3 của standalone comment ID {}: {}", comment.getId(), e.getMessage());
+                    }
+                }
+                comment.setParentComment(null);
+            }
+            commentRepository.saveAll(standaloneExpiredComments);
+            commentRepository.deleteAll(standaloneExpiredComments);
+            log.info("Đã xóa vĩnh viễn {} standalone comments.", standaloneExpiredComments.size());
+        }
+
+        log.info("Hoàn tất tiến trình purge soft-deleted community posts và comments.");
     }
 
     private void sendCommunityEvent(String destination, CommunityEventPayload<?> payload) {
