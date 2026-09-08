@@ -22,6 +22,18 @@ public interface DeckRepository extends JpaRepository<Deck, Long> {
     List<Deck> findByIsDeletedTrue();
 
     @EntityGraph(attributePaths = {"tags"})
+    @Query("SELECT d FROM Deck d WHERE d.isDeleted = false " +
+           "AND (CAST(:keyword AS string) IS NULL OR LOWER(d.title) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')) OR LOWER(d.description) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%'))) " +
+           "AND (:isOfficial IS NULL OR d.isOfficial = :isOfficial) " +
+           "AND (:visibility IS NULL OR d.visibility = :visibility)")
+    Page<Deck> findAllAdminDecks(
+            @Param("keyword") String keyword,
+            @Param("isOfficial") Boolean isOfficial,
+            @Param("visibility") DeckVisibility visibility,
+            Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"tags"})
     Page<Deck> findByProfileAndIsDeletedFalse(Profile profile, Pageable pageable);
 
     @EntityGraph(attributePaths = {"tags"})
