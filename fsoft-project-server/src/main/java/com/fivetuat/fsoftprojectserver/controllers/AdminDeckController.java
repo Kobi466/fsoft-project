@@ -15,6 +15,7 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -49,7 +50,7 @@ public class AdminDeckController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Boolean isOfficial,
             @RequestParam(required = false) DeckVisibility visibility,
-            Pageable pageable
+            @ParameterObject Pageable pageable
     ) {
         return ApiResponse.ok(adminDeckService.getAllDecks(keyword, isOfficial, visibility, pageable), SuccessCode.GET_DECKS_SUCCESS);
     }
@@ -72,7 +73,7 @@ public class AdminDeckController {
 
     @GetMapping("/pending-public")
     @Operation(summary = "Lấy danh sách các bộ bài đang chờ duyệt lên Public (pendingPublic = true)")
-    public ApiResponse<PageResponse<DeckResponse>> getPendingPublicDecks(Pageable pageable) {
+    public ApiResponse<PageResponse<DeckResponse>> getPendingPublicDecks(@ParameterObject Pageable pageable) {
         return ApiResponse.ok(adminDeckService.getPendingPublicDecks(pageable), SuccessCode.GET_DECKS_SUCCESS);
     }
 
