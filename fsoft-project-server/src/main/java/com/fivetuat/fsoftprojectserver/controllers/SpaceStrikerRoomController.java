@@ -63,7 +63,8 @@ public class SpaceStrikerRoomController {
             @PathVariable String code,
             @RequestBody SubmitAnswerRequest request) {
         Long cardId = request != null ? request.getCardId() : null;
-        return ApiResponse.ok(roomService.submitAnswer(code, currentUserId(), cardId), SuccessCode.SUBMIT_ANSWER_SUCCESS);
+        Integer questionIndex = request != null ? request.getQuestionIndex() : null;
+        return ApiResponse.ok(roomService.submitAnswer(code, currentUserId(), cardId, questionIndex), SuccessCode.SUBMIT_ANSWER_SUCCESS);
     }
 
     @PutMapping("/{code}/select-deck")

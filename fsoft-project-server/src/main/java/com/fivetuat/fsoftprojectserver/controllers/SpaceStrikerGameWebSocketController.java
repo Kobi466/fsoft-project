@@ -58,7 +58,8 @@ public class SpaceStrikerGameWebSocketController {
             return;
         }
         Long cardId = request != null ? request.getCardId() : null;
-        roomService.submitAnswer(code, userId, cardId);
+        Integer questionIndex = request != null ? request.getQuestionIndex() : null;
+        roomService.submitAnswer(code, userId, cardId, questionIndex);
     }
 
     @MessageMapping("/space-room/{code}/select-deck")

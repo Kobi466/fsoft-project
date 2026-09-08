@@ -190,6 +190,11 @@ public class SpaceStrikerRoomServiceImpl implements SpaceStrikerRoomService {
      */
     @Override
     public SpaceStrikerRoomState submitAnswer(String roomCode, String userId, Long cardId) {
+        return submitAnswer(roomCode, userId, cardId, null);
+    }
+
+    @Override
+    public SpaceStrikerRoomState submitAnswer(String roomCode, String userId, Long cardId, Integer questionIndex) {
         synchronized (lockFor(roomCode)) {
             SpaceStrikerRoomState state = getRoomOrThrow(roomCode);
             if (state.getStatus() != RoomStatus.PLAYING) throw new AppException(ErrorCode.ROOM_ALREADY_STARTED);
@@ -197,19 +202,39 @@ public class SpaceStrikerRoomServiceImpl implements SpaceStrikerRoomService {
             if (player == null) throw new AppException(ErrorCode.PLAYER_NOT_IN_ROOM);
             if (player.getLives() <= 0) return state; // đã hết máu, không còn được bắn
 
-            // Chặn xử lý trùng: người này đã có phát bắn được ghi nhận cho ĐÚNG câu hiện tại rồi
-            // (dù kết quả trúng hay trượt) -> mọi request trùng lặp sau đó bị bỏ qua an toàn.
+            // 1. Nếu client truyền questionIndex và không khớp với câu hiện tại (request của câu cũ do mạng trễ hoặc dual-channel)
+            // -> Bỏ qua an toàn, không trừ máu
+            if (questionIndex != null && questionIndex != state.getCurrentQuestionIndex()) {
+                return state;
+            }
+
+            // 2. Chặn lỗi khi client chưa truyền questionIndex:
+            // Nếu câu hiện tại vừa mới bắt đầu dưới 1.5s và cardId gửi lên thuộc về đáp án của câu trước
+            // -> chắc chắn là request trùng/trễ từ câu trước -> Bỏ qua an toàn, không trừ máu
+            if (questionIndex == null && state.getCurrentQuestionIndex() > 0) {
+                long elapsedSinceQuestionStart = Instant.now().toEpochMilli() - state.getCurrentQuestionStartedAt();
+                if (elapsedSinceQuestionStart < 1500 && cardId != null) {
+                    AudioQuestionItem prevQuestion = state.getQuestions().get(state.getCurrentQuestionIndex() - 1);
+                    boolean isOptionOfPrev = (prevQuestion.getCorrectOptionId() != null && prevQuestion.getCorrectOptionId().equals(cardId))
+                            || (prevQuestion.getOptions() != null && prevQuestion.getOptions().stream()
+                                    .anyMatch(opt -> opt.getOptionId() != null && opt.getOptionId().equals(cardId)));
+                    if (isOptionOfPrev) {
+                        return state;
+                    }
+                }
+            }
+
+            // 3. Nếu câu hỏi hiện tại đã có người bắn hạ gục trước đó -> bỏ qua
+            if (state.isQuestionResolved()) return state;
+
+            // 4. Chặn xử lý trùng: người này đã có phát bắn được ghi nhận cho câu hiện tại
             Set<String> answeredUserIds = ensureAnsweredSet(state);
             if (answeredUserIds.contains(userId)) return state;
-
-            if (state.isQuestionResolved()) return state;
 
             AudioQuestionItem question = state.getQuestions().get(state.getCurrentQuestionIndex());
             boolean correct = cardId != null && question.getCorrectOptionId() != null
                     && question.getCorrectOptionId().longValue() == cardId.longValue();
 
-            // Đánh dấu NGAY tại đây, trước khi advanceQuestionOrFinish có thể đổi currentQuestionIndex,
-            // để request trùng đến sau (dù trước hay sau khi câu đổi) đều bị chặn ở check phía trên.
             answeredUserIds.add(userId);
 
             if (!correct) {
