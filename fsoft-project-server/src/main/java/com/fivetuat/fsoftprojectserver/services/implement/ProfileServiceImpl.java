@@ -70,6 +70,9 @@ public class ProfileServiceImpl implements ProfileService {
             throw new AppException(ErrorCode.VALIDATION_ERROR);
         }
         Profile profile = authService.getCurrentProfile();
+        if (profile.getAvatar() != null && !profile.getAvatar().isBlank()) {
+            uploadService.deleteFile(profile.getAvatar());
+        }
         String avatarUrl = uploadService.uploadFile(avatarFile, FolderName.AVATARS);
         profile.setAvatar(avatarUrl);
 

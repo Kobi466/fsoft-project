@@ -10,9 +10,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.UUID;
 @Slf4j
 @Service
@@ -58,6 +60,36 @@ public class UploadServiceImpl implements UploadService {
         } catch (Exception e) {
             log.error("Upload file lên S3 thất bại", e);
             throw new RuntimeException("Upload file lên S3 thất bại", e);
+        }
+    }
+
+    @Override
+    public void deleteFile(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            return;
+        }
+        try {
+            String key;
+            if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) {
+                String path = URI.create(fileUrl).getPath();
+                key = path.startsWith("/") ? path.substring(1) : path;
+            } else {
+                key = fileUrl;
+            }
+
+            if (key.isBlank()) {
+                return;
+            }
+
+            DeleteObjectRequest request = DeleteObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .build();
+
+            s3Client.deleteObject(request);
+            log.info("Xóa file thành công trên S3 với key: {}", key);
+        } catch (Exception e) {
+            log.error("Xóa file trên S3 thất bại với URL: {}", fileUrl, e);
         }
     }
 }
