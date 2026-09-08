@@ -5,4 +5,5 @@ import lombok.Data;
 @Data
 public class SubmitAnswerRequest {
     private Long cardId;
-}
+    private Integer questionIndex;
+}
