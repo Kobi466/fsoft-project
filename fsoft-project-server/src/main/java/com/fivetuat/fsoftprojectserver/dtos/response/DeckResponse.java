@@ -37,4 +37,6 @@ public class DeckResponse {
     Set<TagResponse> tags;
     boolean isShareLinkEnabled;
     String shareToken;
+    boolean pendingPublic;
+    String rejectionReason;
 }

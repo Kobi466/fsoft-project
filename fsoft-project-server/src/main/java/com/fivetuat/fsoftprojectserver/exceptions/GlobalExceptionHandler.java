@@ -20,6 +20,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.security.access.AccessDeniedException;
 
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
@@ -118,6 +119,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ApiResponse<Map<String, Object>>> handleMissingServletRequestParameterException(MissingServletRequestParameterException ex, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, "Miss argument require: " + ex.getParameterName(), request);
+    }
+
+    // Xử lý lỗi khi @PreAuthorize từ chối quyền (vd: non-admin gọi API /admin/**)
+    // Không có handler này, AccessDeniedException sẽ rơi vào handler Exception.class chung và trả về 500
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> handleAccessDeniedException(AccessDeniedException ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.FORBIDDEN, ErrorCode.ACCESS_DENIED.getMessage(), request);
     }
 
     @ExceptionHandler(Exception.class)

@@ -78,3 +78,6 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: alpha
     tags-sorter: alpha
+
+admin-ai:
+  model: ${ADMIN_AI_MODEL:qwen/qwen3.8-27b}
