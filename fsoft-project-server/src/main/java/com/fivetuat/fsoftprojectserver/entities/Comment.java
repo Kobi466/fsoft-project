@@ -39,6 +39,12 @@ public class Comment {
     @Column(columnDefinition = "TEXT", nullable = false)
     String content;
 
+    @Column(name = "attachment_url")
+    String attachmentUrl;
+
+    @Column(name = "attachment_name")
+    String attachmentName;
+
     @Column(name = "is_deleted", nullable = false)
     @Builder.Default
     boolean isDeleted = false;

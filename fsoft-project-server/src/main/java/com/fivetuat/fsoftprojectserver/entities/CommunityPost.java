@@ -36,6 +36,12 @@ public class CommunityPost {
     @Column(columnDefinition = "TEXT", nullable = false)
     String content;
 
+    @Column(name = "attachment_url")
+    String attachmentUrl;
+
+    @Column(name = "attachment_name")
+    String attachmentName;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     @Builder.Default

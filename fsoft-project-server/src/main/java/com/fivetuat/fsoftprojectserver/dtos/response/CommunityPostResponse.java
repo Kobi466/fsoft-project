@@ -44,6 +44,9 @@ public class CommunityPostResponse {
 
     Set<TagResponse> tags;
 
+    String attachmentUrl;
+    String attachmentName;
+
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
 }

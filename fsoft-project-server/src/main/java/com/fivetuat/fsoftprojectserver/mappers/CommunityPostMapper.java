@@ -20,6 +20,8 @@ public interface CommunityPostMapper {
     @Mapping(target = "profile", ignore = true)
     @Mapping(target = "deck", ignore = true)
     @Mapping(target = "tags", ignore = true)
+    @Mapping(target = "attachmentUrl", ignore = true)
+    @Mapping(target = "attachmentName", ignore = true)
     CommunityPost toCommunityPost(CommunityPostCreateRequest request);
 
     @Mapping(target = "profileId", source = "profile.id")
@@ -38,6 +40,8 @@ public interface CommunityPostMapper {
     @Mapping(target = "profile", ignore = true)
     @Mapping(target = "deck", ignore = true)
     @Mapping(target = "tags", ignore = true)
+    @Mapping(target = "attachmentUrl", ignore = true)
+    @Mapping(target = "attachmentName", ignore = true)
     void updateCommunityPost(@MappingTarget CommunityPost post, CommunityPostUpdateRequest request);
 
     default Set<TagResponse> mapTags(Set<Tag> tags) {

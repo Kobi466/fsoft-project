@@ -47,8 +47,11 @@ import com.fivetuat.fsoftprojectserver.repositories.PostLikeRepository;
 import com.fivetuat.fsoftprojectserver.repositories.TagRepository;
 import com.fivetuat.fsoftprojectserver.services.AuthService;
 import com.fivetuat.fsoftprojectserver.services.CommunityPostService;
+import com.fivetuat.fsoftprojectserver.enums.FolderName;
+import com.fivetuat.fsoftprojectserver.services.UploadService;
 import com.fivetuat.fsoftprojectserver.utils.PageUtils;
 import com.fivetuat.fsoftprojectserver.utils.SecurityUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -67,6 +70,7 @@ public class CommunityPostServiceImpl implements CommunityPostService {
     DeckRepository deckRepository;
     TagRepository tagRepository;
     AuthService authService;
+    UploadService uploadService;
     CommunityPostMapper communityPostMapper;
     CommentMapper commentMapper;
     SimpMessagingTemplate messagingTemplate;
@@ -75,10 +79,22 @@ public class CommunityPostServiceImpl implements CommunityPostService {
     @Override
     @Transactional
     public CommunityPostResponse createPost(CommunityPostCreateRequest request) {
+        return createPost(request, null);
+    }
+
+    @Override
+    @Transactional
+    public CommunityPostResponse createPost(CommunityPostCreateRequest request, MultipartFile file) {
         Profile currentProfile = authService.getCurrentProfile();
 
         CommunityPost post = communityPostMapper.toCommunityPost(request);
         post.setProfile(currentProfile);
+
+        if (file != null && !file.isEmpty()) {
+            String attachmentUrl = uploadService.uploadFile(file, FolderName.ATTACHMENTS);
+            post.setAttachmentUrl(attachmentUrl);
+            post.setAttachmentName(file.getOriginalFilename());
+        }
 
         boolean isAdmin = SecurityUtils.isCurrentUserInRole("ROLE_ADMIN");
         if (isAdmin) {
@@ -147,6 +163,12 @@ public class CommunityPostServiceImpl implements CommunityPostService {
     @Override
     @Transactional
     public CommunityPostResponse updatePost(Long postId, CommunityPostUpdateRequest request) {
+        return updatePost(postId, request, null);
+    }
+
+    @Override
+    @Transactional
+    public CommunityPostResponse updatePost(Long postId, CommunityPostUpdateRequest request, MultipartFile file) {
         Profile currentProfile = authService.getCurrentProfile();
         CommunityPost post = communityPostRepository.findByIdAndIsDeletedFalse(postId)
                 .orElseThrow(() -> new AppException(ErrorCode.COMMUNITY_POST_NOT_FOUND));
@@ -156,6 +178,12 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         }
 
         communityPostMapper.updateCommunityPost(post, request);
+
+        if (file != null && !file.isEmpty()) {
+            String attachmentUrl = uploadService.uploadFile(file, FolderName.ATTACHMENTS);
+            post.setAttachmentUrl(attachmentUrl);
+            post.setAttachmentName(file.getOriginalFilename());
+        }
 
         if (request.getDeckId() != null) {
             Deck deck = deckRepository.findByIdAndIsDeletedFalse(request.getDeckId())
@@ -359,6 +387,12 @@ public class CommunityPostServiceImpl implements CommunityPostService {
     @Override
     @Transactional
     public CommentResponse createComment(Long postId, CommentCreateRequest request) {
+        return createComment(postId, request, null);
+    }
+
+    @Override
+    @Transactional
+    public CommentResponse createComment(Long postId, CommentCreateRequest request, MultipartFile file) {
         Profile currentProfile = authService.getCurrentProfile();
         CommunityPost post = communityPostRepository.findByIdAndIsDeletedFalse(postId)
                 .orElseThrow(() -> new AppException(ErrorCode.COMMUNITY_POST_NOT_FOUND));
@@ -370,6 +404,12 @@ public class CommunityPostServiceImpl implements CommunityPostService {
         Comment comment = commentMapper.toComment(request);
         comment.setCommunityPost(post);
         comment.setProfile(currentProfile);
+
+        if (file != null && !file.isEmpty()) {
+            String attachmentUrl = uploadService.uploadFile(file, FolderName.ATTACHMENTS);
+            comment.setAttachmentUrl(attachmentUrl);
+            comment.setAttachmentName(file.getOriginalFilename());
+        }
 
         if (request.getParentCommentId() != null) {
             Comment parentComment = commentRepository.findByIdAndIsDeletedFalse(request.getParentCommentId())
