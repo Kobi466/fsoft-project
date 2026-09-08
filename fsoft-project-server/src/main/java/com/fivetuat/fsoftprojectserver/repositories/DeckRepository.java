@@ -19,6 +19,7 @@ import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
 @Repository
 public interface DeckRepository extends JpaRepository<Deck, Long> {
     Optional<Deck> findByIdAndIsDeletedFalse(Long id);
+    List<Deck> findByIsDeletedTrue();
 
     @EntityGraph(attributePaths = {"tags"})
     Page<Deck> findByProfileAndIsDeletedFalse(Profile profile, Pageable pageable);

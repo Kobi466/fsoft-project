@@ -211,6 +211,18 @@ public class DeckServiceImpl implements DeckService {
     }
 
     @Override
+    @Transactional
+    @CacheEvict(value = {"deck_detail", "public_decks"}, allEntries = true)
+    public void purgeSoftDeletedDecks() {
+        List<Deck> deletedDecks = deckRepository.findByIsDeletedTrue();
+        if (!deletedDecks.isEmpty()) {
+            log.info("Bắt đầu dọn dẹp vĩnh viễn {} bộ bài đã đánh dấu soft delete...", deletedDecks.size());
+            deckRepository.deleteAll(deletedDecks);
+            log.info("Đã xóa vĩnh viễn {} bộ bài soft delete thành công.", deletedDecks.size());
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public PageResponse<DeckResponse> getMyDecks(int page, int size) {
         Profile profile = authService.getCurrentProfile();
