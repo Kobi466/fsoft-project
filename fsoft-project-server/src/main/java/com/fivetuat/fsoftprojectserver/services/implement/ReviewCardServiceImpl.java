@@ -113,8 +113,9 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 	}
 
 	/**
-	 * Lấy từ vựng cần ôn tập theo Thuật toán Gom Cụm Thời Gian FSRS (Pure FSRS Time-Clustering - No Limit).
-	 * Chỉ tập trung vào các thẻ ĐÃ CÓ trong hệ thống FSRS (UserCardSrs).
+	 * Lấy từ vựng cần ôn tập theo Thuật toán Gom Cụm Thời Gian FSRS.
+	 * Tự động phân cụm danh sách thẻ bài dựa trên mốc thời gian ôn tập (mỗi cụm trong khoảng clusterWindowMinutes tính từ thẻ đầu tiên của cụm đó),
+	 * sau đó trả về ngay lập tức Cụm Gần Nhất (cụm đầu tiên) mà KHÔNG phụ thuộc hay so sánh khoảng cách với thời gian hiện tại.
 	 */
 	@Override
 	public List<ReviewCardResponse> getFsrsStudyQueue(Long deckId, Integer maxEarlyBufferMinutes, Integer clusterWindowMinutes) {
@@ -122,30 +123,26 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 				() -> new AppException(ErrorCode.AUTHENTICATION_FAILED)
 		);
 
-		int earlyBufferMins = (maxEarlyBufferMinutes != null && maxEarlyBufferMinutes >= 0) ? maxEarlyBufferMinutes : 120;
 		int clusterMins = (clusterWindowMinutes != null && clusterWindowMinutes > 0) ? clusterWindowMinutes : 30;
 
 		List<UserCardSrs> allSrsCards = userCardSrsRepository.findAllUserSrsCardsOrdered(userId, deckId);
-		LocalDateTime now = LocalDateTime.now();
 		List<ReviewCardResponse> responses = new ArrayList<>();
 
 		if (allSrsCards.isEmpty()) {
 			return responses;
 		}
 
+		// Thẻ có lịch hẹn gần nhất làm mốc mở đầu cho Cụm Gần Nhất
 		UserCardSrs firstCard = allSrsCards.get(0);
 		LocalDateTime targetStartDate = firstCard.getNextReviewDate();
+		LocalDateTime clusterEndTime = targetStartDate.plusMinutes(clusterMins);
 
-		// Hợp lệ nếu mốc hẹn đã đến hạn (targetStartDate <= now) HOẶC sắp đến hạn trong khoảng earlyBufferMins
-		if (targetStartDate.isBefore(now) || targetStartDate.isEqual(now) || targetStartDate.isBefore(now.plusMinutes(earlyBufferMins))) {
-			LocalDateTime clusterEndTime = targetStartDate.plusMinutes(clusterMins);
-
-			for (UserCardSrs srs : allSrsCards) {
-				if (!srs.getNextReviewDate().isAfter(clusterEndTime)) {
-					responses.add(userCardSrsMapper.toResponse(srs));
-				} else {
-					break;
-				}
+		// Gom toàn bộ thẻ nằm trong Cụm Gần Nhất này (từ targetStartDate đến clusterEndTime)
+		for (UserCardSrs srs : allSrsCards) {
+			if (!srs.getNextReviewDate().isAfter(clusterEndTime)) {
+				responses.add(userCardSrsMapper.toResponse(srs));
+			} else {
+				break; // Đã vượt quá khoảng của cụm đầu tiên -> dừng lại
 			}
 		}
 
