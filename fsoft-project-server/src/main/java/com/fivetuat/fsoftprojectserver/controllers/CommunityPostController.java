@@ -2,6 +2,7 @@ package com.fivetuat.fsoftprojectserver.controllers;
 
 import java.util.UUID;
 
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,8 +12,11 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.fivetuat.fsoftprojectserver.annotations.RateLimit;
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
 import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.CommentCreateRequest;
@@ -22,19 +26,19 @@ import com.fivetuat.fsoftprojectserver.dtos.request.PostModerateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.CommentResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.CommunityPostResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.PostLikeToggleResponse;
+import com.fivetuat.fsoftprojectserver.enums.RateLimitKeyType;
 import com.fivetuat.fsoftprojectserver.enums.SuccessCode;
 import com.fivetuat.fsoftprojectserver.services.CommunityPostService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Encoding;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-
-import com.fivetuat.fsoftprojectserver.annotations.RateLimit;
-import com.fivetuat.fsoftprojectserver.enums.RateLimitKeyType;
 
 @RestController
 @RequestMapping("/community-posts")
@@ -46,16 +50,23 @@ public class CommunityPostController {
     CommunityPostService communityPostService;
 
 
-    @PostMapping
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(
+            encoding = @Encoding(
+                    name = "request",
+                    contentType = MediaType.APPLICATION_JSON_VALUE
+            )
+    ))
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @RateLimit(limit = 10, period = 60, keyType = RateLimitKeyType.USER_OR_IP, name = "community_create_post")
     @Operation(
             summary = "Tạo bài viết mới trong cộng đồng",
-            description = "Tạo một bài viết mới với nội dung (Markdown), có thể đính kèm một bộ thẻ Deck công khai (tùy chọn) và gắn nhiều nhãn Tags (tùy chọn). Bài viết của USER sẽ ở trạng thái PENDING chờ ADMIN duyệt."
+            description = "Tạo một bài viết mới với nội dung (Markdown), có thể đính kèm một file/ảnh (tùy chọn), bộ thẻ Deck công khai (tùy chọn) và gắn nhiều nhãn Tags (tùy chọn). Bài viết của USER sẽ ở trạng thái PENDING chờ ADMIN duyệt."
     )
     public ApiResponse<CommunityPostResponse> createPost(
-            @Valid @RequestBody CommunityPostCreateRequest request
+            @Valid @RequestPart("request") CommunityPostCreateRequest request,
+            @RequestPart(value = "file", required = false) MultipartFile file
     ) {
-        return ApiResponse.ok(communityPostService.createPost(request), SuccessCode.CREATE_COMMUNITY_POST_SUCCESS);
+        return ApiResponse.ok(communityPostService.createPost(request, file), SuccessCode.CREATE_COMMUNITY_POST_SUCCESS);
     }
 
     @GetMapping("/my-posts")
@@ -81,16 +92,23 @@ public class CommunityPostController {
         return ApiResponse.ok(communityPostService.getPostById(id), SuccessCode.GET_COMMUNITY_POST_SUCCESS);
     }
 
-    @PutMapping("/{id}")
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(
+            encoding = @Encoding(
+                    name = "request",
+                    contentType = MediaType.APPLICATION_JSON_VALUE
+            )
+    ))
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "Cập nhật bài viết",
-            description = "Chỉnh sửa tiêu đề, nội dung, bộ thẻ đính kèm hoặc danh sách nhãn của bài viết. Chỉ tác giả bài viết mới có quyền cập nhật."
+            description = "Chỉnh sửa tiêu đề, nội dung, bộ thẻ đính kèm, danh sách nhãn hoặc tải lên tệp/ảnh đính kèm mới. Chỉ tác giả bài viết mới có quyền cập nhật."
     )
     public ApiResponse<CommunityPostResponse> updatePost(
             @Parameter(description = "ID của bài viết cần sửa") @PathVariable Long id,
-            @Valid @RequestBody CommunityPostUpdateRequest request
+            @Valid @RequestPart("request") CommunityPostUpdateRequest request,
+            @RequestPart(value = "file", required = false) MultipartFile file
     ) {
-        return ApiResponse.ok(communityPostService.updatePost(id, request), SuccessCode.UPDATE_COMMUNITY_POST_SUCCESS);
+        return ApiResponse.ok(communityPostService.updatePost(id, request, file), SuccessCode.UPDATE_COMMUNITY_POST_SUCCESS);
     }
 
     @DeleteMapping("/{id}")
@@ -197,16 +215,23 @@ public class CommunityPostController {
     }
 
 
-    @PostMapping("/{id}/comments")
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(
+            encoding = @Encoding(
+                    name = "request",
+                    contentType = MediaType.APPLICATION_JSON_VALUE
+            )
+    ))
+    @PostMapping(value = "/{id}/comments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "Gửi bình luận vào bài viết",
-            description = "Đăng bình luận mới cho bài viết. Nếu muốn trả lời (Reply) một bình luận khác, hãy truyền thêm parentCommentId."
+            description = "Đăng bình luận mới cho bài viết, có thể đính kèm tệp/ảnh (file). Nếu muốn trả lời (Reply) một bình luận khác, hãy truyền thêm parentCommentId."
     )
     public ApiResponse<CommentResponse> createComment(
             @Parameter(description = "ID của bài viết") @PathVariable Long id,
-            @Valid @RequestBody CommentCreateRequest request
+            @Valid @RequestPart("request") CommentCreateRequest request,
+            @RequestPart(value = "file", required = false) MultipartFile file
     ) {
-        return ApiResponse.ok(communityPostService.createComment(id, request), SuccessCode.CREATE_COMMENT_SUCCESS);
+        return ApiResponse.ok(communityPostService.createComment(id, request, file), SuccessCode.CREATE_COMMENT_SUCCESS);
     }
 
     @GetMapping("/{id}/comments")
