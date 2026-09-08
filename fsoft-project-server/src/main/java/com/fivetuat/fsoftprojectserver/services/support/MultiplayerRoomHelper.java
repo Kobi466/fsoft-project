@@ -54,10 +54,7 @@ public class MultiplayerRoomHelper {
     public int resolveQuestionCount(Long hostDeckId, Collection<PlayerState> players, int currentQuestionCount, Integer newQuestionCount) {
         int totalAvailable = countTotalAvailableUniqueCards(hostDeckId, players);
         if (newQuestionCount != null && newQuestionCount > 0) {
-            if (newQuestionCount > totalAvailable) {
-                throw new AppException(ErrorCode.INVALID_QUESTION_COUNT);
-            }
-            return newQuestionCount;
+            return Math.min(newQuestionCount, totalAvailable);
         }
         return Math.min(currentQuestionCount, totalAvailable);
     }
