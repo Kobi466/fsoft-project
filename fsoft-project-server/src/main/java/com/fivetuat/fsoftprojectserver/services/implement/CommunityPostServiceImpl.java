@@ -84,6 +84,7 @@ public class CommunityPostServiceImpl implements CommunityPostService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"community_latest_posts", "community_popular_posts", "community_post_detail"}, allEntries = true)
     public CommunityPostResponse createPost(CommunityPostCreateRequest request, MultipartFile file) {
         Profile currentProfile = authService.getCurrentProfile();
 
@@ -168,6 +169,7 @@ public class CommunityPostServiceImpl implements CommunityPostService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"community_latest_posts", "community_popular_posts", "community_post_detail"}, allEntries = true)
     public CommunityPostResponse updatePost(Long postId, CommunityPostUpdateRequest request, MultipartFile file) {
         Profile currentProfile = authService.getCurrentProfile();
         CommunityPost post = communityPostRepository.findByIdAndIsDeletedFalse(postId)
@@ -253,7 +255,7 @@ public class CommunityPostServiceImpl implements CommunityPostService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "community_latest_posts", key = "#page + ':' + #size")
+    @Cacheable(value = "community_latest_posts", key = "#page + ':' + #size + ':' + (T(com.fivetuat.fsoftprojectserver.utils.SecurityUtils).getCurrentUserLogin().orElse(null))")
     public PageResponse<CommunityPostResponse> getLatestPosts(int page, int size) {
         Pageable pageable = PageUtils.createPageable(page, size);
         Page<CommunityPost> postPage = communityPostRepository.findByStatusAndIsDeletedFalseOrderByCreatedAtDesc(PostStatus.APPROVED, pageable);
@@ -262,7 +264,7 @@ public class CommunityPostServiceImpl implements CommunityPostService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "community_popular_posts", key = "#page + ':' + #size")
+    @Cacheable(value = "community_popular_posts", key = "#page + ':' + #size + ':' + (T(com.fivetuat.fsoftprojectserver.utils.SecurityUtils).getCurrentUserLogin().orElse(null))")
     public PageResponse<CommunityPostResponse> getPopularPosts(int page, int size) {
         Pageable pageable = PageUtils.createPageable(page, size);
         Page<CommunityPost> postPage = communityPostRepository.findByStatusAndIsDeletedFalseOrderByLikeCountDescCreatedAtDesc(PostStatus.APPROVED, pageable);
@@ -305,6 +307,7 @@ public class CommunityPostServiceImpl implements CommunityPostService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"community_latest_posts", "community_popular_posts", "community_post_detail"}, allEntries = true)
     public CommunityPostResponse moderatePost(Long postId, PostModerateRequest request) {
         Profile currentAdmin = authService.getCurrentProfile();
         CommunityPost post = communityPostRepository.findByIdAndIsDeletedFalse(postId)
@@ -344,6 +347,7 @@ public class CommunityPostServiceImpl implements CommunityPostService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"community_latest_posts", "community_popular_posts", "community_post_detail"}, allEntries = true)
     public PostLikeToggleResponse toggleLike(Long postId) {
         Profile currentProfile = authService.getCurrentProfile();
         CommunityPost post = communityPostRepository.findByIdAndIsDeletedFalse(postId)
@@ -402,6 +406,7 @@ public class CommunityPostServiceImpl implements CommunityPostService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"community_latest_posts", "community_popular_posts", "community_post_detail"}, allEntries = true)
     public CommentResponse createComment(Long postId, CommentCreateRequest request, MultipartFile file) {
         Profile currentProfile = authService.getCurrentProfile();
         CommunityPost post = communityPostRepository.findByIdAndIsDeletedFalse(postId)
@@ -485,6 +490,7 @@ public class CommunityPostServiceImpl implements CommunityPostService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"community_latest_posts", "community_popular_posts", "community_post_detail"}, allEntries = true)
     public void deleteComment(Long commentId) {
         Profile currentProfile = authService.getCurrentProfile();
         Comment comment = commentRepository.findByIdAndIsDeletedFalse(commentId)
