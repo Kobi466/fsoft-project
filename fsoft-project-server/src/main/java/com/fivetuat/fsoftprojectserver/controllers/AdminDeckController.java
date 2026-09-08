@@ -3,6 +3,7 @@ package com.fivetuat.fsoftprojectserver.controllers;
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
 import com.fivetuat.fsoftprojectserver.dtos.PageResponse;
 import com.fivetuat.fsoftprojectserver.dtos.request.AdminUpdateDeckOfficialRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.DeckModerateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.request.DeckVisibilityRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.DeckResponse;
 import com.fivetuat.fsoftprojectserver.enums.DeckVisibility;
@@ -76,12 +77,18 @@ public class AdminDeckController {
     }
 
     @PatchMapping("/{deckId}/approve-public")
-    @Operation(summary = "Duyệt hoặc Từ chối yêu cầu đưa bộ bài lên Public của Người dùng")
+    @Operation(summary = "Duyệt hoặc Từ chối yêu cầu đưa bộ bài lên Public của Người dùng (từ chối bắt buộc phải có lý do)",
+            description = "Approve (approved=true): bộ bài chuyển sang PUBLIC, xóa lý do từ chối cũ (nếu có), người dùng nhận thông báo 'Bộ bài đã được duyệt'. " +
+                    "Reject (approved=false): bắt buộc gửi body {\"reason\": \"...\"}, nếu thiếu sẽ trả lỗi DECK_REJECTION_REASON_REQUIRED. " +
+                    "Bộ bài quay lại PRIVATE, lý do được lưu vào rejectionReason và gửi thông báo kèm lý do tới người dùng. " +
+                    "Chỉ áp dụng cho bộ bài đang pendingPublic = true, ngược lại trả lỗi DECK_NOT_PENDING.")
     public ApiResponse<DeckResponse> approvePublicDeck(
             @PathVariable Long deckId,
-            @RequestParam boolean approved
+            @RequestParam boolean approved,
+            @RequestBody(required = false) DeckModerateRequest request
     ) {
-        return ApiResponse.ok(adminDeckService.approvePublicDeck(deckId, approved), SuccessCode.UPDATE_DECK_SUCCESS);
+        String reason = request != null ? request.getReason() : null;
+        return ApiResponse.ok(adminDeckService.approvePublicDeck(deckId, approved, reason), SuccessCode.UPDATE_DECK_SUCCESS);
     }
 
     @PutMapping("/{deckId}/visibility")
