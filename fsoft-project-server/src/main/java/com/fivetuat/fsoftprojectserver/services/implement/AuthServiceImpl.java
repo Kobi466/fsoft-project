@@ -1,6 +1,7 @@
 package com.fivetuat.fsoftprojectserver.services.implement;
 
 import java.text.DecimalFormat;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -121,6 +122,7 @@ public class AuthServiceImpl implements AuthService {
         if (!bCryptPasswordEncoder.matches(authenticatedRequest.getPassword(), auth.getPasswordHash())) {
             throw new AppException(ErrorCode.AUTHENTICATION_FAILED);
         }
+        this.checkAndHandleBannedStatus(auth);
         String accessToken = jwtService.generateAccessToken(auth);
         String refreshToken = jwtService.generateRefreshToken(auth);
         var refreshTokenEntity = this.refreshTokenRepository.save(RefreshToken.builder()
@@ -180,6 +182,7 @@ public class AuthServiceImpl implements AuthService {
                     return savedAuth;
                 }
         );
+        this.checkAndHandleBannedStatus(auth);
         String accessToken = jwtService.generateAccessToken(auth);
         String refreshToken = jwtService.generateRefreshToken(auth);
         var refreshTokenEntity = this.refreshTokenRepository.save(RefreshToken.builder()
@@ -328,5 +331,37 @@ public class AuthServiceImpl implements AuthService {
     public Auth findByEmail(String email) {
         return this.authRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private void checkAndHandleBannedStatus(Auth auth) {
+        if (!auth.isBanned()) {
+            return;
+        }
+
+        if (auth.getBannedUntil() != null && LocalDateTime.now().isAfter(auth.getBannedUntil())) {
+            auth.setBanned(false);
+            auth.setBannedAt(null);
+            auth.setBannedUntil(null);
+            auth.setBanReason(null);
+            authRepository.save(auth);
+            log.info("Tài khoản {} đã hết thời hạn bị khóa, tự động mở khóa thành công.", auth.getEmail());
+            return;
+        }
+
+        StringBuilder message = new StringBuilder("Tài khoản của bạn đã bị khóa");
+        if (auth.getBannedUntil() != null) {
+            String timeStr = auth.getBannedUntil().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+            String dateStr = auth.getBannedUntil().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            message.append(" đến ").append(timeStr).append(" ngày ").append(dateStr);
+        } else {
+            message.append(" vĩnh viễn");
+        }
+
+        if (auth.getBanReason() != null && !auth.getBanReason().isBlank()) {
+            message.append(". Lý do: ").append(auth.getBanReason());
+        }
+
+        log.warn("Tài khoản {} đang bị khóa truy cập. {}", auth.getEmail(), message);
+        throw new AppException(ErrorCode.USER_ACCOUNT_BANNED, message.toString());
     }
 }

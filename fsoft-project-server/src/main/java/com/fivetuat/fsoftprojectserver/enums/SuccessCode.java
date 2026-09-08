@@ -114,7 +114,9 @@ public enum SuccessCode {
     ADMIN_AI_CHAT_SUCCESS(200, "Gửi câu hỏi thành công", HttpStatus.OK),
     ADMIN_AI_ACTION_CONFIRMED(200, "Thực hiện hành động thành công", HttpStatus.OK),
     ADMIN_AI_ACTION_CANCELLED(200, "Đã hủy hành động chờ xác nhận", HttpStatus.OK),
-    GET_AUDIT_LOGS_SUCCESS(200, "Lấy nhật ký hành động AI thành công", HttpStatus.OK);
+    GET_AUDIT_LOGS_SUCCESS(200, "Lấy nhật ký hành động AI thành công", HttpStatus.OK),
+    BAN_USER_SUCCESS(200, "Khóa tài khoản người dùng thành công", HttpStatus.OK),
+    UNBAN_USER_SUCCESS(200, "Mở khóa tài khoản người dùng thành công", HttpStatus.OK);
     final int status;
     final String message;
     final HttpStatus httpStatus;

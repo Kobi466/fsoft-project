@@ -52,4 +52,21 @@ public class AdminUserController {
     ) {
         return ApiResponse.ok(adminUserService.updateUserRoles(userId, request), SuccessCode.UPDATE_PROFILE_SUCCESS);
     }
+
+    @PutMapping("/{userId}/ban")
+    @Operation(summary = "Khóa tài khoản người dùng (Ban User)")
+    public ApiResponse<AdminUserResponse> banUser(
+            @PathVariable UUID userId,
+            @Valid @RequestBody com.fivetuat.fsoftprojectserver.dtos.request.AdminBanUserRequest request
+    ) {
+        return ApiResponse.ok(adminUserService.banUser(userId, request), SuccessCode.BAN_USER_SUCCESS);
+    }
+
+    @PutMapping("/{userId}/unban")
+    @Operation(summary = "Mở khóa tài khoản người dùng (Unban User)")
+    public ApiResponse<AdminUserResponse> unbanUser(
+            @PathVariable UUID userId
+    ) {
+        return ApiResponse.ok(adminUserService.unbanUser(userId), SuccessCode.UNBAN_USER_SUCCESS);
+    }
 }
