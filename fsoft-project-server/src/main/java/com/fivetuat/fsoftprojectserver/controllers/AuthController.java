@@ -1,24 +1,34 @@
 package com.fivetuat.fsoftprojectserver.controllers;
 
 
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fivetuat.fsoftprojectserver.annotations.RateLimit;
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
-import com.fivetuat.fsoftprojectserver.dtos.request.*;
+import com.fivetuat.fsoftprojectserver.dtos.request.AuthenticatedRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.ForgotPasswordRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.IntrospectTokenRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.LogoutRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.RefreshTokenRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.ResetPasswordRequest;
+import com.fivetuat.fsoftprojectserver.dtos.request.UserCreateRequest;
 import com.fivetuat.fsoftprojectserver.dtos.response.AuthenticatedResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.IntrospectTokenResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.TokenResponse;
 import com.fivetuat.fsoftprojectserver.dtos.response.UserResponse;
+import com.fivetuat.fsoftprojectserver.enums.RateLimitKeyType;
 import com.fivetuat.fsoftprojectserver.enums.SuccessCode;
 import com.fivetuat.fsoftprojectserver.services.AuthService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.web.bind.annotation.*;
-
-import com.fivetuat.fsoftprojectserver.annotations.RateLimit;
-import com.fivetuat.fsoftprojectserver.enums.RateLimitKeyType;
 
 @RequiredArgsConstructor
 @RestController

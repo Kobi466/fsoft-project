@@ -14,6 +14,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
@@ -24,17 +25,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fivetuat.fsoftprojectserver.dtos.ApiResponse;
 import com.fivetuat.fsoftprojectserver.enums.ErrorCode;
-
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
 import com.fivetuat.fsoftprojectserver.filters.GlobalRateLimitingFilter;
-import lombok.experimental.FieldDefaults;
 
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
 @EnableMethodSecurity
-@RequiredArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class SecurityConfiguration {
 
     private static final String[] PUBLIC_URLS = {
@@ -67,8 +62,6 @@ public class SecurityConfiguration {
             "/community-posts/comments/{commentId:[0-9]+}/replies",
     };
 
-    CustomJwtDecoder customJwtDecoder;
-
     @Bean
     @Order(1)
     public SecurityFilterChain internalSecurityFilterChain(HttpSecurity http, InternalTokenFilter internalTokenFilter) throws Exception {
@@ -81,8 +74,14 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, GlobalRateLimitingFilter globalRateLimitingFilter) throws Exception {
-        http.cors(httpSecurityCorsConfigurer -> httpSecurityCorsConfigurer.configurationSource(corsConfigurationSource()));
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            GlobalRateLimitingFilter globalRateLimitingFilter,
+            JwtDecoder jwtDecoder,
+            JwtAuthenticationConverter jwtAuthenticationConverter,
+            UrlBasedCorsConfigurationSource corsConfigurationSource
+    ) throws Exception {
+        http.cors(httpSecurityCorsConfigurer -> httpSecurityCorsConfigurer.configurationSource(corsConfigurationSource));
         http.csrf(AbstractHttpConfigurer::disable);
 
         http.addFilterBefore(globalRateLimitingFilter, UsernamePasswordAuthenticationFilter.class);
@@ -95,8 +94,8 @@ public class SecurityConfiguration {
 
         http.oauth2ResourceServer(resourceServer -> resourceServer
                 .jwt(jwtConfigurer -> jwtConfigurer
-                        .decoder(customJwtDecoder)
-                        .jwtAuthenticationConverter(this.jwtAuthenticationConverter())
+                        .decoder(jwtDecoder)
+                        .jwtAuthenticationConverter(jwtAuthenticationConverter)
                 )
                 .authenticationEntryPoint((request, response, authException) -> {
                     ErrorCode errorCode = ErrorCode.AUTHENTICATION_FAILED;

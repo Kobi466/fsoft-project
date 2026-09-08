@@ -21,4 +21,8 @@ public class AdminUserResponse {
     Set<String> roles;
     LocalDateTime createTime;
     LocalDateTime updateTime;
+    boolean isBanned;
+    LocalDateTime bannedAt;
+    LocalDateTime bannedUntil;
+    String banReason;
 }

@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
 
@@ -34,4 +35,17 @@ public class Auth {
                     inverseJoinColumns = @JoinColumn(name = "role_id")
             )
     Set<Role> roles;
+
+    @Column(name = "is_banned", nullable = false)
+    @Builder.Default
+    boolean isBanned = false;
+
+    @Column(name = "banned_at")
+    LocalDateTime bannedAt;
+
+    @Column(name = "banned_until")
+    LocalDateTime bannedUntil;
+
+    @Column(name = "ban_reason", columnDefinition = "TEXT")
+    String banReason;
 }
