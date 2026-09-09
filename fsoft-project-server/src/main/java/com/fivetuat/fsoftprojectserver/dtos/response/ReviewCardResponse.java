@@ -4,7 +4,7 @@ import com.fivetuat.fsoftprojectserver.enums.SrsStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -19,6 +19,6 @@ public class ReviewCardResponse {
 	float easinessFactor;
 	Double stability;
 	Double difficulty;
-	LocalDate nextReviewDate;
+	LocalDateTime nextReviewDate;
 }
 
