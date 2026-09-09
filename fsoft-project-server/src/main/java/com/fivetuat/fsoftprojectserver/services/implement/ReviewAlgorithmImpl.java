@@ -34,7 +34,7 @@ public class ReviewAlgorithmImpl implements ReviewAlgorithmService {
         double newStability;
         double newDifficulty;
 
-        if (currentStability == null || currentDifficulty == null || userCardSrs.getRepetitions() == 0) {
+        if (currentStability == null || currentDifficulty == null) {
             // ====================================================
             // 1. FIRST REVIEW (Lần đầu tiên học thẻ mới)
             // ====================================================
