@@ -433,6 +433,7 @@ public class CommunityPostServiceImpl implements CommunityPostService {
             if (!parentComment.getCommunityPost().getId().equals(postId)) {
                 throw new AppException(ErrorCode.VALIDATION_ERROR);
             }
+
             comment.setParentComment(parentComment);
         }
 
@@ -504,25 +505,14 @@ public class CommunityPostServiceImpl implements CommunityPostService {
             throw new AppException(ErrorCode.COMMENT_ACCESS_DENIED);
         }
 
-        comment.setDeleted(true);
-        commentRepository.save(comment);
-
-        List<Comment> childReplies = commentRepository.findAllActiveRepliesByParentId(commentId);
-        int totalDeletedComments = 1;
-        if (!childReplies.isEmpty()) {
-            for (Comment reply : childReplies) {
-                reply.setDeleted(true);
-            }
-            commentRepository.saveAll(childReplies);
-            totalDeletedComments += childReplies.size();
-        }
+        int totalDeletedComments = softDeleteCommentAndDescendants(comment);
 
         CommunityPost post = comment.getCommunityPost();
         int newCommentCount = Math.max(0, post.getCommentCount() - totalDeletedComments);
         post.setCommentCount(newCommentCount);
         communityPostRepository.save(post);
 
-        log.info("Soft-deleted comment ID: {} and {} replies on post ID: {}", commentId, childReplies.size(), post.getId());
+        log.info("Soft-deleted comment ID: {} and its descendants (total: {}) on post ID: {}", commentId, totalDeletedComments, post.getId());
 
         Long parentCommentId = comment.getParentComment() != null ? comment.getParentComment().getId() : null;
         Long postId = post.getId();
@@ -537,6 +527,17 @@ public class CommunityPostServiceImpl implements CommunityPostService {
                 .postId(postId)
                 .data(deleteData)
                 .build());
+    }
+
+    private int softDeleteCommentAndDescendants(Comment comment) {
+        comment.setDeleted(true);
+        commentRepository.save(comment);
+        int count = 1;
+        List<Comment> childReplies = commentRepository.findAllActiveRepliesByParentId(comment.getId());
+        for (Comment reply : childReplies) {
+            count += softDeleteCommentAndDescendants(reply);
+        }
+        return count;
     }
 
 
