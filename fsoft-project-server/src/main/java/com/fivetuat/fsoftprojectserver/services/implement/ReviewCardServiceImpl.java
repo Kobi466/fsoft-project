@@ -132,7 +132,7 @@ public class ReviewCardServiceImpl implements ReviewCardService {
 			return responses;
 		}
 
-		// Thẻ có lịch hẹn gần nhất làm mốc mở đầu cho Cụm Gần Nhất
+		// Thẻ có lịch hẹn gần nhất làm mốc mở đầu cho Cụm Gần Nhất (bất kể đến hạn chưa)
 		UserCardSrs firstCard = allSrsCards.get(0);
 		LocalDateTime targetStartDate = firstCard.getNextReviewDate();
 		LocalDateTime clusterEndTime = targetStartDate.plusMinutes(clusterMins);
