@@ -85,3 +85,6 @@ springdoc:
 
 admin-ai:
   model: ${ADMIN_AI_MODEL:qwen/qwen3.8-27b}
+
+user-ai:
+  model: ${USER_AI_MODEL:qwen/qwen3.8-27b}

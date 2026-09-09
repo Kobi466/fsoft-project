@@ -2,6 +2,7 @@ package com.fivetuat.fsoftprojectserver.configurations;
 
 import com.fivetuat.fsoftprojectserver.advisors.AvailableToolsLoggingAdvisor;
 import com.fivetuat.fsoftprojectserver.advisors.TokenCounterAdvisor;
+import com.fivetuat.fsoftprojectserver.tools.UserAiToolRegistry;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
@@ -87,6 +88,34 @@ public class MultiAiConfig {
                         .model(adminAiModel)
                         .extraBody(Map.of("include_reasoning", false)))
                 .defaultSystem(ADMIN_AI_SYSTEM_PROMPT)
+                .build();
+    }
+
+
+    @Value("${user-ai.model:qwen/qwen-2.5-32b}")
+    String userAiModel;
+
+    static final String USER_AI_SYSTEM_PROMPT =
+            "Bạn là Trợ lý AI Gia sư tiếng Anh thông minh dành cho học viên của hệ thống FSoft Flashcards. "
+                    + "Nhiệm vụ của bạn là hỗ trợ học viên giải đáp thắc mắc từ vựng, ngữ pháp, tư vấn phương pháp học hiệu quả và hỗ trợ quản lý bộ bài học tập. "
+                    + "Sử dụng các công cụ được cung cấp khi cần thiết để hỗ trợ học viên một cách tốt nhất. "
+                    + "Hãy trả lời một cách thân thiện, chính xác, truyền cảm hứng và trình bày đẹp mắt bằng Markdown.";
+
+    @Bean(name = "userAiChatClient")
+    public ChatClient userAiChatClient(
+            OpenAiChatModel chatModel,
+            UserAiToolRegistry toolRegistry) {
+        ChatModel sanitizingModel = new ReasoningSanitizingChatModel(chatModel);
+        return ChatClient.builder(sanitizingModel)
+                .defaultOptions(OpenAiChatOptions.builder()
+                        .model(userAiModel)
+                        .extraBody(Map.of("include_reasoning", false)))
+                .defaultSystem(USER_AI_SYSTEM_PROMPT)
+                .defaultTools(toolRegistry.getAllTools())
+                .defaultAdvisors(
+                        new AvailableToolsLoggingAdvisor(),
+                        new TokenCounterAdvisor()
+                )
                 .build();
     }
 }
